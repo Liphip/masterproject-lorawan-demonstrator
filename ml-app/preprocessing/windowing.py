@@ -27,23 +27,36 @@ class WindowingMethod(BaseEstimator, TransformerMixin):
         """
         if "sensor" not in X.columns:
             raise ValueError("Input DataFrame must contain a 'sensor' column.")
-        
+
         if "timestamp" not in X.columns:
             raise ValueError("Input DataFrame must contain a 'timestamp' column.")
+
+        if isinstance(self.method, dict) and 'timestamp' not in self.method:
+            raise ValueError("When method is a dictionary, it must contain a 'timestamp' key for processing the timestamp column.")
         
         sensors = X['sensor'].unique()
         windows = []
 
-        for sensor in sensors:
-            sensor_data = X[X['sensor'] == sensor].sort_values('timestamp')
-            for start in range(0, len(sensor_data) - self.window_size + 1, self.stride):
-                end = start + self.window_size
-                window = sensor_data.iloc[start:end]
-                if isinstance(self.method, dict):
-                    features = {col: extractor(col, window[col]) for col, extractor in self.method.items()}
-                else:
-                    features = {col: self.method(col, window[col]) for col in window.columns if col not in ['sensor', 'timestamp']}
-                features['sensor'] = sensor
-                features['timestamp'] = window['timestamp'].iloc[-1]  # Use the last timestamp of the window
-                windows.append(features)
+        for start in range(0, len(X) - self.window_size + 1, self.stride):
+            end = start + self.window_size
+            window = X.iloc[start:end]
+            window_data = dict()
+            for sensor in sensors:
+                sensor_window = window[window['sensor'] == sensor]
+                if len(sensor_window) == self.window_size:
+                    features = dict()
+                    if isinstance(self.method, dict):
+                        for col in sensor_window.columns:
+                            if col in self.method and col not in ['sensor', 'timestamp']:
+                                col_val = self.method[col](col, sensor_window[col])
+                                features.update({f'{sensor}_{k}': v for k, v in col_val.items()})
+                    else:
+                        for col in sensor_window.columns:
+                            if col not in ['sensor', 'timestamp']:
+                                col_val = self.method(col, sensor_window[col])
+                                features.update({f'{sensor}_{k}': v for k, v in col_val.items()})
+                    window_data.update(features)
+            timestamp_val = self.method['timestamp']('timestamp', window['timestamp']) if isinstance(self.method, dict) else self.method('timestamp', window['timestamp'])
+            window_data.update(timestamp_val.to_dict())
+            windows.append(window_data)
         return pd.DataFrame(windows)

@@ -17,13 +17,20 @@ class FeatureExtractor:
         Returns:
         - A pandas Series containing the extracted features.
         """
-        raise NotImplementedError("FeatureExtractor is an abstract class. Please implement the __call__ method.")
+        if isinstance(data.dtype, pd.api.types.CategoricalDtype):
+            return CategoricalExtractor()(column_name, data)
+        elif pd.api.types.is_numeric_dtype(data):
+            return NumericExtractor()(column_name, data)
+        elif pd.api.types.is_datetime64_any_dtype(data):
+            return TimestampExtractor()(column_name, data)
+        else:
+            raise NotImplementedError("FeatureExtractor is an abstract class. Please implement the __call__ method.")
 
 class NumericExtractor(FeatureExtractor):
     def __init__(self):
         pass
 
-    def __call__(self, column_name: str, data: pd.Series) -> pd.Series:
+    def __call__(self, column_name: str, data: pd.Series[float | int]) -> pd.Series:
         """
         Extract features from a given column of data.
 
@@ -53,7 +60,7 @@ class TimestampExtractor(FeatureExtractor):
     def __init__(self):
         pass
 
-    def __call__(self, column_name: str, data: pd.Series) -> pd.Series:
+    def __call__(self, column_name: str, data: pd.Series[pd.Timestamp]) -> pd.Series:
         """
         Extract features from a given column of data.
 
@@ -66,16 +73,22 @@ class TimestampExtractor(FeatureExtractor):
         """
         data_count = data.count()
         data_duration = (data.max() - data.min()).total_seconds() if data_count > 1 else 0
+        data_interval = data.diff().dt.total_seconds().mean() if data_count > 1 else 0
+        data_min_interval = data.diff().dt.total_seconds().min() if data_count > 1 else 0
+        data_max_interval = data.diff().dt.total_seconds().max() if data_count > 1 else 0
         return pd.Series({
             f"{column_name}_count": data_count,
             f"{column_name}_duration": data_duration,
+            f"{column_name}_interval": data_interval,
+            f"{column_name}_min_interval": data_min_interval,
+            f"{column_name}_max_interval": data_max_interval,
         })
 
 class CategoricalExtractor(FeatureExtractor):
     def __init__(self):
         pass
 
-    def __call__(self, column_name: str, data: pd.Series) -> pd.Series:
+    def __call__(self, column_name: str, data: pd.Series[pd.api.types.CategoricalDtype]) -> pd.Series:
         """
         Extract features from a given column of data.
 
