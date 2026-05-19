@@ -1,4 +1,3 @@
-from typing import Any
 import pandas as pd
 
 
@@ -20,17 +19,20 @@ class FeatureExtractor:
         if isinstance(data.dtype, pd.api.types.CategoricalDtype):
             return CategoricalExtractor()(column_name, data)
         elif pd.api.types.is_numeric_dtype(data):
-            return NumericExtractor()(column_name, data)
+            return NumericalExtractor()(column_name, data)
         elif pd.api.types.is_datetime64_any_dtype(data):
             return TimestampExtractor()(column_name, data)
         else:
             raise NotImplementedError("FeatureExtractor is an abstract class. Please implement the __call__ method.")
+    
+    def __str__(self):
+        return f"{self.__class__.__name__}()"
 
-class NumericExtractor(FeatureExtractor):
+class NumericalExtractor(FeatureExtractor):
     def __init__(self):
         pass
 
-    def __call__(self, column_name: str, data: pd.Series[float | int]) -> pd.Series:
+    def __call__(self, column_name: str, data: pd.Series) -> pd.Series:
         """
         Extract features from a given column of data.
 
@@ -41,6 +43,8 @@ class NumericExtractor(FeatureExtractor):
         Returns:
         - A pandas Series containing the extracted features.
         """
+        if not pd.api.types.is_numeric_dtype(data):
+            raise ValueError("NumericExtractor can only be applied to numeric data.")
         data_min = data.min()
         data_max = data.max()
         data_mean = data.mean()
@@ -60,7 +64,7 @@ class TimestampExtractor(FeatureExtractor):
     def __init__(self):
         pass
 
-    def __call__(self, column_name: str, data: pd.Series[pd.Timestamp]) -> pd.Series:
+    def __call__(self, column_name: str, data: pd.Series) -> pd.Series:
         """
         Extract features from a given column of data.
 
@@ -71,6 +75,8 @@ class TimestampExtractor(FeatureExtractor):
         Returns:
         - A pandas Series containing the extracted features.
         """
+        if not pd.api.types.is_datetime64_any_dtype(data):
+            raise ValueError("TimestampExtractor can only be applied to datetime data.")
         data_count = data.count()
         data_duration = (data.max() - data.min()).total_seconds() if data_count > 1 else 0
         data_interval = data.diff().dt.total_seconds().mean() if data_count > 1 else 0
@@ -88,7 +94,7 @@ class CategoricalExtractor(FeatureExtractor):
     def __init__(self):
         pass
 
-    def __call__(self, column_name: str, data: pd.Series[pd.api.types.CategoricalDtype]) -> pd.Series:
+    def __call__(self, column_name: str, data: pd.Series) -> pd.Series:
         """
         Extract features from a given column of data.
 
@@ -99,6 +105,8 @@ class CategoricalExtractor(FeatureExtractor):
         Returns:
         - A pandas Series containing the extracted features.
         """
+        if not isinstance(data.dtype, pd.api.types.CategoricalDtype):
+            raise ValueError("CategoricalExtractor can only be applied to categorical data.")
         data_mode = data.mode().iloc[0] if not data.mode().empty else None
         data_unique_count = data.nunique()
         return pd.Series({

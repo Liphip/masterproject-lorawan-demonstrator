@@ -8,6 +8,9 @@ class WindowingMethod(BaseEstimator, TransformerMixin):
         self.method = method
         self.window_size = window_size
         self.stride = stride
+    
+    def __str__(self):
+        return f"WindowingMethod(method={self.method}, window_size={self.window_size}, stride={self.stride})"
 
     def fit(self, X: pd.DataFrame, y=None):
         return self
