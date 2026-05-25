@@ -91,3 +91,44 @@ class CustomPipeline(Pipeline):
         pipeline.set_metadata(metadata)
 
         return pipeline
+    
+    def fit(self, X, y=None, **fit_params):
+        """Fit the pipeline to the data.
+        Overrides the fit method to include metadata update.
+
+        Args:
+            X: The input data.
+            y: The target variable.
+            fit_params: Additional fit parameters.
+
+        Returns:
+            self: The fitted pipeline.
+        """
+        X = X[self.feature_order] # type: ignore
+        return super().fit(X, y, **fit_params)
+
+    def predict(self, X, **predict_params):
+        """Predict using the pipeline.
+        Overrides the predict method to ensure the input data is in the correct feature order.
+
+        Args:
+            X: The input data.
+            predict_params: Additional predict parameters.
+        Returns:
+            The predicted values.
+        """
+        X = X[self.feature_order] # type: ignore
+        return super().predict(X, **predict_params)
+
+    def predict_proba(self, X, **predict_params):
+        """Predict probabilities using the pipeline.
+        Overrides the predict_proba method to ensure the input data is in the correct feature order.
+
+        Args:
+            X: The input data.
+            predict_params: Additional predict parameters.
+        Returns:
+            The predicted probabilities.
+        """        
+        X = X[self.feature_order] # type: ignore
+        return super().predict_proba(X, **predict_params)
