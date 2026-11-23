@@ -1,10 +1,9 @@
 from sklearn.base import BaseEstimator, ClassifierMixin, clone as sklearn_clone
+from sklearn.preprocessing import LabelEncoder
 import copy
 import numpy as np
 from typing import Any
 import pandas as pd
-import numpy as np
-from typing import Any
 from sklearn.base import BaseEstimator
 from sklearn.pipeline import Pipeline as SklearnPipeline
 import os
@@ -61,14 +60,13 @@ class WindowedEstimator(BaseEstimator):
         return windows.reset_index(drop=True), labels
 
     def fit(self, X: pd.DataFrame, y: pd.Series = None, **fit_params):
-        groups = fit_params.get('groups', None)
+        if '__groups__' in X.columns:
+            groups_arr = np.array(X['__groups__'])
+            X = X.drop(columns=['__groups__'])
+        else:
+            groups_arr = np.array(['__all__'] * len(X))
         X_df = X.reset_index(drop=True)
         y_ser = pd.Series(y).reset_index(drop=True)
-
-        if groups is None:
-            groups_arr = np.array(['__all__'] * len(X_df))
-        else:
-            groups_arr = np.array(pd.Series(groups).reset_index(drop=True))
 
         all_windows = []
         all_labels = []
@@ -87,15 +85,19 @@ class WindowedEstimator(BaseEstimator):
         Xw = pd.concat(all_windows, ignore_index=True)
         yw = pd.Series(all_labels)
 
-        self.pipeline.fit(Xw, yw)
+        self.feature_names_in_ = Xw.columns.tolist()
+        self.label_encoder_ = LabelEncoder()
+        yw_enc = pd.Series(self.label_encoder_.fit_transform(yw))
+        self.pipeline.fit(Xw, yw_enc)
         return self
 
     def predict(self, X: pd.DataFrame, groups=None):
-        X_df = X.reset_index(drop=True)
-        if groups is None:
-            groups_arr = np.array(['__all__'] * len(X_df))
+        if '__groups__' in X.columns:
+            groups_arr = np.array(X['__groups__'])
+            X = X.drop(columns=['__groups__'])
         else:
-            groups_arr = np.array(pd.Series(groups).reset_index(drop=True))
+            groups_arr = np.array(['__all__'] * len(X))
+        X_df = X.reset_index(drop=True)
 
         all_windows = []
         for g in np.unique(groups_arr):
@@ -109,14 +111,16 @@ class WindowedEstimator(BaseEstimator):
             return np.array([])
 
         Xw = pd.concat(all_windows, ignore_index=True)
-        return self.pipeline.predict(Xw)
+        Xw = Xw.reindex(columns=self.feature_names_in_)
+        return self.label_encoder_.inverse_transform(self.pipeline.predict(Xw))
 
     def predict_proba(self, X: pd.DataFrame, groups=None):
-        X_df = X.reset_index(drop=True)
-        if groups is None:
-            groups_arr = np.array(['__all__'] * len(X_df))
+        if '__groups__' in X.columns:
+            groups_arr = np.array(X['__groups__'])
+            X = X.drop(columns=['__groups__'])
         else:
-            groups_arr = np.array(pd.Series(groups).reset_index(drop=True))
+            groups_arr = np.array(['__all__'] * len(X))
+        X_df = X.reset_index(drop=True)
 
         all_windows = []
         for g in np.unique(groups_arr):
@@ -130,16 +134,18 @@ class WindowedEstimator(BaseEstimator):
             return np.array([])
 
         Xw = pd.concat(all_windows, ignore_index=True)
-        return self.pipeline.predict_proba(Xw)
+        Xw = Xw.reindex(columns=self.feature_names_in_)
+        probas = self.pipeline.predict_proba(Xw)
+        return probas
 
     def score(self, X, y, **fit_params):
-        groups = fit_params.get('groups', None)
-        X_df = X.reset_index(drop=True)
         y_ser = pd.Series(y).reset_index(drop=True)
-        if groups is None:
-            groups_arr = np.array(['__all__'] * len(X_df))
+        if '__groups__' in X.columns:
+            groups_arr = np.array(X['__groups__'])
+            X = X.drop(columns=['__groups__'])
         else:
-            groups_arr = np.array(pd.Series(groups).reset_index(drop=True))
+            groups_arr = np.array(['__all__'] * len(X))
+        X_df = X.reset_index(drop=True)
 
         all_windows = []
         all_labels = []
@@ -156,7 +162,9 @@ class WindowedEstimator(BaseEstimator):
             return 0.0
 
         Xw = pd.concat(all_windows, ignore_index=True)
-        yw = pd.Series(all_labels)
+        Xw = Xw.reindex(columns=self.feature_names_in_)
+
+        yw = pd.Series(self.label_encoder_.transform(pd.Series(all_labels)))
         return self.pipeline.score(Xw, yw)
 
 
