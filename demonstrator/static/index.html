@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ahle Wurst meets KI · LoRaWAN × AI Demonstrator</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <div>
+    <h1>Ahle Wurst meets KI</h1>
+    <p class="sub">LoRaWAN sensors → gateway → network → laptop → three CPU models, side by side</p>
+  </div>
+  <div class="chips" id="chips"></div>
+</header>
+
+<section class="path" id="path" aria-label="Data path">
+  <div class="node" data-n="sensors"><b>LoRaWAN sensors</b><span>LSE01 · LTC-FS · WS202</span></div>
+  <div class="arrow">LoRa radio</div>
+  <div class="node" data-n="gateway"><b>Milesight UG63</b><span>gateway + network server</span></div>
+  <div class="arrow">HTTP / IP</div>
+  <div class="node" data-n="router"><b>Router / Wi-Fi</b><span>stands in for "the Internet"</span></div>
+  <div class="arrow">LAN</div>
+  <div class="node" data-n="laptop"><b>Laptop</b><span>decode → windows → features → 3 models</span></div>
+</section>
+
+<main>
+  <section class="card" id="live">
+    <div class="card-head">
+      <h2>1 · Which sensor sent what? <span class="badge live">LIVE</span></h2>
+      <span class="muted" id="live-summary"></span>
+    </div>
+    <table class="devices">
+      <thead><tr><th>Sensor</th><th>Slot</th><th>Last values</th><th>Radio</th><th>Last seen</th><th>Uplinks</th></tr></thead>
+      <tbody id="devices"></tbody>
+    </table>
+    <details>
+      <summary>Recent uplinks <span class="muted" id="recent-count"></span></summary>
+      <ol class="log" id="recent"></ol>
+    </details>
+    <div id="live-errors"></div>
+  </section>
+
+  <section class="card" id="ai">
+    <div class="card-head">
+      <h2>2 · What does each model predict?</h2>
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="replay">Recorded run (replay)</button>
+        <button class="tab" data-tab="live">Live sensors</button>
+      </div>
+    </div>
+
+    <div id="tab-replay">
+      <div class="controls">
+        <label>Recording <select id="rec"></select></label>
+        <label>Speed <select id="speed">
+          <option value="600">10 min / s</option>
+          <option value="1800" selected>30 min / s</option>
+          <option value="3600">1 h / s</option>
+          <option value="10800">3 h / s</option>
+          <option value="43200">12 h / s</option>
+        </select></label>
+        <label>Start at <input type="range" id="startpos" min="0" max="95" value="0" step="5"><span id="startpos-v">0 %</span></label>
+        <button id="btn-start" class="primary">▶ Start replay</button>
+        <button id="btn-stop">■ Stop</button>
+      </div>
+      <div class="banner replay" id="replay-banner" hidden></div>
+      <div class="progress"><div id="progress-bar"></div></div>
+      <div id="replay-models"></div>
+      <div class="chart-head">
+        <span>Phase over time · top lanes: annotation and each model, bottom: measured signal</span>
+        <select id="signal">
+          <option value="lse01_moisture">LSE01 moisture</option>
+          <option value="lse01_conductivity">LSE01 conductivity</option>
+          <option value="lse01_temperature">LSE01 temperature</option>
+          <option value="ltcfs_temperature">LTC-FS temperature</option>
+        </select>
+      </div>
+      <svg id="timeline" viewBox="0 0 1000 260" preserveAspectRatio="none" role="img" aria-label="Phase timeline"></svg>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div id="tab-live" hidden>
+      <div class="banner note">
+        Live data proves the radio → gateway → network → laptop path. A sausage on the table does not
+        ripen for days, so live phase predictions are only meaningful during a real curing run. The models
+        are flagged when the live window falls outside the range they were trained on.
+      </div>
+      <div class="controls"><label>Sausage slot <select id="slot"></select></label></div>
+      <div id="live-models"></div>
+    </div>
+  </section>
+
+  <section class="card" id="eval">
+    <div class="card-head"><h2>3 · How do the models compare on held-out data?</h2><span class="muted" id="eval-meta"></span></div>
+    <div id="eval-body"><p class="muted">Loading evaluation…</p></div>
+  </section>
+
+  <section class="card limits">
+    <h2>4 · What this does <em>not</em> show</h2>
+    <ul>
+      <li>All labeled data comes from <b>one curing run</b> (five sausages). Held-out scores separate sausages,
+        not runs, so they are probably optimistic for a new run.</li>
+      <li>Each prediction uses a short window of the latest uplinks. It reflects the current sensor levels,
+        not the full history of the run.</li>
+      <li>The labels are human phase annotations, not a measured ground truth for food safety or quality.
+        Model outputs are estimates, not decisions.</li>
+      <li>"Confidence" is the model's own probability, not a calibrated guarantee. The three models have
+        different calibration, so compare their labels, not their confidence values.</li>
+    </ul>
+  </section>
+</main>
+<footer class="muted" id="footer"></footer>
+<script src="/static/app.js"></script>
+</body>
+</html>

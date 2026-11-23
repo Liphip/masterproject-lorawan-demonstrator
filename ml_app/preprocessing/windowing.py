@@ -6,10 +6,15 @@ from .feature_extraction import FeatureExtractor
 
 class WindowingMethod(BaseEstimator, TransformerMixin):
     def __init__(self, method: "dict[str, FeatureExtractor] | FeatureExtractor" = None,
-                 window_size: int = 10, stride: int = 2):
+                 window_size: int = 10, stride: int = 2,
+                 output_columns: "list[str] | None" = None):
         self.method = method if method is not None else FeatureExtractor()
         self.window_size = window_size
         self.stride = stride
+        # Fixed output schema. If set, the feature frame is reindexed to these
+        # columns so that windows in which a sensor did not report (common for
+        # live data) still produce the column layout the models were fitted on.
+        self.output_columns = output_columns
 
     def __str__(self):
         return f"WindowingMethod(method={self.method}, window_size={self.window_size}, stride={self.stride})"
@@ -39,7 +44,15 @@ class WindowingMethod(BaseEstimator, TransformerMixin):
         idx = starts[:, None] + np.arange(ws)[None, :]   # (n_windows, ws)
 
         # ── timestamp features ────────────────────────────────────────────────
-        ts_ns = X["timestamp"].values.astype("int64")     # (n_rows,)
+        # Normalise to nanosecond resolution before the int64 cast. pandas >= 3
+        # may parse ISO strings with microsecond resolution, which would scale
+        # every interval/duration feature by 1000 relative to training.
+        ts = X["timestamp"]
+        if not pd.api.types.is_datetime64_any_dtype(ts):
+            ts = pd.to_datetime(ts, utc=True, format="ISO8601")
+        if getattr(ts.dt, "tz", None) is not None:
+            ts = ts.dt.tz_convert("UTC").dt.tz_localize(None)
+        ts_ns = ts.astype("datetime64[ns]").values.astype("int64")  # (n_rows,)
         ts_w  = ts_ns[idx]                                # (n_windows, ws)
 
         intervals_s = np.diff(ts_w, axis=1) / 1e9        # (n_windows, ws-1)
@@ -92,11 +105,18 @@ class WindowingMethod(BaseEstimator, TransformerMixin):
                     sensor_features[f"{col}_skew"]  = (
                         np.nanmean(centered ** 3, axis=1) / (std_safe ** 3)
                     )
-                    sensor_features[f"{col}_slope"] = np.where(
-                        ws > 1,
-                        (col_w[:, -1] - col_w[:, 0]) / (ws - 1),
-                        np.zeros(n_windows, dtype=np.float32),
-                    )
+                    # Slope between the first and last *valid* reading of this
+                    # sensor in the window (per row step). The previous version
+                    # used the window's first/last row, which is NaN whenever
+                    # those rows belong to another sensor (almost always).
+                    valid = sensor_mask_w & ~np.isnan(col_w)
+                    has_two = valid.sum(axis=1) >= 2
+                    first_i = np.argmax(valid, axis=1)
+                    last_i = ws - 1 - np.argmax(valid[:, ::-1], axis=1)
+                    rows = np.arange(n_windows)
+                    span = np.maximum(last_i - first_i, 1)
+                    slope = (col_w[rows, last_i] - col_w[rows, first_i]) / span
+                    sensor_features[f"{col}_slope"] = np.where(has_two, slope, np.nan)
 
                 else:
                     # categorical — Python loop fallback (rare, low-cardinality)
@@ -114,7 +134,10 @@ class WindowingMethod(BaseEstimator, TransformerMixin):
                     sensor_features[f"{col}_mode"]         = modes
                     sensor_features[f"{col}_unique_count"] = unique_counts
 
-        return pd.DataFrame({**sensor_features, **ts_features}, copy=False)
+        out = pd.DataFrame({**sensor_features, **ts_features}, copy=False)
+        if self.output_columns is not None:
+            out = out.reindex(columns=list(self.output_columns))
+        return out
 
 # import pandas as pd
 # from typing import Callable

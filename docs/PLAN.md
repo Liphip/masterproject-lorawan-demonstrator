@@ -1,0 +1,68 @@
+# Project plan
+
+Status as of 23 Nov 2026. Scope: [assignment requirements](ASSIGNMENT_REQUIREMENTS.md)
+(A1–A11). The principle: **demonstrate the whole chain reliably**. This is not a general IoT platform.
+
+## Architecture decisions
+
+| Decision | Choice | Why / trade-off |
+|---|---|---|
+| Gateway → laptop transport | UG63 **embedded network server + HTTP POST** to the laptop | No broker, no cloud, works offline. MQTT stays optional (`[mqtt]` in the config) if the gateway is later set up that way. |
+| Decoding | Payload codec **on the gateway** preferred; built-in fallback for LSE01 and WS202 | Vendor codecs are maintained for the firmware. The fallback decoders are written from the documented layouts and must be checked against real uplinks. LTC-FS has no fallback. |
+| App | One Python process (FastAPI) + static HTML/JS dashboard | No Node build, no Grafana/DB stack to set up on site. Works without internet (no CDN). |
+| Live vs. recorded | Two separate panels; replay is always labeled REPLAY in orange | Curing takes days (§3.1). Replay is where the model comparison is meaningful; live proves the data path. |
+| Honest replay | Replaying a labeled sausage uses the **fold model trained without it** | Otherwise the demo would show memorised training data. The unlabeled series 2 (independent run) uses the final models. |
+| Live compatibility | Out-of-range check against training feature percentiles | Implements "only show live predictions where data is compatible": the dashboard warns instead of hiding. |
+| Random Forest size | Demo preset `max_depth=10, n_estimators=100` (HPO winner was unbounded, 500 trees) | An unbounded forest on ~160k windows grows to hundreds of MB. Compare both with `--rf-preset hpo` and report the difference. |
+
+## Requirement mapping
+
+| ID | Delivered by | Status |
+|---|---|---|
+| A1 LoRaWAN system | UG63 config ([RUNBOOK](RUNBOOK.md) §2), `/ingest/uplink` | **Code done; hardware setup open** |
+| A2 Readable measurements | Dashboard panel 1 (sensor, DevEUI, values with units, RSSI/SNR, age, uplink log) | Done |
+| A3 ML on laptop | `demonstrator/inference.py`, scikit-learn on CPU | Done |
+| A4 Visualisation | Data path strip, panels 1–3 | Done; to refine after a dry run |
+| A5 Transport case | Physical | **Open: assembly, cable/power plan, photo docs** |
+| A6 ≥3 model families | LogReg, RF, MLP | Done |
+| A7 Side-by-side + trade-offs | Model cards, agreement, phase timeline, evaluation table (quality, latency, size, training time) | Done |
+| A8 CPU-only | Latency per prediction measured and shown; single-threaded inference | Done; **check on the demo laptop** |
+| A9 Replay, labeled | `demonstrator/replay.py`; live uplinks recorded in the same schema → replayable | Done |
+| A10 Repeatable operation | `scripts/setup.ps1`, `start_demo.ps1`, RUNBOOK | Done; **test with a second person** |
+| A11 Limitations | Panel 4, single-run note in metrics, out-of-range and "seen in training" warnings | Done |
+
+## Changes to existing code (and why)
+
+- `ml_app/preprocessing/windowing.py`
+  - **Slope feature fixed.** It used the first/last row of the window, which almost always belongs to another
+    sensor, so every `*_slope` feature was NaN and the imputer dropped it (see the notebook warnings). It now uses
+    the first/last valid reading of the sensor. **Consequence: the notebook's HPO results were obtained without slope
+    features. Re-run the HPO if time permits.**
+  - Timestamps are normalised to ns before the int64 cast. pandas ≥ 3 can parse ISO strings at µs resolution,
+    which would silently scale all interval features by 1000 between environments.
+  - Optional `output_columns` fixes the feature schema, so that windows where a sensor did not report (common live) still
+    match the trained models.
+- `ml_app/pipeline/pipeline.py`: `created_at` default was evaluated once at import time.
+- Notebook cells 12–13 are superseded by `train_models.py`. `Pipeline.fit` with the windowing step windows X but
+  not y, so those cells cannot run. Logistic Regression is wrapped in `OneVsRestClassifier`, because scikit-learn ≥ 1.8
+  dropped implicit one-vs-rest for `liblinear` (same model as before).
+
+## Open items (in order)
+
+1. **Run `train_models.py` on the real data** and look at `metrics.json`. Check whether the slope fix changed scores.
+2. **Collect sensor data:** DevEUI/AppEUI/AppKey for every sensor; check that the sensors are not still joined to another network
+   server (TTN, company LNS).
+3. **UG63 setup** following RUNBOOK §2. Capture one real uplink JSON per sensor type (`data/recordings/raw_*.jsonl`) and
+   compare the decoded values with the device app/manual. Add a test with the captured payloads.
+4. **Dry run** on the demo laptop: startup time, latency, battery, offline behaviour.
+5. Case assembly and packing list (A5). Document exact sensor and power-supply models.
+6. Optional: longer windows (e.g. 6–12 h) are likely more meaningful for a multi-day process than 10 uplinks. This is a
+   small change via `--window-size`, but the HPO would need to be re-run. Worth one experiment for the evaluation chapter.
+
+## Known risks
+
+- **Single labeled run.** Scores are per sausage within one run and are probably optimistic. Say so in the presentation.
+- **Short windows.** 10 uplinks ≈ minutes. The models mostly classify current absolute levels (moisture, conductivity,
+  temperature), not the dynamics of the run.
+- **Gateway clock.** The laptop's receive time is used as the timestamp, because an offline gateway may have no NTP.
+- **Laptop IP.** The gateway URL contains the laptop IP. Use a DHCP reservation or a static IP on the demo router.

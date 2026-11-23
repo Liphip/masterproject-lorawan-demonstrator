@@ -6,12 +6,13 @@ from typing import Sequence
 import json
 
 class CustomPipeline(Pipeline):
-    def __init__(self, steps: Sequence[tuple], version: str, model_type: str, feature_order: list, created_at: datetime.datetime = datetime.datetime.now()):
+    def __init__(self, steps: Sequence[tuple], version: str, model_type: str, feature_order: list, created_at: "datetime.datetime | None" = None):
         super().__init__(steps)
         self.version = version
         self.model_type = model_type
         self.feature_order = feature_order
-        self.created_at = created_at
+        # default evaluated per instance (was evaluated once at import time)
+        self.created_at = created_at if created_at is not None else datetime.datetime.now()
     
     def display(self):
         """Display the pipeline steps and metadata."""

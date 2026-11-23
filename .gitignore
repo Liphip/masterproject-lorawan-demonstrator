@@ -11,3 +11,8 @@ lib64
 include/
 ~$*
 .~lock*
+# demonstrator
+.venv/
+.pytest_cache/
+data/recordings/
+config/demo.local.toml
