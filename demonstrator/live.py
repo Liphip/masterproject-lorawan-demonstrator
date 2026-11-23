@@ -87,6 +87,11 @@ class LiveState:
             self._error(f"{dev_cfg.name}: {e}")
             return {"accepted": True, "mapped": False, "error": str(e)}
         entry["values"] = values
+        if dev_cfg.type == "generic":  # display only, never a model input
+            with self.lock:
+                dev.update(values=values, decode_method=method, last_error=None)
+                self.recent.appendleft(entry)
+            return {"accepted": True, "mapped": True, "values": values}
         row = {"timestamp": pd.Timestamp(now), "sensor": dev_cfg.type, **values}
         with self.lock:
             dev.update(values=values, decode_method=method, last_error=None)

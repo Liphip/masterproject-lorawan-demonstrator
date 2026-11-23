@@ -19,8 +19,9 @@ host = "127.0.0.1"
 port = 1883
 topic = "#"
 
-# type: lse01 (moisture/temperature/conductivity probe), ltcfs (temperature
-# probe), ws202 (PIR + light, environment). slot groups the probes of one
+# type: lse01 (moisture/temperature/conductivity probe), ltcfs (Dragino LTC2-FS
+# temperature probe), ws202 (PIR + light, environment), generic (shown on the
+# dashboard only, e.g. Dragino LSN50-v2-S31 air temp/humidity: not a model input). slot groups the probes of one
 # sausage; the models predict per slot.
 [[devices]]
 dev_eui = "A84041000000000A"
@@ -40,3 +41,9 @@ dev_eui = "24E1240000000000"
 name = "Umgebung – PIR & Licht"
 type = "ws202"
 slot = "environment"
+
+# [[devices]]
+# dev_eui = "A84041000000000C"
+# name = "Umgebung – Temperatur & Luftfeuchte (LSN50-v2-S31)"
+# type = "generic"
+# slot = "environment"

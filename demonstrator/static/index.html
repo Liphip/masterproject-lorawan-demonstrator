@@ -63,6 +63,7 @@
         </select></label>
         <label>Start at <input type="range" id="startpos" min="0" max="95" value="0" step="5"><span id="startpos-v">0 %</span></label>
         <button id="btn-start" class="primary">▶ Start replay</button>
+        <button id="btn-pause">❚❚ Pause</button>
         <button id="btn-stop">■ Stop</button>
       </div>
       <div class="banner replay" id="replay-banner" hidden></div>
@@ -112,6 +113,25 @@
   </section>
 </main>
 <footer class="muted" id="footer"></footer>
+
+<div class="overlay" id="explain" hidden>
+  <div class="sheet">
+    <div class="sheet-head">
+      <div><h2>How did the models reach this answer?</h2><div class="muted" id="ex-meta"></div></div>
+      <div class="sheet-actions">
+        <button id="ex-resume" class="primary" hidden>▶ Close &amp; resume replay</button>
+        <button id="ex-close">Close</button>
+      </div>
+    </div>
+    <nav class="stepper">
+      <a href="#ex-s1"><b>1</b> Uplinks received</a><span>→</span>
+      <a href="#ex-s2"><b>2</b> Numbers the models see</a><span>→</span>
+      <a href="#ex-s3"><b>3</b> Which signals mattered</a><span>→</span>
+      <a href="#ex-s4"><b>4</b> Inside each model</a>
+    </nav>
+    <div id="ex-body"></div>
+  </div>
+</div>
 <script src="/static/app.js"></script>
 </body>
 </html>

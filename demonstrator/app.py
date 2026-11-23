@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .config import Config
+from .explain import explain
 from .inference import ModelRegistry
 from .live import LiveState
 from .replay import ReplayEngine
@@ -139,6 +140,32 @@ def create_app(cfg: Config) -> FastAPI:
     def replay_stop():
         replay.stop()
         return {"ok": True}
+
+    @app.post("/api/replay/pause")
+    async def replay_pause(request: Request):
+        body = await request.json()
+        replay.set_paused(bool(body.get("paused", True)))
+        return {"ok": True}
+
+    @app.get("/api/explain")
+    def explain_endpoint(source: str = "replay", slot: str = ""):
+        """Explain the prediction currently on screen (replay) or the latest live window."""
+        if not models.ok:
+            raise HTTPException(409, models.error or "models not loaded")
+        if source == "replay":
+            rows, group, latest = replay.current_window()
+            if rows is None:
+                raise HTTPException(404, "no replay prediction yet")
+            out = explain(models, rows, group)
+            out.update(source="replay", group=group,
+                       time=latest.get("time") if latest else None,
+                       truth=latest.get("truth") if latest else None)
+        else:
+            rows = live.window_rows(slot)
+            out = explain(models, rows, None)
+            out.update(source="live", group=slot, truth=None,
+                       time=rows["timestamp"].iloc[-1].isoformat() if len(rows) else None)
+        return out
 
     @app.post("/api/models/reload")
     def models_reload():

@@ -64,15 +64,17 @@ class ReplayEngine:
         self.lock = threading.Lock()
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
+        self._paused = threading.Event()
         self.reset()
 
     def reset(self):
         self.status = {"running": False, "group": None, "speed": None, "progress": 0.0,
                        "data_time": None, "start": None, "end": None, "labeled": False,
-                       "rows": 0, "error": None, "finished": False}
+                       "rows": 0, "error": None, "finished": False, "paused": False}
         self.series = Decimated(SERIES_POINTS * 3)  # rows of all sensors interleaved
         self.history = Decimated(SERIES_POINTS)
         self.latest: dict | None = None
+        self.latest_window: pd.DataFrame | None = None
         self.running_score = {}
 
     def recordings(self):
@@ -93,6 +95,7 @@ class ReplayEngine:
                                start=df["timestamp"].iloc[0].isoformat(),
                                end=df["timestamp"].iloc[-1].isoformat(), kind=rec["kind"])
         self._stop.clear()
+        self._paused.clear()
         self._thread = threading.Thread(target=self._run, args=(df, group, float(speed), float(start_fraction)),
                                         daemon=True, name="replay")
         self._thread.start()
@@ -103,6 +106,16 @@ class ReplayEngine:
             self._thread.join(timeout=3)
         with self.lock:
             self.status["running"] = False
+
+    def set_paused(self, paused: bool):
+        (self._paused.set if paused else self._paused.clear)()
+        with self.lock:
+            self.status["paused"] = bool(paused) and self.status["running"]
+
+    def current_window(self):
+        with self.lock:
+            return (None if self.latest_window is None else self.latest_window.copy(),
+                    self.status["group"], self.latest)
 
     def _run(self, df: pd.DataFrame, group: str, speed: float, start_fraction: float):
         try:
@@ -127,6 +140,9 @@ class ReplayEngine:
         hits = {k: 0 for k in self.models.keys}
         scored = 0
         while not self._stop.is_set() and i < n:
+            if self._paused.is_set():
+                time.sleep(TICK_S)
+                continue
             data_time = data_time + pd.Timedelta(seconds=speed * TICK_S)
             j = int(np.searchsorted(ts.values, data_time.to_datetime64(), side="right"))
             new_idx = range(i, min(j, n))
@@ -155,6 +171,7 @@ class ReplayEngine:
                         hits[key] += int(m["label"] == truth)
                 with self.lock:
                     self.latest = res
+                    self.latest_window = window.copy()
                     self.history.append({"t": res["time"], "truth": truth,
                                          **{key: m["label"] for key, m in res["models"].items()}})
                     if scored:
@@ -165,7 +182,7 @@ class ReplayEngine:
                                    data_time=min(data_time, t_end).isoformat(), rows=i)
             time.sleep(TICK_S)
         with self.lock:
-            self.status.update(running=False, finished=i >= n, progress=min(self.status["progress"], 1.0))
+            self.status.update(running=False, paused=False, finished=i >= n, progress=min(self.status["progress"], 1.0))
 
     def snapshot(self, series_points: int = 600) -> dict:
         with self.lock:

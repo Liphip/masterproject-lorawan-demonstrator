@@ -4,6 +4,8 @@ Portable demonstrator (University of Kassel, ComTec): real LoRaWAN sensors send 
 **Milesight UG63** gateway and a router to a laptop. The laptop decodes them, runs **three lightweight
 CPU models** (Logistic Regression, Random Forest, MLP) and shows the results side by side in a browser.
 The models classify the curing phase of a sausage (*Umrötung → Reifung 1 → Reifung 2*).
+For any moment, **"How was this decided?"** opens a step-by-step explanation: uplinks → features → which signals mattered →
+what happened inside each model.
 
 ```
 LSE01 / LTC-FS / WS202 ──LoRa──▶ UG63 (embedded network server) ──HTTP POST──▶ router/Wi-Fi ──▶ laptop

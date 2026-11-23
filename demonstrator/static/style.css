@@ -92,3 +92,49 @@ svg text { font-size: 11px; fill: var(--muted); font-family: inherit; }
 .cm h4 { margin: 0 0 .2rem; font-size: .82rem; }
 .limits ul { margin: .5rem 0 0; padding-left: 1.2rem; } .limits li { margin: .3rem 0; }
 footer { padding: 0 1.5rem 1rem; }
+
+/* ── explanation overlay ───────────────────────────────────────────── */
+.explain-row { display: flex; justify-content: flex-end; margin: -.2rem 0 .8rem; }
+.explain-btn { background: var(--ink); color: #fff; border-color: var(--ink); font-weight: 600; }
+.overlay { position: fixed; inset: 0; background: rgba(31,29,26,.45); z-index: 10; overflow: auto; padding: 2vh 2vw; }
+.sheet { background: var(--bg); border-radius: 14px; max-width: 1500px; margin: 0 auto; padding: 1rem 1.3rem 1.5rem; }
+.sheet-head { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; position: sticky; top: -2vh;
+              background: var(--bg); padding: .6rem 0; z-index: 2; }
+.sheet-actions { display: flex; gap: .5rem; }
+.stepper { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin: .2rem 0 1rem; font-size: .9rem; }
+.stepper a { text-decoration: none; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: .3rem .8rem; }
+.stepper b { display: inline-grid; place-items: center; width: 1.3rem; height: 1.3rem; border-radius: 50%; background: var(--accent); color: #fff; font-size: .75rem; margin-right: .3rem; }
+.stepper span { color: var(--muted); }
+.ex-step { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: .9rem 1rem; margin-bottom: 1rem; scroll-margin-top: 90px; }
+.ex-step h3 { margin: 0 0 .2rem; font-size: 1rem; }
+.ex-step h3 b { color: var(--accent); margin-right: .3rem; }
+.ex-step > p { margin: .1rem 0 .7rem; color: var(--muted); font-size: .88rem; max-width: 75ch; }
+.ex-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; }
+.uplinks td, .uplinks th { font-size: .8rem; padding: .25rem .4rem; }
+.sig { border: 1px solid var(--line); border-radius: 8px; padding: .5rem .6rem; }
+.sig h4 { margin: 0 0 .3rem; font-size: .85rem; }
+.frow { display: grid; grid-template-columns: 7.5rem 6.5rem 1fr; gap: .4rem; align-items: center; font-size: .78rem; margin: .12rem 0; }
+.frow .v { text-align: right; font-variant-numeric: tabular-nums; }
+.range { position: relative; height: 8px; background: linear-gradient(90deg, #ece8df, #ddd6c8); border-radius: 4px; }
+.range i { position: absolute; top: -3px; width: 3px; height: 14px; background: var(--accent); border-radius: 2px; }
+.range.out i { background: var(--bad); }
+.occ { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.occ td, .occ th { padding: .35rem .4rem; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.occ .cell { display: grid; grid-template-columns: 1fr 6.2rem; gap: .4rem; align-items: center; }
+.occ .track { height: 9px; background: #f1eee7; border-radius: 4px; overflow: hidden; }
+.occ .fill { height: 100%; background: var(--accent); }
+.occ .fill.neg { background: #9aa7b4; }
+.occ small { color: var(--muted); }
+.flip { color: var(--bad); font-weight: 600; }
+.model-ex h4 { margin: 0; font-size: .95rem; }
+.model-ex .principle { font-size: .8rem; color: var(--muted); margin: .2rem 0 .6rem; }
+.contrib { display: grid; grid-template-columns: 11rem 1fr 3.4rem; gap: .35rem; align-items: center; font-size: .76rem; margin: .12rem 0; }
+.contrib .axis { position: relative; height: 10px; background: #f6f4ef; }
+.contrib .axis::before { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: #bdb6a8; }
+.contrib .axis span { position: absolute; top: 0; height: 100%; }
+.contrib .pos { background: var(--live); } .contrib .neg { background: var(--bad); }
+.contrib .num { text-align: right; font-variant-numeric: tabular-nums; }
+.sum-line { font-size: .8rem; border-top: 1px dashed var(--line); margin-top: .4rem; padding-top: .35rem; }
+.votes { display: grid; grid-template-columns: repeat(20, 1fr); gap: 2px; margin: .3rem 0 .5rem; }
+.votes i { aspect-ratio: 1; border-radius: 2px; }
+svg.net { width: 100%; height: 300px; }

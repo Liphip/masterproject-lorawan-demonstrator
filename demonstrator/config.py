@@ -6,7 +6,8 @@ import tomllib
 from dataclasses import dataclass, field
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-SENSOR_TYPES = ("lse01", "ltcfs", "ws202")
+# generic: shown on the dashboard (e.g. Dragino LSN50-v2-S31), not a model input
+SENSOR_TYPES = ("lse01", "ltcfs", "ws202", "generic")
 
 
 @dataclass
@@ -47,7 +48,7 @@ class Config:
 
     @property
     def slots(self) -> list[str]:
-        return sorted({d.slot for d in self.devices if d.type != "ws202"})
+        return sorted({d.slot for d in self.devices if d.type not in ("ws202", "generic")})
 
 
 def normalize_eui(eui: str | None) -> str:

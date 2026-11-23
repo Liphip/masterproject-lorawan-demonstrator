@@ -124,7 +124,8 @@ function modelCards(pred, models, opts = {}) {
     warn += `<div class="banner warn">${(pred.ood_fraction * 100).toFixed(0)} % of the input features are outside the training range. Treat these predictions as unreliable.</div>`;
   if (pred.any_model_saw_data)
     warn += `<div class="banner warn">These models were trained on this recording. They are reproducing training data, not predicting.</div>`;
-  return `<div class="agree">${agreeTxt}</div>${warn}<div class="models">${cards.join("")}</div>`;
+  const btn = opts.explain ? `<div class="explain-row"><button class="explain-btn" data-src="${opts.explain}">🔍 How was this decided?</button></div>` : "";
+  return `<div class="agree">${agreeTxt}</div>${warn}<div class="models">${cards.join("")}</div>${btn}`;
 }
 
 // ── timeline ───────────────────────────────────────────────────────────────
@@ -189,13 +190,15 @@ function renderReplay(st) {
     banner.innerHTML = `<span class="badge replay">REPLAY</span> Recorded data, not live: <b>${esc(s.group)}</b>
       (${esc(s.kind || "")}, recorded ${new Date(s.start).toLocaleDateString()} – ${new Date(s.end).toLocaleDateString()}).
       Replay time <b>${s.data_time ? new Date(s.data_time).toLocaleString() : "–"}</b>
-      ${s.running ? `at ${Math.round(s.speed / 60)} min of data per second` : s.finished ? "· finished" : "· stopped"}
+      ${s.paused ? "· <b>PAUSED</b>" : s.running ? `at ${Math.round(s.speed / 60)} min of data per second` : s.finished ? "· finished" : "· stopped"}
       ${s.error ? `<br><span class="err-text">${esc(s.error)}</span>` : ""}`;
   } else banner.hidden = true;
   $("#progress-bar").style.width = `${Math.min(100, (s.progress || 0) * 100).toFixed(1)}%`;
   $("#btn-start").disabled = !st.models.ok;
+  $("#btn-pause").disabled = !s.running;
+  $("#btn-pause").textContent = s.paused ? "▶ Resume" : "❚❚ Pause";
   $("#replay-models").innerHTML = modelCards(rep.latest, models, {
-    truth: rep.latest ? rep.latest.truth : null, showTruth: !!rep.latest, score: rep.running_score,
+    truth: rep.latest ? rep.latest.truth : null, showTruth: !!rep.latest, score: rep.running_score, explain: "replay",
     empty: st.models.ok ? "Select a recording and start the replay." : "Train the models first (see README).",
   });
   renderTimeline(rep, models);
@@ -206,7 +209,7 @@ function renderLive(st) {
   const slots = st.live.slots;
   if (sel.options.length !== slots.length) sel.innerHTML = slots.map((s) => `<option>${esc(s)}</option>`).join("");
   const p = st.live.predictions[sel.value];
-  $("#live-models").innerHTML = modelCards(p, st.models.models || [], {empty: "No live uplinks for this slot yet."});
+  $("#live-models").innerHTML = modelCards(p, st.models.models || [], {empty: "No live uplinks for this slot yet.", explain: "live"});
 }
 
 // ── 3 · evaluation ─────────────────────────────────────────────────────────
@@ -277,6 +280,9 @@ $("#btn-start").addEventListener("click", async () => {
       body: JSON.stringify({group: $("#rec").value, speed: Number($("#speed").value), start_fraction: Number($("#startpos").value) / 100})});
   } catch (e) { alert(e.message); }
 });
+$("#btn-pause").addEventListener("click", () =>
+  api("/api/replay/pause", {method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({paused: !(STATE && STATE.replay.status.paused)})}));
 $("#btn-stop").addEventListener("click", () => api("/api/replay/stop", {method: "POST"}));
 $("#signal").addEventListener("change", () => STATE && renderTimeline(STATE.replay, STATE.models.models || []));
 $("#slot").addEventListener("change", () => STATE && renderLive(STATE));
@@ -286,7 +292,7 @@ function render(st) {
   CLASS_NAMES = st.models.class_names || {};
   renderChips(st);
   renderDevices(st.live);
-  if (activeTab === "replay") renderReplay(st); else renderLive(st);
+  if ($("#explain").hidden) { if (activeTab === "replay") renderReplay(st); else renderLive(st); }
   $("#footer").textContent = `Server up ${Math.round(st.uptime_s / 60)} min · config: ${st.ingest.config_file || "none"} · gateway URL: http://<laptop-ip>:<port>${st.ingest.http_path}${st.ingest.token_required ? "?token=…" : ""}`;
 }
 
@@ -301,3 +307,160 @@ async function tick() {
 }
 tick();
 loadEval();
+
+
+// ── explanation overlay ────────────────────────────────────────────────────
+let pausedByExplain = false;
+const MODEL_TITLE = {logreg: "Logistic Regression", rf: "Random Forest", mlp: "MLP (neural net)"};
+const pct = (p) => `${(p * 100).toFixed(p > 0.995 || p < 0.005 ? 1 : 0)} %`;
+function fmtFeat(f) {
+  if (f.value == null) return "–";
+  if (f.signal === "timestamp") {
+    if (f.stat === "uplinks") return f.value.toFixed(0);
+    return f.value >= 120 ? `${(f.value / 60).toFixed(1)} min` : `${f.value.toFixed(0)} s`;
+  }
+  const unitful = ["minimum", "maximum", "mean", "spread (std)"].includes(f.stat);
+  const digits = f.signal.includes("conductivity") ? 0 : 2;
+  return `${f.value.toFixed(f.stat === "trend (slope)" ? 3 : digits)}${unitful ? " " + f.unit : f.stat === "trend (slope)" ? " /uplink" : ""}`;
+}
+
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest(".explain-btn");
+  if (!b) return;
+  const src = b.dataset.src;
+  pausedByExplain = false;
+  if (src === "replay" && STATE && STATE.replay.status.running && !STATE.replay.status.paused) {
+    await api("/api/replay/pause", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({paused: true})});
+    pausedByExplain = true;
+  }
+  $("#ex-resume").hidden = !pausedByExplain;
+  $("#ex-body").innerHTML = `<p class="muted">Computing explanation…</p>`;
+  $("#explain").hidden = false;
+  try {
+    const q = src === "replay" ? "source=replay" : `source=live&slot=${encodeURIComponent($("#slot").value)}`;
+    renderExplain(await api(`/api/explain?${q}`));
+  } catch (err) { $("#ex-body").innerHTML = `<p class="err-text">${esc(err.message)}</p>`; }
+});
+function closeExplain(resume) {
+  $("#explain").hidden = true;
+  if (resume) api("/api/replay/pause", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({paused: false})});
+}
+$("#ex-close").addEventListener("click", () => closeExplain(false));
+$("#ex-resume").addEventListener("click", () => closeExplain(true));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#explain").hidden) closeExplain(false); });
+$("#explain").addEventListener("click", (e) => { if (e.target.id === "explain") closeExplain(false); });
+document.querySelectorAll(".stepper a").forEach((a) => a.addEventListener("click", (e) => {
+  e.preventDefault(); document.querySelector(a.getAttribute("href")).scrollIntoView({behavior: "smooth"});
+}));
+
+function renderExplain(ex) {
+  if (!ex.ready) { $("#ex-body").innerHTML = `<p class="muted">${esc(ex.reason)}</p>`; return; }
+  Object.assign(CLASS_NAMES, ex.class_names || {});
+  const keys = Object.keys(ex.models);
+  $("#ex-meta").innerHTML = `${ex.source === "replay" ? '<span class="badge replay">REPLAY</span>' : '<span class="badge live">LIVE</span>'}
+    ${esc(ex.group || "")} · snapshot at ${ex.time ? new Date(ex.time).toLocaleString() : "–"}
+    ${ex.truth != null ? ` · annotation: <b>${esc(phaseName(ex.truth))}</b>` : ""}`;
+
+  // step 1 · uplinks
+  const ups = ex.uplinks.map((u) => `<tr><td>${new Date(u.time).toLocaleTimeString()}</td><td>${esc(u.sensor)}</td>
+    <td>${Object.entries(u.values).map(([k, v]) => fmtVal(k, v)).join("") || '<span class="muted">environment (not a model input)</span>'}</td></tr>`).join("");
+  const s1 = `<section class="ex-step" id="ex-s1"><h3><b>1</b>Uplinks received</h3>
+    <p>The models never see a single reading. They see the last ${ex.uplinks.length} uplinks from this sausage's sensors,
+    ${(ex.window_seconds / 60).toFixed(0)} minutes of data, in the order they arrived through gateway and router.</p>
+    <table class="uplinks"><thead><tr><th>Received</th><th>Sensor</th><th>Payload (decoded)</th></tr></thead><tbody>${ups}</tbody></table></section>`;
+
+  // step 2 · features
+  const bySig = {};
+  ex.features.forEach((f) => (bySig[f.signal_label] = bySig[f.signal_label] || []).push(f));
+  const sigs = Object.entries(bySig).map(([label, fs]) => `<div class="sig"><h4>${esc(label)}</h4>${fs.map((f) => {
+    const out = f.position != null && (f.position < 0 || f.position > 1);
+    const mark = f.position == null ? "" : `<i style="left:calc(${Math.min(1, Math.max(0, f.position)) * 100}% - 1px)"></i>`;
+    return `<div class="frow"><span>${esc(f.stat)}</span><span class="v">${fmtFeat(f)}</span><span class="range ${out ? "out" : ""}" title="training range ${f.range[0]?.toFixed?.(2)} … ${f.range[1]?.toFixed?.(2)}">${mark}</span></div>`;
+  }).join("")}</div>`).join("");
+  const s2 = `<section class="ex-step" id="ex-s2"><h3><b>2</b>The ${ex.features.length} numbers the models see</h3>
+    <p>For every sensor signal the window is summarised into a few statistics: level (min, mean, max), spread,
+    trend and the timing of the uplinks. The bar shows where each number sits within the training data. A red marker means it lies outside anything seen in training.</p>
+    <div class="ex-cols">${sigs}</div></section>`;
+
+  // step 3 · occlusion, same test for every model
+  const signals = ex.models[keys[0]].occlusion.map((o) => o.signal);
+  const maxEv = Object.fromEntries(keys.map((k) => [k, Math.max(1e-9, ...ex.models[k].occlusion.map((o) => Math.abs(o.evidence)))]));
+  const occRows = signals.map((sig) => `<tr><td><b>${esc(ex.models[keys[0]].occlusion.find((o) => o.signal === sig).label)}</b></td>${keys.map((k) => {
+    const o = ex.models[k].occlusion.find((x) => x.signal === sig);
+    const w = Math.abs(o.evidence) / maxEv[k] * 100;
+    const flip = o.would_predict !== ex.models[k].label;
+    return `<td><div class="cell"><span class="track"><span class="fill ${o.evidence < 0 ? "neg" : ""}" style="display:block;width:${w.toFixed(0)}%"></span></span>
+      <small>${pct(o.p_before)} → ${pct(o.p_after)}</small></div>${flip ? `<small class="flip">would switch to ${esc(phaseName(o.would_predict))}</small>` : ""}</td>`;
+  }).join("")}</tr>`).join("");
+  const s3 = `<section class="ex-step" id="ex-s3"><h3><b>3</b>Which signals mattered? (same test for all three models)</h3>
+    <p>We hide one sensor signal at a time, replacing its numbers with a typical training value, and watch how sure
+    each model stays of its answer. A long bar means the model relied on that signal. Grey bars: hiding the signal made the model <i>more</i> sure.
+    Signals that move together, such as two temperature probes, can stand in for each other, so this is a guide, not a proof.</p>
+    <table class="occ"><thead><tr><th>Hidden signal</th>${keys.map((k) => `<th>${esc(MODEL_TITLE[k] || k)}: <span style="color:${phaseColor(ex.models[k].label)}">${esc(phaseName(ex.models[k].label))}</span></th>`).join("")}</tr></thead>
+    <tbody>${occRows}</tbody></table></section>`;
+
+  // step 4 · model internals
+  const cols = keys.map((k) => {
+    const m = ex.models[k], d = m.detail;
+    let body = "";
+    if (d.kind === "weighted_sum") body = exLogreg(d, m);
+    else if (d.kind === "votes") body = exForest(d, m);
+    else if (d.kind === "network") body = exNet(d, m);
+    return `<div class="model-ex sig"><h4>${esc(MODEL_TITLE[k] || k)} → <span style="color:${phaseColor(m.label)}">${esc(phaseName(m.label))}</span> (${pct(m.proba[m.label])})</h4>
+      <div class="principle">${esc(d.text || "")}</div>${body}
+      ${m.model_saw_this_recording ? '<div class="err-text">This model was trained on this recording.</div>' : ""}</div>`;
+  }).join("");
+  const s4 = `<section class="ex-step" id="ex-s4"><h3><b>4</b>Inside each model: three different principles</h3>
+    <p>The same numbers go into three very different kinds of model. Each column shows what that model actually computed for this snapshot.</p>
+    <div class="ex-cols">${cols}</div></section>`;
+  $("#ex-body").innerHTML = s1 + s2 + s3 + s4;
+}
+
+function contribRows(items, max, fmt) {
+  return items.map((t) => {
+    const w = Math.abs(t.contribution) / max * 50;
+    const pos = t.contribution >= 0;
+    return `<div class="contrib"><span>${esc(t.label)}</span><span class="axis"><span class="${pos ? "pos" : "neg"}" style="${pos ? "left:50%" : `left:${50 - w}%`};width:${w}%"></span></span><span class="num">${fmt(t.contribution)}</span></div>`;
+  }).join("");
+}
+function exLogreg(d, m) {
+  const max = Math.max(1e-9, ...d.top.map((t) => Math.abs(t.contribution)));
+  const f = (v) => (v >= 0 ? "+" : "") + v.toFixed(2);
+  return `<div class="muted" style="font-size:.75rem">weight × input = evidence for "${esc(phaseName(m.label))}"</div>
+    ${contribRows(d.top, max, f)}
+    <div class="sum-line">+ ${d.n_features - d.top.length} smaller inputs: ${f(d.rest)} · + bias: ${f(d.intercept)}<br>
+    = score <b>${f(d.score)}</b> → probability <b>${pct(m.proba[m.label])}</b> after normalising across the three phases</div>`;
+}
+function exForest(d, m) {
+  const k = d.classes.indexOf(m.label);
+  const grid = d.tree_votes.map((v) => `<i style="background:${phaseColor(d.classes[v])}" title="${esc(phaseName(d.classes[v]))}"></i>`).join("");
+  const max = Math.max(1e-9, ...d.top.map((t) => Math.abs(t.contribution)));
+  return `<div><b>${d.votes[k]} of ${d.n_trees}</b> trees vote "${esc(phaseName(m.label))}"
+    ${d.classes.map((c, i) => (i !== k && d.votes[i] ? ` · ${d.votes[i]} vote ${esc(phaseName(c))}` : "")).join("")}</div>
+    <div class="votes">${grid}</div>
+    <div class="muted" style="font-size:.75rem">Which questions moved the trees towards this answer (average over all trees, up to ${d.max_depth} questions per tree)</div>
+    ${contribRows(d.top, max, (v) => (v >= 0 ? "+" : "") + (v * 100).toFixed(1) + "pp")}`;
+}
+function exNet(d, m) {
+  const W = 420, H = 300, layers = d.layers;
+  const xs = layers.map((_, i) => 30 + i * ((W - 60) / (layers.length - 1)));
+  const ys = (n, j) => (n === 1 ? H / 2 : 14 + j * ((H - 28) / (n - 1)));
+  let svg = "";
+  // connections: strongest neurons of the last hidden layer → predicted output
+  const L = layers.length - 1, outIdx = d.layers[L].act.indexOf(Math.max(...d.layers[L].act));
+  d.strongest_last_hidden.forEach((j) => {
+    svg += `<line x1="${xs[L - 1]}" y1="${ys(layers[L - 1].size, j)}" x2="${xs[L]}" y2="${ys(layers[L].size, outIdx)}" stroke="var(--accent)" stroke-opacity=".5" stroke-width="1.5"/>`;
+  });
+  layers.forEach((ly, i) => {
+    const r = Math.max(2, Math.min(9, (H - 28) / ly.size / 2.4));
+    ly.act.forEach((a, j) => {
+      const isOut = i === L;
+      const fill = isOut ? phaseColor(STATE.models.classes[j]) : "var(--accent)";
+      svg += `<circle cx="${xs[i]}" cy="${ys(ly.size, j)}" r="${isOut ? 9 : r}" fill="${fill}" fill-opacity="${(0.08 + 0.92 * Math.abs(a)).toFixed(2)}" stroke="#bdb6a8" stroke-width=".4"/>`;
+    });
+    const lab = i === 0 ? `${ly.size} inputs` : i === L ? "output" : `${ly.active}/${ly.size} active`;
+    svg += `<text x="${xs[i]}" y="${H - 1}" text-anchor="middle">${lab}</text>`;
+  });
+  return `<svg class="net" viewBox="0 0 ${W} ${H + 4}">${svg}</svg>
+    <div class="muted" style="font-size:.75rem">Lines: the most influential neurons of the last hidden layer for "${esc(phaseName(m.label))}". Output circles are coloured by phase, darker means more likely.</div>`;
+}

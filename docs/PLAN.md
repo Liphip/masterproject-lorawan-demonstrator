@@ -9,7 +9,8 @@ Status as of 23 Nov 2026. Scope: [assignment requirements](ASSIGNMENT_REQUIREMEN
 |---|---|---|
 | Gateway → laptop transport | UG63 **embedded network server + HTTP POST** to the laptop | No broker, no cloud, works offline. MQTT stays optional (`[mqtt]` in the config) if the gateway is later set up that way. |
 | Decoding | Payload codec **on the gateway** preferred; built-in fallback for LSE01 and WS202 | Vendor codecs are maintained for the firmware. The fallback decoders are written from the documented layouts and must be checked against real uplinks. LTC-FS has no fallback. |
-| App | One Python process (FastAPI) + static HTML/JS dashboard | No Node build, no Grafana/DB stack to set up on site. Works without internet (no CDN). |
+| App | One Python process (FastAPI) + custom HTML/JS dashboard **instead of Grafana** (original idea) | The audience is companies seeing a showcase: the UI has to tell a story (data path → models → *why*). Grafana is excellent for time series, but per-prediction explanations, replay control and the pause-and-explain flow would need plugins or awkward workarounds, plus InfluxDB/Prometheus on site. Cost: the dashboard is our own code to maintain (~700 lines JS, no build step, no CDN, works offline). |
+| Explaining predictions | "How was this decided?" overlay. (1) the uplinks in the window, (2) the 29 features with training range, (3) **one** occlusion test for all models (hide one sensor signal → change in confidence), (4) model-specific internals: LogReg weighted sum (exact), RF tree votes + Saabas split contributions, MLP neuron activations | (3) makes the models comparable, and (4) shows the three different principles, which is the point of A6/A7. Occlusion and Saabas are approximations: correlated signals share credit. This is stated in the UI. SHAP would be more rigorous but adds a dependency and seconds of latency per click. |
 | Live vs. recorded | Two separate panels; replay is always labeled REPLAY in orange | Curing takes days (§3.1). Replay is where the model comparison is meaningful; live proves the data path. |
 | Honest replay | Replaying a labeled sausage uses the **fold model trained without it** | Otherwise the demo would show memorised training data. The unlabeled series 2 (independent run) uses the final models. |
 | Live compatibility | Out-of-range check against training feature percentiles | Implements "only show live predictions where data is compatible": the dashboard warns instead of hiding. |
@@ -25,7 +26,7 @@ Status as of 23 Nov 2026. Scope: [assignment requirements](ASSIGNMENT_REQUIREMEN
 | A4 Visualisation | Data path strip, panels 1–3 | Done; to refine after a dry run |
 | A5 Transport case | Physical | **Open: assembly, cable/power plan, photo docs** |
 | A6 ≥3 model families | LogReg, RF, MLP | Done |
-| A7 Side-by-side + trade-offs | Model cards, agreement, phase timeline, evaluation table (quality, latency, size, training time) | Done |
+| A7 Side-by-side + trade-offs | Model cards, agreement, phase timeline, evaluation table (quality, latency, size, training time), explanation overlay | Done |
 | A8 CPU-only | Latency per prediction measured and shown; single-threaded inference | Done; **check on the demo laptop** |
 | A9 Replay, labeled | `demonstrator/replay.py`; live uplinks recorded in the same schema → replayable | Done |
 | A10 Repeatable operation | `scripts/setup.ps1`, `start_demo.ps1`, RUNBOOK | Done; **test with a second person** |
@@ -49,6 +50,11 @@ Status as of 23 Nov 2026. Scope: [assignment requirements](ASSIGNMENT_REQUIREMEN
 
 ## Open items (in order)
 
+0. **Sensors in the case vs. training sensors.** The brief (25 Mar 2026) shows a Dragino **LSN50-v2-S31** (air temp/humidity)
+   and an **LTC2-FS**. The models need the **LSE01** (moisture, conductivity, soil temp). Without an LSE01 in the case, live data
+   cannot feed the models, and the AI part runs on replay only. Option: a second, live-compatible model set on the LTC2-FS +
+   ambient temp/humidity. The raw Excel has an "Umgebung Temperatur & Luftfeuchtigkeit" device that the conversion notebook currently
+   drops. The S31 is supported as a display-only `generic` device.
 1. **Run `train_models.py` on the real data** and look at `metrics.json`. Check whether the slope fix changed scores.
 2. **Collect sensor data:** DevEUI/AppEUI/AppKey for every sensor; check that the sensors are not still joined to another network
    server (TTN, company LNS).
@@ -56,7 +62,10 @@ Status as of 23 Nov 2026. Scope: [assignment requirements](ASSIGNMENT_REQUIREMEN
    compare the decoded values with the device app/manual. Add a test with the captured payloads.
 4. **Dry run** on the demo laptop: startup time, latency, battery, offline behaviour.
 5. Case assembly and packing list (A5). Document exact sensor and power-supply models.
-6. Optional: longer windows (e.g. 6–12 h) are likely more meaningful for a multi-day process than 10 uplinks. This is a
+6. **Check for shortcut learning with the explain view.** If hiding *uplink timing* changes predictions more than hiding the
+   sausage measurements (seen on the synthetic data), the models may have learned the sensors' send rhythm instead of the
+   curing. Then retrain without the `timestamp_*` features and compare scores. Either outcome is a good point for the presentation.
+7. Optional: longer windows (e.g. 6–12 h) are likely more meaningful for a multi-day process than 10 uplinks. This is a
    small change via `--window-size`, but the HPO would need to be re-run. Worth one experiment for the evaluation chapter.
 
 ## Known risks

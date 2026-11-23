@@ -138,6 +138,12 @@ def map_values(sensor_type: str, decoded: dict, overrides: dict | None = None) -
 
 def decode_values(sensor_type: str, env: dict, overrides: dict | None = None) -> tuple[dict, str]:
     """Return (values, method) where method is 'codec' or 'builtin'."""
+    if sensor_type == "generic":
+        vals = {str(k): _num(v) for k, v in (env.get("decoded") or {}).items()
+                if not isinstance(v, (dict, list)) and _num(v) is not None}
+        if vals:
+            return vals, "codec"
+        raise DecodeError("generic device: needs a payload codec on the gateway")
     if env.get("decoded"):
         vals = map_values(sensor_type, env["decoded"], overrides)
         if vals:
