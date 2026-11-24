@@ -1,17 +1,16 @@
 # Project plan
 
-Status as of 23 Nov 2026. Scope: [assignment requirements](ASSIGNMENT_REQUIREMENTS.md)
+Status as of 24 Nov 2026. Scope: [assignment requirements](ASSIGNMENT_REQUIREMENTS.md)
 (A1–A11). The principle: **demonstrate the whole chain reliably**. This is not a general IoT platform.
 
 ## Architecture decisions
 
 | Decision | Choice | Why / trade-off |
 |---|---|---|
-| Gateway → laptop transport | UG63 **embedded network server + HTTP POST** to the laptop | No broker, no cloud, works offline. MQTT stays optional (`[mqtt]` in the config) if the gateway is later set up that way. |
+| Gateway → laptop transport | UG63 **embedded network server + HTTP POST** to the laptop | No broker, no cloud, works offline. (An MQTT path was prototyped and removed again; it is in the git history if HTTP ever fails.) |
 | Decoding | Payload codec **on the gateway** preferred; built-in fallback for LSE01 and WS202 | Vendor codecs are maintained for the firmware. The fallback decoders are written from the documented layouts and must be checked against real uplinks. LTC-FS has no fallback. |
 | App | One Python process (FastAPI) + custom HTML/JS dashboard **instead of Grafana** (original idea) | The audience is companies seeing a showcase: the UI has to tell a story (data path → models → *why*). Grafana is excellent for time series, but per-prediction explanations, replay control and the pause-and-explain flow would need plugins or awkward workarounds, plus InfluxDB/Prometheus on site. Cost: the dashboard is our own code to maintain (~700 lines JS, no build step, no CDN, works offline). |
 | Explaining predictions | "How was this decided?" overlay. (1) the uplinks in the window, (2) the 29 features with training range, (3) **one** occlusion test for all models (hide one sensor signal → change in confidence), (4) model-specific internals: LogReg weighted sum (exact), RF tree votes + Saabas split contributions, MLP neuron activations | (3) makes the models comparable, and (4) shows the three different principles, which is the point of A6/A7. Occlusion and Saabas are approximations: correlated signals share credit. This is stated in the UI. SHAP would be more rigorous but adds a dependency and seconds of latency per click. |
-| Live vs. recorded | Two separate panels; replay is always labeled REPLAY in orange | Curing takes days (§3.1). Replay is where the model comparison is meaningful; live proves the data path. |
 | Honest replay | Replaying a labeled sausage uses the **fold model trained without it** | Otherwise the demo would show memorised training data. The unlabeled series 2 (independent run) uses the final models. |
 | No sausage in the case | Three views of one system: **live** (real sensors, proves the LoRaWAN path), **replay** (a real recorded run with held-out models), **virtual sausage** (a recorded window from any day, levels shifted by sliders, models re-predict instantly) | Considered: mixing live readings into a recorded run, so that a live uplink advances the "sausage". Rejected: live air readings mixed with sausage readings would be a third, unrealistic kind of data and hard to label honestly. The simulator keeps real uplink timing and noise and changes only levels, and is labelled SIMULATED everywhere. Limit: shifting a level does not create a realistic *history* (e.g. a sausage that dried slowly). It answers "what does the model do with these numbers?", not "what would this sausage really do?". |
 | Live compatibility | Out-of-range check against training feature percentiles | Implements "only show live predictions where data is compatible": the dashboard warns instead of hiding. |
@@ -45,14 +44,12 @@ Status as of 23 Nov 2026. Scope: [assignment requirements](ASSIGNMENT_REQUIREMEN
   - Optional `output_columns` fixes the feature schema, so that windows where a sensor did not report (common live) still
     match the trained models.
 - `ml_app/pipeline/pipeline.py`: `created_at` default was evaluated once at import time.
-- Notebook cells 12–13 are superseded by `train_models.py`. `Pipeline.fit` with the windowing step windows X but
-  not y, so those cells cannot run. Logistic Regression is wrapped in `OneVsRestClassifier`, because scikit-learn ≥ 1.8
+- Notebook cells 11–13 were removed (a commented-out old search and two cells that could not run: `Pipeline.fit` with the
+  windowing step windows X but not y). `train_models.py` replaces them. Logistic Regression is wrapped in `OneVsRestClassifier`, because scikit-learn ≥ 1.8
   dropped implicit one-vs-rest for `liblinear` (same model as before).
 
 ## Open items (in order)
 
-0. ~~Sensors in the case vs. training sensors.~~ Resolved 24 Nov: the case holds **WS202, LSE01, LTC-FS**, the same types as
-   the training data. Live values still come from air rather than a sausage. That is handled by the virtual sausage and the out-of-range warning.
 1. **Run `train_models.py` on the real data** and look at `metrics.json`. Check whether the slope fix changed scores.
 2. **Collect sensor data:** DevEUI/AppEUI/AppKey for every sensor; check that the sensors are not still joined to another network
    server (TTN, company LNS).

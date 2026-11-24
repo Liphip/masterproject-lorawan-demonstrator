@@ -13,35 +13,28 @@ Two kinds of explanation, on purpose:
 
 Occlusion and Saabas contributions are approximations of "importance";
 correlated signals share credit unpredictably. The UI says so.
+
+Only keys and numbers are returned; all labels and texts are translated in
+the frontend (demonstrator/static/i18n.js).
 """
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
 
-from ml_app.data import FEATURE_ORDER, LABEL_TRANSLATIONS
+from ml_app.data import FEATURE_ORDER
 
-SIGNALS = {
-    "lse01_moisture": "Moisture (LSE01)",
-    "lse01_conductivity": "Conductivity (LSE01)",
-    "lse01_temperature": "Core temperature (LSE01)",
-    "ltcfs_temperature": "Temperature probe (LTC2-FS)",
-    "timestamp": "Uplink timing",
-}
-STATS = {"min": "minimum", "max": "maximum", "mean": "mean", "std": "spread (std)",
-         "skew": "skew", "slope": "trend (slope)", "count": "uplinks", "duration": "window length",
-         "interval": "avg gap", "min_interval": "shortest gap", "max_interval": "longest gap"}
+SIGNALS = ["lse01_conductivity", "lse01_moisture", "lse01_temperature", "ltcfs_temperature", "timestamp"]
 UNITS = {"lse01_moisture": "%", "lse01_conductivity": "µS/cm", "lse01_temperature": "°C",
          "ltcfs_temperature": "°C", "timestamp": "s"}
 
 
-def describe_feature(name: str) -> tuple[str, str, str]:
-    """feature column -> (signal key, signal label, statistic label)."""
+def describe_feature(name: str) -> tuple[str, str]:
+    """feature column -> (signal key, statistic key), e.g. lse01_moisture_mean -> (lse01_moisture, mean)."""
     for sig in sorted(SIGNALS, key=len, reverse=True):
         if name.startswith(sig + "_"):
-            stat = name[len(sig) + 1:]
-            return sig, SIGNALS[sig], STATS.get(stat, stat)
-    return name, name, ""
+            return sig, name[len(sig) + 1:]
+    return name, ""
 
 
 def _steps(pipe):
@@ -59,15 +52,12 @@ def _logreg(clf, xs, names, k):
     intercept = float(np.ravel(est.intercept_)[0 if est.coef_.shape[0] == 1 else k])
     contrib = coef * xs[0]
     order = np.argsort(-np.abs(contrib))
-    top = [{"feature": names[i], "label": " · ".join(describe_feature(names[i])[1:]),
-            "weight": float(coef[i]), "scaled_value": float(xs[0, i]), "contribution": float(contrib[i])}
+    top = [{"feature": names[i], "weight": float(coef[i]), "scaled_value": float(xs[0, i]), "contribution": float(contrib[i])}
            for i in order[:8]]
     rest = float(contrib[order[8:]].sum())
     score = float(contrib.sum() + intercept)
     return {"kind": "weighted_sum", "top": top, "rest": rest, "intercept": intercept,
-            "score": score, "n_features": int(len(contrib)),
-            "text": "Each input is multiplied by a learned weight and the products are summed. "
-                    "A higher sum means more evidence for the class."}
+            "score": score, "n_features": int(len(contrib))}
 
 
 def _forest(clf, xs, names, k):
@@ -88,14 +78,11 @@ def _forest(clf, xs, names, k):
             contrib[t.feature[parent]] += val[child, k] - val[parent, k]
     contrib /= len(clf.estimators_)
     order = np.argsort(-np.abs(contrib))
-    top = [{"feature": names[i], "label": " · ".join(describe_feature(names[i])[1:]),
-            "contribution": float(contrib[i])} for i in order[:8] if contrib[i] != 0]
+    top = [{"feature": names[i], "contribution": float(contrib[i])} for i in order[:8] if contrib[i] != 0]
     depth = [int(e.get_depth()) for e in clf.estimators_]
     return {"kind": "votes", "classes": [str(c) for c in clf.classes_],
             "votes": votes.tolist(), "tree_votes": tree_votes, "n_trees": len(clf.estimators_),
-            "max_depth": max(depth), "top": top,
-            "text": f"{len(clf.estimators_)} decision trees each ask a series of yes/no questions about "
-                    "the inputs (e.g. 'is mean moisture < 41 %?') and vote. The forest averages the votes."}
+            "max_depth": max(depth), "top": top}
 
 
 def _mlp(clf, xs, k):
@@ -116,10 +103,7 @@ def _mlp(clf, xs, k):
     strongest = [int(i) for i in np.argsort(-W_last)[:5] if W_last[i] > 0]
     n_params = int(sum(W.size + b.size for W, b in zip(clf.coefs_, clf.intercepts_)))
     return {"kind": "network", "layers": layers, "strongest_last_hidden": strongest,
-            "n_params": n_params, "activation": clf.activation,
-            "text": f"Numbers flow through {len(clf.coefs_) - 1} layers of artificial neurons "
-                    f"({n_params:,} learned parameters). Each neuron combines the layer before and "
-                    "passes it on if the result is positive. Brightness shows how strongly a neuron fired."}
+            "n_params": n_params, "activation": clf.activation}
 
 
 def _logit(p: float, eps: float = 1e-6) -> float:
@@ -155,7 +139,7 @@ def explain_model(pipe, key: str, rows: pd.DataFrame) -> dict:
         x2[0, idx] = base[0, idx]
         p2 = _proba(clf, x2)
         # log-odds change stays informative when a model is ~100 % sure
-        occlusion.append({"signal": sig, "label": SIGNALS.get(sig, sig), "n_features": len(idx),
+        occlusion.append({"signal": sig, "n_features": len(idx),
                           "p_before": float(p[k]), "p_after": float(p2[k]),
                           "evidence": float(_logit(p[k]) - _logit(p2[k])),
                           "would_predict": classes[int(np.argmax(p2))]})
@@ -183,13 +167,12 @@ def explain(registry, rows: pd.DataFrame, group: str | None) -> dict:
     ranges = registry.manifest.get("feature_ranges", {})
     features = []
     for name, v in feats.items():
-        sig, sig_label, stat = describe_feature(name)
+        sig, stat_key = describe_feature(name)
         lo, hi = ranges.get(name, [None, None])
         pos = None
         if lo is not None and np.isfinite(v) and hi > lo:
             pos = float((v - lo) / (hi - lo))
-        stat_key = name[len(sig) + 1:] if name.startswith(sig + "_") else name
-        features.append({"feature": name, "signal": sig, "signal_label": sig_label, "stat": stat, "stat_key": stat_key,
+        features.append({"feature": name, "signal": sig, "stat_key": stat_key,
                          "unit": UNITS.get(sig, ""), "value": None if not np.isfinite(v) else float(v),
                          "range": [lo, hi], "position": pos})
     uplinks = []
@@ -202,5 +185,4 @@ def explain(registry, rows: pd.DataFrame, group: str | None) -> dict:
         pipe, seen = registry.model_for(key, group)
         models[key] = explain_model(pipe, key, rows) | {"model_saw_this_recording": seen}
     return {"ready": True, "uplinks": uplinks, "window_seconds": (t1 - t0).total_seconds(),
-            "features": features, "models": models,
-            "class_names": {c: LABEL_TRANSLATIONS.get(c, c) for c in registry.manifest["classes"]}}
+            "features": features, "models": models}

@@ -1,18 +1,13 @@
-Lib/
-Scripts/
-pyvenv.cfg
-Include/
+# Python
+.venv/
 __pycache__/
-etc/
-share/
-bin/
-lib/
-lib64
-include/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Office / LibreOffice lock files
 ~$*
 .~lock*
-# demonstrator
-.venv/
-.pytest_cache/
+
+# demonstrator: live recordings stay local (copy selected ones to the repo by hand)
 data/recordings/
-config/demo.local.toml

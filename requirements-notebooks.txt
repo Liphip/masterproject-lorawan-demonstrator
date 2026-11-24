@@ -1,0 +1,7 @@
+# Extra packages for the notebooks (data preparation and hyperparameter search).
+# The HPO notebook uses RAPIDS (cudf/cuml) for GPU acceleration if installed; it is optional.
+-r requirements.txt
+openpyxl
+jupyter
+matplotlib
+seaborn

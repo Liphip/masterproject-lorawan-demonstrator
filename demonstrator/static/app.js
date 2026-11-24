@@ -74,8 +74,7 @@ function renderChips(st) {
   chips.push(m.ok ? `<span class="chip ok">${t("chip.models", {n: m.models.length})}${m.quick ? t("chip.quick") : ""}</span>`
                   : `<span class="chip err">${t("chip.models_err", {err: esc(m.error || t("chip.not_loaded"))})}</span>`);
   if (m.version_warning) chips.push(`<span class="chip warn" title="${esc(m.version_warning)}">${t("chip.sklearn")}</span>`);
-  const mq = st.ingest.mqtt;
-  chips.push(`<span class="chip">Ingest: HTTP ${esc(st.ingest.http_path)}${mq.enabled ? ` + MQTT ${mq.connected ? "✓" : "✗"}` : ""}</span>`);
+  chips.push(`<span class="chip">Ingest: HTTP ${esc(st.ingest.http_path)}</span>`);
   const r = st.replay.status;
   chips.push(r.running ? `<span class="chip warn">${t("chip.replay_running")}</span>` : `<span class="chip">${t("chip.replay_idle")}</span>`);
   $("#chips").innerHTML = chips.join("");

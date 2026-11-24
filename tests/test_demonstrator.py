@@ -105,8 +105,7 @@ def client(trained, tmp_path):
                  recordings_dir=str(tmp_path / "rec"),
                  devices=[Device("A840410000000001", "W1 LSE01", "lse01", "sausage_1"),
                           Device("A840410000000002", "W1 LTC", "ltcfs", "sausage_1"),
-                          Device("24E1240000000000", "Env", "ws202", "environment"),
-                          Device("A84041000000000C", "S31", "generic", "environment")])
+                          Device("24E1240000000000", "Env", "ws202", "environment")])
     with TestClient(create_app(cfg)) as c:
         yield c
 
@@ -125,7 +124,7 @@ def test_live_path_produces_three_predictions(client):
     assert pred["ready"] and set(pred["models"]) == {"logreg", "rf", "mlp"}
     for m in pred["models"].values():
         assert 0 <= m["confidence"] <= 1 and m["ms"] < 1000
-    assert {d["type"] for d in st["live"]["devices"]} == {"lse01", "ltcfs", "ws202", "generic"}
+    assert {d["type"] for d in st["live"]["devices"]} == {"lse01", "ltcfs", "ws202"}
 
 
 def test_unknown_device_is_listed_not_mapped(client):
@@ -166,13 +165,6 @@ def test_metrics_endpoint(client):
     assert "balanced_accuracy" in m["models"]["rf"] and m["agreement_on_held_out"]
 
 
-def test_generic_device_is_display_only(client):
-    r = client.post("/ingest/uplink", json={"devEUI": "A84041000000000C",
-                                            "object": {"TempC_SHT": 21.3, "Hum_SHT": "48.5", "Work_mode": "IIC"}})
-    assert r.json()["results"][0]["values"] == {"TempC_SHT": 21.3, "Hum_SHT": 48.5}
-    assert "environment" not in client.get("/api/state").json()["live"]["slots"]
-
-
 def test_explain_replay_snapshot(client):
     client.post("/api/replay/start", json={"group": "series_1_sausage_1", "speed": 50000, "start_fraction": 0.5})
     for _ in range(50):
@@ -195,7 +187,6 @@ def test_explain_replay_snapshot(client):
 
 def test_explain_logreg_sum_is_exact(trained):
     """The weighted-sum view must reproduce the model's own decision score."""
-    import numpy as np
     from demonstrator.explain import explain_model
     from demonstrator.inference import ModelRegistry
     from ml_app.data import load_converted_csv

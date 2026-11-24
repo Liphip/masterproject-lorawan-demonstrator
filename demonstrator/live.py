@@ -33,7 +33,6 @@ class LiveState:
         self.slot_rows: dict[str, deque] = {}
         self.env_rows = deque(maxlen=200)
         self.predictions: dict[str, dict] = {}
-        self.history: dict[str, deque] = {}
         self.uplinks = 0
         self.errors = deque(maxlen=20)
         self.last_uplink_at: str | None = None
@@ -41,7 +40,6 @@ class LiveState:
             self.devices[normalize_eui(d.dev_eui)] = self._device_entry(d.dev_eui, d.name, d.type, d.slot, True)
         for s in cfg.slots:
             self.slot_rows[s] = deque(maxlen=500)
-            self.history[s] = deque(maxlen=300)
 
     @staticmethod
     def _device_entry(eui, name, typ, slot, configured):
@@ -87,11 +85,6 @@ class LiveState:
             self._error(f"{dev_cfg.name}: {e}")
             return {"accepted": True, "mapped": False, "error": str(e)}
         entry["values"] = values
-        if dev_cfg.type == "generic":  # display only, never a model input
-            with self.lock:
-                dev.update(values=values, decode_method=method, last_error=None)
-                self.recent.appendleft(entry)
-            return {"accepted": True, "mapped": True, "values": values}
         row = {"timestamp": pd.Timestamp(now), "sensor": dev_cfg.type, **values}
         with self.lock:
             dev.update(values=values, decode_method=method, last_error=None)
@@ -101,7 +94,6 @@ class LiveState:
                 affected = list(self.slot_rows)
             else:
                 self.slot_rows.setdefault(dev_cfg.slot, deque(maxlen=500)).append(row)
-                self.history.setdefault(dev_cfg.slot, deque(maxlen=300))
                 affected = [dev_cfg.slot]
         if self.cfg.record_live and source == "live":
             self._record(row, affected, msg)
@@ -153,24 +145,15 @@ class LiveState:
         res["time"] = utcnow().isoformat()
         with self.lock:
             self.predictions[slot] = res
-            if res.get("ready"):
-                self.history[slot].append({"t": res["time"], **{k: v["label"] for k, v in res["models"].items()}})
 
     # ── snapshot for the dashboard ──────────────────────────────────────────
     def snapshot(self) -> dict:
         with self.lock:
-            series = {}
-            for slot, rows in self.slot_rows.items():
-                series[slot] = [{"t": r["timestamp"].isoformat(), "sensor": r["sensor"],
-                                 **{k: r.get(k) for k in FEATURE_ORDER[2:] if r.get(k) is not None}}
-                                for r in list(rows)[-200:]]
             return {
                 "devices": sorted(self.devices.values(), key=lambda d: (not d["configured"], d["slot"], d["name"])),
                 "recent": list(self.recent)[:25],
                 "slots": sorted(set(self.slot_rows)),
                 "predictions": dict(self.predictions),
-                "history": {s: list(h)[-150:] for s, h in self.history.items()},
-                "series": series,
                 "uplinks": self.uplinks, "last_uplink_at": self.last_uplink_at,
                 "errors": list(self.errors)[:10],
             }

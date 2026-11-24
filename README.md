@@ -24,6 +24,7 @@ LSE01 / LTC-FS / WS202 ──LoRa──▶ UG63 (embedded network server) ──
 | `demonstrator/` | Laptop app: gateway ingest, live state, replay, inference, dashboard |
 | `config/demo.example.toml` | Device list (DevEUI → sensor type, sausage slot) and server settings |
 | `scripts/` | `setup.ps1`, `start_demo.ps1` / `.sh`, `send_test_uplink.py` |
+| `requirements.txt` | Demonstrator, training script and tests. `requirements-notebooks.txt` adds Jupyter etc. for the notebooks |
 | `docs/PLAN.md` | Project plan, requirement mapping (A1–A11), open items |
 | `docs/RUNBOOK.md` | Gateway setup, demo procedure, packing, troubleshooting |
 

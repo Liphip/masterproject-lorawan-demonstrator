@@ -7,7 +7,6 @@ representation than they were fitted on.
 from __future__ import annotations
 
 import os
-import re
 
 import numpy as np
 import pandas as pd
@@ -23,27 +22,8 @@ FEATURE_ORDER = [
     "ltcfs_temperature",
 ]
 
-VALUE_COLUMNS = {
-    "lse01": ["lse01_conductivity", "lse01_moisture", "lse01_temperature"],
-    "ltcfs": ["ltcfs_temperature"],
-    "ws202": ["ws202_light_status", "ws202_pir_status"],
-}
-
-ALL_COLUMNS = ["timestamp", "sensor"] + [c for cols in VALUE_COLUMNS.values() for c in cols]
-
-# The conversion notebook renames "annotation" -> "label" *before* applying its
-# translation map, so converted CSVs keep the German labels. Display both.
-LABEL_TRANSLATIONS = {
-    "Umroetung": "Curing (Umrötung)",
-    "Reifung Phase 1": "Ripening phase 1",
-    "Reifung Phase 2": "Ripening phase 2",
-    "Curing": "Curing (Umrötung)",
-    "Ripening Phase 1": "Ripening phase 1",
-    "Ripening Phase 2": "Ripening phase 2",
-}
-
-GROUP_RE = re.compile(r"series_(\d+)_sausage_(\d+)")
-
+# All columns of a converted recording (WS202 values are kept for completeness, not used by the models).
+ALL_COLUMNS = FEATURE_ORDER + ["ws202_light_status", "ws202_pir_status"]
 
 def group_name(path: str) -> str:
     return os.path.splitext(os.path.basename(path))[0]

@@ -29,7 +29,6 @@ import warnings
 import numpy as np
 import pandas as pd
 import sklearn
-from sklearn.base import clone
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
@@ -47,7 +46,6 @@ from ml_app import CustomPipeline, FeatureExtractor, WindowingMethod  # noqa: E4
 from ml_app.data import (FEATURE_ORDER, group_name, load_converted_csv,  # noqa: E402
                          window_labels)
 
-warnings.filterwarnings("ignore", category=RuntimeWarning)
 warnings.filterwarnings("ignore", message="Skipping features without any observed values")
 
 RANDOM_STATE = 42

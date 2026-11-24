@@ -7,7 +7,6 @@ import os
 import sys
 import threading
 import time
-import warnings
 
 import numpy as np
 import pandas as pd
@@ -16,10 +15,9 @@ from .config import ROOT
 
 sys.path.insert(0, ROOT)
 from ml_app import CustomPipeline, WindowingMethod  # noqa: E402
-from ml_app.data import FEATURE_ORDER, LABEL_TRANSLATIONS  # noqa: E402
+from ml_app.data import FEATURE_ORDER  # noqa: E402
 
 log = logging.getLogger(__name__)
-warnings.filterwarnings("ignore", category=RuntimeWarning)
 # share of in-range-checked features allowed outside the training range
 OOD_THRESHOLD = 0.25
 
@@ -99,7 +97,6 @@ class ModelRegistry:
                 "models": [{"key": m["key"], "name": m["name"],
                             "has_fold_models": bool(m.get("folds"))} for m in self.manifest["models"]],
                 "classes": self.manifest["classes"],
-                "class_names": {c: LABEL_TRANSLATIONS.get(c, c) for c in self.manifest["classes"]},
                 "window_size": self.window_size, "stride": self.stride,
                 "created_at": self.manifest.get("created_at"), "quick": self.manifest.get("quick")}
 

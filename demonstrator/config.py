@@ -6,8 +6,7 @@ import tomllib
 from dataclasses import dataclass, field
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-# generic: shown on the dashboard (e.g. Dragino LSN50-v2-S31), not a model input
-SENSOR_TYPES = ("lse01", "ltcfs", "ws202", "generic")
+SENSOR_TYPES = ("lse01", "ltcfs", "ws202")
 
 
 @dataclass
@@ -30,12 +29,6 @@ class Config:
         os.path.join(ROOT, "data", "recordings")])
     recordings_dir: str = os.path.join(ROOT, "data", "recordings")
     record_live: bool = True
-    mqtt_enabled: bool = False
-    mqtt_host: str = "127.0.0.1"
-    mqtt_port: int = 1883
-    mqtt_topic: str = "#"
-    mqtt_username: str = ""
-    mqtt_password: str = ""
     devices: list = field(default_factory=list)
     path: str = ""
 
@@ -48,7 +41,7 @@ class Config:
 
     @property
     def slots(self) -> list[str]:
-        return sorted({d.slot for d in self.devices if d.type not in ("ws202", "generic")})
+        return sorted({d.slot for d in self.devices if d.type != "ws202"})
 
 
 def normalize_eui(eui: str | None) -> str:
@@ -66,7 +59,7 @@ def load_config(path: str | None) -> Config:
     with open(path, "rb") as fh:
         raw = tomllib.load(fh)
     base = ROOT  # paths in the file are relative to the repository root
-    srv, paths, mq = raw.get("server", {}), raw.get("paths", {}), raw.get("mqtt", {})
+    srv, paths = raw.get("server", {}), raw.get("paths", {})
     cfg.path = os.path.abspath(path)
     cfg.host = srv.get("host", cfg.host)
     cfg.port = int(srv.get("port", cfg.port))
@@ -78,12 +71,6 @@ def load_config(path: str | None) -> Config:
         cfg.replay_dirs = [_abs(p, base) for p in paths["replay_data"]]
     if "recordings" in paths:
         cfg.recordings_dir = _abs(paths["recordings"], base)
-    cfg.mqtt_enabled = bool(mq.get("enabled", False))
-    cfg.mqtt_host = mq.get("host", cfg.mqtt_host)
-    cfg.mqtt_port = int(mq.get("port", cfg.mqtt_port))
-    cfg.mqtt_topic = mq.get("topic", cfg.mqtt_topic)
-    cfg.mqtt_username = mq.get("username", "")
-    cfg.mqtt_password = mq.get("password", "")
     for d in raw.get("devices", []):
         t = d["type"].lower().replace("-", "")
         if t not in SENSOR_TYPES:

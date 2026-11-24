@@ -1,7 +1,6 @@
 """FastAPI app: gateway ingest endpoint, JSON API and the static dashboard."""
 from __future__ import annotations
 
-import json
 import logging
 import os
 import time
@@ -16,57 +15,10 @@ from .explain import explain
 from .inference import ModelRegistry
 from .live import LiveState
 from .replay import ReplayEngine
-from .simulate import LIMITS, Simulator
+from .simulate import Simulator
 
 log = logging.getLogger(__name__)
 STATIC = os.path.join(os.path.dirname(__file__), "static")
-
-
-class MqttIngest:
-    """Optional: subscribe to a broker the gateway publishes to."""
-
-    def __init__(self, cfg: Config, live: LiveState):
-        self.cfg, self.live = cfg, live
-        self.status = {"enabled": cfg.mqtt_enabled, "connected": False, "error": None}
-        self.client = None
-
-    def start(self):
-        if not self.cfg.mqtt_enabled:
-            return
-        try:
-            import paho.mqtt.client as mqtt
-        except ImportError:
-            self.status["error"] = "paho-mqtt not installed"
-            return
-        c = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="lorawan-ai-demonstrator")
-        if self.cfg.mqtt_username:
-            c.username_pw_set(self.cfg.mqtt_username, self.cfg.mqtt_password)
-
-        def on_connect(client, userdata, flags, rc, props=None):
-            self.status.update(connected=(rc == 0), error=None if rc == 0 else f"connect rc={rc}")
-            client.subscribe(self.cfg.mqtt_topic)
-
-        def on_disconnect(client, userdata, flags, rc, props=None):
-            self.status["connected"] = False
-
-        def on_message(client, userdata, msg):
-            try:
-                self.live.handle_uplink(json.loads(msg.payload), source="live")
-            except Exception as e:  # noqa: BLE001
-                self.live._error(f"MQTT message on {msg.topic} not processed: {e!r}")
-
-        c.on_connect, c.on_disconnect, c.on_message = on_connect, on_disconnect, on_message
-        try:
-            c.connect_async(self.cfg.mqtt_host, self.cfg.mqtt_port)
-            c.loop_start()
-            self.client = c
-        except Exception as e:  # noqa: BLE001
-            self.status["error"] = repr(e)
-
-    def stop(self):
-        if self.client:
-            self.client.loop_stop()
-            self.client.disconnect()
 
 
 def create_app(cfg: Config) -> FastAPI:
@@ -74,15 +26,12 @@ def create_app(cfg: Config) -> FastAPI:
     live = LiveState(cfg, models)
     replay = ReplayEngine(models, cfg.replay_dirs)
     simulator = Simulator(models, cfg.replay_dirs)
-    mqtt_ingest = MqttIngest(cfg, live)
     started = time.time()
 
     @asynccontextmanager
     async def lifespan(_app):
-        mqtt_ingest.start()
         yield
         replay.stop()
-        mqtt_ingest.stop()
 
     app = FastAPI(title="LoRaWAN AI Demonstrator", docs_url="/api/docs", redoc_url=None,
                   lifespan=lifespan)
@@ -112,7 +61,7 @@ def create_app(cfg: Config) -> FastAPI:
         return {"server_time": time.time(), "uptime_s": time.time() - started,
                 "models": models.info(),
                 "ingest": {"http_path": "/ingest/uplink", "token_required": bool(cfg.ingest_token),
-                           "mqtt": mqtt_ingest.status, "config_file": cfg.path or None,
+                           "config_file": cfg.path or None,
                            "configured_devices": len(cfg.devices)},
                 "live": live.snapshot(), "replay": replay.snapshot()}
 
@@ -188,16 +137,6 @@ def create_app(cfg: Config) -> FastAPI:
                                    body.get("adjust") or {})
         except (KeyError, ValueError) as e:
             raise HTTPException(400, str(e))
-
-    @app.get("/api/simulate/limits")
-    def simulate_limits():
-        return LIMITS
-
-    @app.post("/api/models/reload")
-    def models_reload():
-        replay.stop()
-        models.reload()
-        return models.info()
 
     @app.get("/healthz")
     def healthz():
