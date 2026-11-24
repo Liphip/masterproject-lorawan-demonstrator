@@ -82,10 +82,12 @@ Status as of 24 Nov 2026. Scope: [assignment requirements](ASSIGNMENT.md)
 ## Known risks
 
 - **Single labeled run.** Scores are per sausage within one run and are probably optimistic. Say so in the presentation.
-- **Labels are a schedule.** The butcher annotated series 1 by schedule, so every model learns "which phase of the
-  schedule would this be under spring/summer conditions", not a measured ripeness. Restricting the inputs to the
-  sausage's physical state (conductivity, moisture, temperature relative to the air) is what should let this carry over
-  to colder runs, where the same state is reached later. No available score can prove that it is the true ripening.
+- **Labels are batch-level judgements.** The butcher recorded when the *whole batch* (hundreds of sausages without
+  sensors) reached each phase, by his criteria and experience. So the labels do describe ripening, but: (a) every
+  sensor sausage gets the batch's transition dates, although single sausages may be ahead or behind; (b) a transition
+  is a date on which it was noticed, so windows near a boundary are uncertain. Both cap the achievable score and
+  explain most Phase 1 ↔ Phase 2 confusion. (c) The seasonal confound remains: in series 1, ripening and rising
+  temperature happen together, so the labels cannot tell the models which of the two to learn.
 - **Air temperature in the case is a setting**, not a measurement. Live predictions depend on it being roughly right.
 - **Short windows.** 10 uplinks ≈ minutes. The models mostly classify current absolute levels (moisture, conductivity,
   temperature), not the dynamics of the run.
