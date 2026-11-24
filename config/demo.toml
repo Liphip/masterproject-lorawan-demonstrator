@@ -1,0 +1,36 @@
+# Copy to config/demo.toml and fill in the real DevEUIs (printed on the sensors
+# or shown in the UG63 web UI under Network Server > Devices).
+# All paths are relative to the repository root.
+
+[server]
+host = "0.0.0.0"        # must listen on the LAN so the gateway can reach the laptop
+port = 8000
+ingest_token = ""       # optional; if set, the gateway URL must end in ?token=<value>
+record_live = true      # append live uplinks to data/recordings (replayable later)
+
+[paths]
+models = "data/models"
+replay_data = ["data/converted", "data/recordings"]
+recordings = "data/recordings"
+
+# type: lse01 (moisture/temperature/conductivity probe), ltcfs (temperature
+# probe), ws202 (PIR + light, environment). slot groups the probes of one
+# sausage; the models predict per slot.
+[[devices]]
+dev_eui = "A84041000000000A"
+name = "Wurst 1 – Feuchte, Temperatur & Leitwert"
+type = "lse01"
+slot = "sausage_1"
+
+[[devices]]
+dev_eui = "A84041000000000B"
+name = "Wurst 1 – Temperatur"
+type = "ltcfs"
+slot = "sausage_1"
+# fields = { ltcfs_temperature = "TempC1" }   # override if the codec uses another key
+
+[[devices]]
+dev_eui = "24E1240000000000"
+name = "Umgebung – PIR & Licht"
+type = "ws202"
+slot = "environment"
