@@ -94,6 +94,7 @@ class ModelRegistry:
                             "has_fold_models": bool(m.get("folds"))} for m in self.manifest["models"]],
                 "classes": self.manifest["classes"],
                 "window_size": self.window_size, "stride": self.stride,
+                "feature_set": self.manifest.get("feature_set", "all"), "signals": self.manifest.get("signals"),
                 "created_at": self.manifest.get("created_at"), "quick": self.manifest.get("quick")}
 
     def _entry(self, key):

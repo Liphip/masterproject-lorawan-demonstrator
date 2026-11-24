@@ -160,3 +160,9 @@ svg.net { width: 100%; height: 300px; }
 .card { overflow-x: auto; }
 .eval-table th { hyphens: manual; -webkit-hyphens: manual; }
 .eval-table th, .eval-table td { padding: .3rem .25rem; } .eval-table th { font-size: .82rem; }
+
+/* ── seasonal confound ───────────────────────────────────────────── */
+.rho.good { color: var(--live); font-weight: 650; }
+.rho.bad { color: var(--bad); font-weight: 650; }
+.sim-note { margin: -.2rem 0 .6rem; }
+.slider input:disabled { opacity: .35; }

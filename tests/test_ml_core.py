@@ -11,7 +11,8 @@ import pytest
 from ml_core import ModelPipeline, WindowFeatures
 from ml_core.conversion import classify_device, convert_all
 from ml_core.data import ALL_COLUMNS, ROOT
-from ml_core.training import QUICK_GRIDS, load_hyperparameters, load_windows, save_hyperparameters, search_hyperparameters
+from ml_core.training import (FEATURE_SETS, QUICK_GRIDS, compare_feature_sets, load_hyperparameters, load_windows,
+                              save_hyperparameters, search_hyperparameters)
 from synthetic_data import make_raw_workbooks
 
 
@@ -84,8 +85,8 @@ def test_search_result_is_used_by_training(synthetic_dir, tmp_path):
     assert set(result) == {"logreg", "rf"} and "balanced_accuracy" in result["rf"]["results"]
     assert "C" in result["logreg"]["results"].columns                  # prefixes stripped for display
     save_hyperparameters(result, windows, str(tmp_path))
-    params, source = load_hyperparameters(str(tmp_path))
-    assert source.startswith("hyperparameters.json")
+    params, source, feature_set = load_hyperparameters(str(tmp_path))
+    assert source.startswith("hyperparameters.json") and feature_set == "all"
     assert params["rf"] == result["rf"]["params"]
     assert params["mlp"]["hidden_layer_sizes"] == [64, 32, 16]       # not searched → default
     assert load_hyperparameters(str(tmp_path / "empty"))[1].startswith("defaults")
@@ -97,9 +98,26 @@ def test_training_outputs(trained):
     assert set(m["models"]) == {"logreg", "rf", "mlp"}
     assert m["models"]["rf"]["params"]["max_depth"] == 10            # size limit applied
     assert m["classes"] == ["Umroetung", "Reifung Phase 1", "Reifung Phase 2"]  # chronological
+    assert man["feature_set"] == "moisture_conductivity"                 # default: no temperature, no timing
+    assert man["output_columns"] and all(c.startswith(("lse01_conductivity", "lse01_moisture")) for c in man["output_columns"])
+    assert m["models"]["rf"]["unannotated_progression"]["spearman_mean"] > 0.5
     assert man["versions"]["scikit-learn"] and man["hyperparameters"].startswith("defaults")
     for e in man["models"]:
         assert ModelPipeline.load(os.path.join(trained / "models", e["final"]["dir"]), e["final"]["name"]).steps[0][0] == "windows"
+
+
+# ── seasonal confound ───────────────────────────────────────────────────────
+def test_progression_check_catches_the_season(synthetic_dir):
+    """Synthetic data like the real runs: temperature rises over series 1, falls over series 2.
+    With temperature the models look perfect on series 1 but run backwards on series 2."""
+    w = load_windows(str(synthetic_dir / "converted"), log=_quiet)
+    u = load_windows(str(synthetic_dir / "converted"), "series_2_*.csv", annotated=False, classes=w.classes, log=_quiet)
+    assert w.select("moisture_conductivity").columns == [c for c in w.columns if c.startswith(("lse01_conductivity", "lse01_moisture"))]
+    table, prog = compare_feature_sets(w, u, ["all", "moisture_conductivity"], keys=("logreg",), quick=True, log=_quiet)
+    rho = table["series 2: phase order ρ"]
+    assert rho[("all", "Logistic Regression")] < 0 < 0.5 < rho[("moisture_conductivity", "Logistic Regression")]
+    assert set(prog[("all", "logreg")]) == set(u.recordings)
+    assert set(FEATURE_SETS) == {"all", "no_temperature", "moisture_conductivity"}
 
 
 # ── notebooks ───────────────────────────────────────────────────────────────
@@ -127,3 +145,5 @@ def test_notebooks_run_end_to_end(tmp_path):
     assert (models / "hyperparameters.json").exists()
     _run_notebook("03_train_and_evaluate.ipynb", common)
     assert json.load(open(models / "manifest.json"))["hyperparameters"].startswith("hyperparameters.json")
+    assert "unannotated_progression" in json.load(open(models / "metrics.json"))["models"]["rf"]
+    _run_notebook("04_check_seasonal_confound.ipynb", f"CONVERTED_DIR = {str(conv)!r}\nQUICK = True")

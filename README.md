@@ -21,7 +21,7 @@ LSE01 / LTC-FS / WS202 ──LoRa──▶ UG63 (embedded network server) ──
 
 | Path | Content |
 |---|---|
-| `notebooks/` | `01_convert_raw_data` → `02_search_hyperparameters` → `03_train_and_evaluate`. Run in this order; outputs stay in the notebooks |
+| `notebooks/` | `01_convert_raw_data` → `02_search_hyperparameters` → `03_train_and_evaluate`, plus `04_check_seasonal_confound`. Outputs stay in the notebooks |
 | `ml_core/` | Shared library used by the notebooks and the demonstrator: `data` (paths, columns), `windowing` (window features), `pipeline` (`ModelPipeline`), `conversion`, `training` |
 | `demonstrator/` | Laptop app: gateway ingest, live state, replay, simulation, explanations, dashboard (`static/`) |
 | `data/raw/` | Excel exports `series_1.xlsx` (annotated), `series_2.xlsx` (not annotated), via Git LFS |
@@ -55,8 +55,12 @@ The dashboard needs trained models in `data/models/` (see below). The UG63 HTTP 
 1. **01_convert_raw_data**: only needed if the Excel exports change.
 2. **02_search_hyperparameters**: searches the three model families (leave-one-sausage-out, balanced accuracy) and
    saves the winners to `data/models/hyperparameters.json`. Tens of minutes on CPU; uses a GPU via RAPIDS if installed.
-3. **03_train_and_evaluate**: evaluates, trains and exports the models the demonstrator loads. Without a search result it uses
+3. **03_train_and_evaluate**: evaluates, trains and exports the models the demonstrator loads, and checks them on the
+   unannotated series 2 (phases must advance in time there too). Without a search result it uses
    the defaults in `ml_core/training.py`. Headless alternative: `python -m ml_core.training`.
+4. **04_check_seasonal_confound**: compares the feature sets. Series 1 (the only annotated run) goes from spring to
+   summer, so temperature rises with the phase. Models that use it look excellent on series 1 and run backwards on
+   series 2. The default feature set therefore uses moisture and conductivity only (`FEATURE_SETS` in `ml_core/training.py`).
 
 Train with **the same scikit-learn version as the demo laptop** (pinned to 1.9.x in `requirements.txt`).
 Model files are not portable across versions; the dashboard warns on a mismatch.

@@ -29,6 +29,13 @@ def synthetic_dir(tmp_path_factory):
 def trained(synthetic_dir):
     """synthetic_dir plus models/ trained with tiny settings."""
     from ml_core.training import load_windows, train_and_evaluate
-    windows = load_windows(str(synthetic_dir / "converted"), log=_quiet)
-    train_and_evaluate(windows, str(synthetic_dir / "models"), quick=True, log=_quiet)
+    conv = str(synthetic_dir / "converted")
+    windows = load_windows(conv, log=_quiet)
+    unannotated = load_windows(conv, "series_2_*.csv", annotated=False, classes=windows.classes, log=_quiet)
+    train_and_evaluate(windows, str(synthetic_dir / "models"), unannotated=unannotated, quick=True, log=_quiet)
     return synthetic_dir
+
+
+def pytest_configure(config):
+    # The test models are deliberately tiny (QUICK settings); their MLP does not converge.
+    config.addinivalue_line("filterwarnings", "ignore::sklearn.exceptions.ConvergenceWarning")

@@ -237,15 +237,21 @@ function renderEval() {
   const best = (f) => keys.reduce((a, b) => (m.models[b][f].mean > m.models[a][f].mean ? b : a));
   const pm = (o) => `${fmtNum(o.mean * 100, 1)} <span class="muted">± ${fmtNum(o.std * 100, 1)}</span>`;
   const bb = best("balanced_accuracy"), bf = best("macro_f1");
+  const hasOrder = keys.some((k) => m.models[k].unannotated_progression);
+  const order = (r) => {
+    const p = r.unannotated_progression;
+    if (!p || p.spearman_mean == null) return "–";
+    const v = p.spearman_mean, cls = v >= 0.5 ? "good" : v < 0 ? "bad" : "";
+    return `<span class="rho ${cls}">${v >= 0 ? "+" : "−"}${fmtNum(Math.abs(v), 2)}</span>`;
+  };
   const rows = keys.map((k) => {
     const r = m.models[k];
     return `<tr><td><b>${esc(modelName(k, r.name))}</b><br><span class="muted">${t("kind." + k)}</span></td>
       <td class="num ${k === bb ? "best" : ""}">${pm(r.balanced_accuracy)}</td>
       <td class="num ${k === bf ? "best" : ""}">${pm(r.macro_f1)}</td>
-      <td class="num">${pm(r.accuracy)}</td>
       <td class="num">${fmtNum(r.single_prediction_ms, 1)} ms</td>
       <td class="num">${fmtNum(r.model_file_bytes / 1e6, r.model_file_bytes < 1e6 ? 2 : 1)} MB</td>
-      <td class="num">${fmtNum(r.fit_seconds_all_data, 1)} s</td></tr>`;
+${hasOrder ? `<td class="num">${order(r)}</td>` : ""}</tr>`;
   }).join("");
   const agree = Object.entries(m.agreement_on_held_out).map(([pair, v]) => {
     const [a, b] = pair.split("|");
@@ -260,13 +266,15 @@ function renderEval() {
       </table></div>`;
   }).join("");
   const d = m.dataset;
-  $("#eval-meta").textContent = t("eval.meta", {s: d.labeled_groups.length, w: d.n_windows.toLocaleString(LOCALE()), date: fmtDate(m.created_at)});
+  $("#eval-meta").textContent = t("eval.meta", {s: d.labeled_groups.length, w: d.n_windows.toLocaleString(LOCALE()), date: fmtDate(m.created_at)})
+    + " · " + t("eval.features", {fs: t("fs." + (m.feature_set || "all"))});
   $("#eval-body").innerHTML = `
     ${m.quick ? `<div class="banner warn">${t("eval.quick")}</div>` : ""}
     <p class="muted">${t("eval.intro", {n: d.labeled_groups.length})}</p>
     <table class="eval-table"><thead><tr><th>${t("eval.th_model")}</th><th class="num">${t("eval.th_bal")}</th><th class="num">${t("eval.th_f1")}</th>
-      <th class="num">${t("eval.th_acc")}</th><th class="num">${t("eval.th_pred")}</th><th class="num">${t("eval.th_size")}</th>
-      <th class="num">${t("eval.th_fit")}</th></tr></thead><tbody>${rows}</tbody></table>
+      <th class="num">${t("eval.th_pred")}</th><th class="num">${t("eval.th_size")}</th>
+      ${hasOrder ? `<th class="num">${t("eval.th_order")}</th>` : ""}</tr></thead><tbody>${rows}</tbody></table>
+    ${hasOrder ? `<p class="muted">${t("eval.order_note_html")}</p>` : ""}
     <p class="muted">${t("eval.agree")}${agree}</p>
     <details><summary>${t("eval.cm")}</summary><div class="cm">${cms}</div></details>
     <p class="muted">${t("eval.note")}</p>`;
@@ -535,7 +543,17 @@ async function runSim() {
   LAST_SIM = res;
   renderSim(res);
 }
+function updateSimInputs() {
+  const signals = STATE && STATE.models.signals;
+  const usesTemp = !signals || signals.some((s) => s.includes("temperature"));
+  $("#sim-dt").disabled = !usesTemp;
+  document.querySelector("[data-preset=warm]").disabled = !usesTemp;
+  $("#sim-dt-note").hidden = usesTemp;
+  if (!usesTemp && Number($("#sim-dt").value) !== 0) $("#sim-dt").value = 0;
+}
+
 function renderSim(res) {
+  updateSimInputs();
   simRunDays = res.run_days;
   simLabels();
   const fmt = {lse01_moisture: ["%", 1], lse01_conductivity: ["µS/cm", 0], lse01_temperature: ["°C", 1], ltcfs_temperature: ["°C", 1]};

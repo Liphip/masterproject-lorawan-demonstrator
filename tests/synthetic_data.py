@@ -20,7 +20,11 @@ COLUMNS = [
 
 
 def make_group(seed: int, days: float = 4.0, interval_min: float = 10.0,
-               start: str = "2023-03-30T00:00:00Z", labeled: bool = True) -> pd.DataFrame:
+               start: str = "2023-03-30T00:00:00Z", labeled: bool = True,
+               temp_by_phase=(12.0, 15.0, 19.0)) -> pd.DataFrame:
+    """One sausage. Like the real data, temperature follows the SEASON: it rises over
+    series 1 (spring → summer, default) and falls over series 2 (summer → winter), while
+    moisture and conductivity follow the ripening in both runs."""
     rng = np.random.default_rng(seed)
     t0 = pd.Timestamp(start)
     n = int(days * 24 * 60 / interval_min)
@@ -28,7 +32,7 @@ def make_group(seed: int, days: float = 4.0, interval_min: float = 10.0,
     for i in range(n):
         frac = i / n
         phase = 0 if frac < 0.25 else (1 if frac < 0.6 else 2)
-        base_t = [18.0, 14.0, 12.0][phase]
+        base_t = temp_by_phase[phase]
         ts = t0 + pd.Timedelta(minutes=i * interval_min)
         jitter = lambda: pd.Timedelta(seconds=float(rng.uniform(0, 90)))
         moisture = 60 - 35 * frac + rng.normal(0, 1.5) + seed % 3
@@ -58,7 +62,8 @@ def make_dataset(out_dir: str, n_sausages: int = 5, days: float = 4.0, seed: int
     for series, labeled in ((1, True), (2, False)):
         for k in range(1, n_sausages + 1):
             df = make_group(seed + 10 * series + k, days=days, labeled=labeled,
-                            start="2023-03-30T00:00:00Z" if series == 1 else "2023-06-01T00:00:00Z")
+                            start="2023-03-30T00:00:00Z" if series == 1 else "2023-08-01T00:00:00Z",
+                            temp_by_phase=(12.0, 15.0, 19.0) if series == 1 else (19.0, 15.0, 11.0))
             p = os.path.join(out_dir, f"series_{series}_sausage_{k}.csv")
             df.to_csv(p, index=False)
             paths.append(p)

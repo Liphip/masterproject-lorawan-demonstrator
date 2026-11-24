@@ -127,7 +127,7 @@ def test_explain_replay_snapshot(client):
     assert sum(rf["detail"]["votes"]) == rf["detail"]["n_trees"]
     assert mlp["detail"]["layers"][0]["size"] == mlp["n_features_used"]
     for m in ex["models"].values():
-        assert {o["signal"] for o in m["occlusion"]} >= {"lse01_moisture", "timestamp"}
+        assert {o["signal"] for o in m["occlusion"]} == {"lse01_moisture", "lse01_conductivity"}  # default feature set
         assert abs(sum(m["proba"].values()) - 1) < 1e-6
     client.post("/api/replay/stop")
 
