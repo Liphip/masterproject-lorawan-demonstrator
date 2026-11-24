@@ -211,3 +211,21 @@ def test_explain_logreg_sum_is_exact(trained):
     expected = float(clf.estimators_[k].decision_function(xs)[0])
     assert d["score"] == pytest.approx(expected, abs=1e-6)
     assert sum(t["contribution"] for t in d["top"]) + d["rest"] + d["intercept"] == pytest.approx(expected, abs=1e-6)
+
+
+def test_virtual_sausage_simulation(client):
+    base = client.post("/api/simulate", json={"group": "series_1_sausage_1", "position": 0.1}).json()
+    assert base["ready"] and base["simulated"] and base["truth"] is not None
+    assert not base["truth_is_for_unmodified"]
+    sim = client.post("/api/simulate", json={"group": "series_1_sausage_1", "position": 0.1,
+                                             "adjust": {"moisture_delta": -20, "conductivity_factor": 0.5,
+                                                        "temperature_delta": 99}}).json()
+    assert sim["adjust"]["temperature_delta"] == 10.0  # clipped to the slider range
+    assert sim["truth_is_for_unmodified"]
+    rec, simm = sim["recorded_means"], sim["simulated_means"]
+    assert simm["lse01_moisture"] == pytest.approx(rec["lse01_moisture"] - 20, abs=1e-6)
+    assert simm["lse01_conductivity"] == pytest.approx(rec["lse01_conductivity"] * 0.5, rel=1e-6)
+    assert simm["ltcfs_temperature"] == pytest.approx(rec["ltcfs_temperature"] + 10, abs=1e-6)
+    ex = client.get("/api/explain?source=simulate").json()
+    assert ex["ready"] and ex["source"] == "simulate" and ex["adjust"]["conductivity_factor"] == 0.5
+    assert client.post("/api/simulate", json={"group": "nope"}).status_code == 400

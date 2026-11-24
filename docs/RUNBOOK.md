@@ -38,8 +38,9 @@
 | 1 · Data path | Point at the strip at the top and at panel 1 (sensor, values, RSSI). | LoRa radio → gateway (network server) → router (stands in for the Internet) → laptop. Nothing leaves the case. |
 | 2 · AI comparison | Panel 2 → *Recorded run*. Pick a `series_1` sausage, 1 h/s, start. Show the three cards, the annotation card and the timeline lanes. | Replay because curing takes days. The models never saw this sausage. Look at where they disagree: at phase transitions. |
 | 2b · Why? | At a phase transition press **❚❚ Pause**, then **🔍 How was this decided?** Walk through the 4 steps: uplinks → 29 numbers → which signals mattered → inside each model. **Close & resume replay** continues. | The same numbers, three principles: a weighted sum, 100 trees voting, a small neural network. Step 3 shows whether they rely on the same signals. |
+| 2c · Virtual sausage | Tab *Virtual sausage (simulate)*. Move **Day of curing**, then try the presets *Dried out* / *Too warm*, or ask the audience what to change. Use **How was this decided?** on any setting. | There is no sausage in the case, so we take a real recorded day and ask "what if". The models react differently, and the out-of-range warning shows when we leave what they know. |
 | 3 · Interpretation | Panel 3: balanced accuracy, latency (ms on CPU), model size. Then panel 4. | Small models are enough here: they run in milliseconds on a laptop with no GPU and no cloud. The scores come from one run, so they are optimistic. |
-| 4 · Live, optional | Panel 2 → *Live sensors* | The live chain works end to end. The warning shows when live data does not match what the models were trained on. |
+| 4 · Live, optional | Panel 2 → *Live sensors*. Hold the LTC-FS probe in your hand. Optionally put the LSE01 probe into a glass of tap water, then salt water (check the probe's IP rating first). | The live chain works end to end: watch conductivity jump within one uplink. The models flag this as outside the training range instead of inventing a curing phase. That is an honest system. |
 
 Replaying the unlabeled `series_2_*` (an independent run, no annotation) shows the models on a run they have never seen.
 

@@ -99,12 +99,13 @@ function modelCards(pred, models, opts = {}) {
   if (!pred) return `<p class="muted">${esc(opts.empty || "No prediction yet.")}</p>`;
   if (!pred.ready) return `<p class="muted">Waiting for data: ${esc(pred.reason)}</p>`;
   const truth = opts.truth;
+  const compare = opts.compareTruth !== false;
   const cards = models.map((mi) => {
     const m = pred.models[mi.key];
     if (!m) return "";
     const bars = Object.entries(m.proba).sort((a, b) => b[1] - a[1]).map(([c, p]) =>
       `<div class="bar"><span>${esc(phaseName(c))}</span><span class="track"><span class="fill" style="display:block;width:${(p * 100).toFixed(0)}%;background:${phaseColor(c)}"></span></span><span class="num">${(p * 100).toFixed(0)}%</span></div>`).join("");
-    const match = truth == null ? "" :
+    const match = truth == null || !compare ? "" :
       (m.label === truth ? `<span class="match ok">✓ matches annotation</span>` : `<span class="match no">✗ differs from annotation</span>`);
     return `<div class="model"><h3>${esc(mi.name)}</h3><div class="kind">${MODEL_KIND[mi.key] || ""}</div>
       <div class="label"><span class="dot" style="background:${phaseColor(m.label)}"></span>${esc(phaseName(m.label))}</div>
@@ -112,7 +113,7 @@ function modelCards(pred, models, opts = {}) {
       <div class="foot"><span>${m.ms.toFixed(1)} ms on CPU</span>${match}</div></div>`;
   });
   if (opts.showTruth) {
-    cards.unshift(`<div class="model truth"><h3>Annotation</h3><div class="kind">human label from the recording</div>
+    cards.unshift(`<div class="model truth"><h3>Annotation</h3><div class="kind">${esc(opts.truthNote || "human label from the recording")}</div>
       <div class="label"><span class="dot" style="background:${phaseColor(truth)}"></span>${esc(truth == null ? "none (unlabeled run)" : phaseName(truth))}</div>
       ${opts.score && opts.score.n ? `<div class="bars">${models.map((mi) =>
         `<div class="bar"><span>${esc(mi.name)}</span><span class="track"><span class="fill" style="display:block;width:${(opts.score[mi.key] * 100).toFixed(0)}%;background:var(--accent)"></span></span><span class="num">${(opts.score[mi.key] * 100).toFixed(0)}%</span></div>`).join("")}
@@ -122,7 +123,7 @@ function modelCards(pred, models, opts = {}) {
   let warn = "";
   if (pred.compatible === false)
     warn += `<div class="banner warn">${(pred.ood_fraction * 100).toFixed(0)} % of the input features are outside the training range. Treat these predictions as unreliable.</div>`;
-  if (pred.any_model_saw_data)
+  if (pred.any_model_saw_data && !opts.simulated)
     warn += `<div class="banner warn">These models were trained on this recording. They are reproducing training data, not predicting.</div>`;
   const btn = opts.explain ? `<div class="explain-row"><button class="explain-btn" data-src="${opts.explain}">🔍 How was this decided?</button></div>` : "";
   return `<div class="agree">${agreeTxt}</div>${warn}<div class="models">${cards.join("")}</div>${btn}`;
@@ -263,6 +264,8 @@ async function loadRecordings() {
   $("#rec").innerHTML = recs.map((r) => `<option value="${esc(r.group)}" ${r.lfs_pointer ? "disabled" : ""}>${esc(r.group)}${r.group.startsWith("series_2") ? " (unlabeled, independent run)" : ""}${r.kind === "live recording" ? " (live recording)" : ""}${r.lfs_pointer ? " (LFS pointer – git lfs pull)" : ""}</option>`).join("");
   const first = recs.find((r) => !r.lfs_pointer && r.group.startsWith("series_1"));
   if (first) $("#rec").value = first.group;
+  $("#sim-rec").innerHTML = $("#rec").innerHTML;
+  if (first) $("#sim-rec").value = first.group;
   recordingsLoaded = true;
 }
 
@@ -271,7 +274,9 @@ document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () 
   document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x === b));
   $("#tab-replay").hidden = activeTab !== "replay";
   $("#tab-live").hidden = activeTab !== "live";
-  if (STATE) render(STATE);
+  $("#tab-sim").hidden = activeTab !== "sim";
+  if (activeTab === "sim") runSim();
+  else if (STATE) render(STATE);
 }));
 $("#startpos").addEventListener("input", (e) => ($("#startpos-v").textContent = `${e.target.value} %`));
 $("#btn-start").addEventListener("click", async () => {
@@ -292,7 +297,10 @@ function render(st) {
   CLASS_NAMES = st.models.class_names || {};
   renderChips(st);
   renderDevices(st.live);
-  if ($("#explain").hidden) { if (activeTab === "replay") renderReplay(st); else renderLive(st); }
+  if ($("#explain").hidden) {
+    if (activeTab === "replay") renderReplay(st);
+    else if (activeTab === "live") renderLive(st);
+  }
   $("#footer").textContent = `Server up ${Math.round(st.uptime_s / 60)} min · config: ${st.ingest.config_file || "none"} · gateway URL: http://<laptop-ip>:<port>${st.ingest.http_path}${st.ingest.token_required ? "?token=…" : ""}`;
 }
 
@@ -337,7 +345,7 @@ document.addEventListener("click", async (e) => {
   $("#ex-body").innerHTML = `<p class="muted">Computing explanation…</p>`;
   $("#explain").hidden = false;
   try {
-    const q = src === "replay" ? "source=replay" : `source=live&slot=${encodeURIComponent($("#slot").value)}`;
+    const q = src === "live" ? `source=live&slot=${encodeURIComponent($("#slot").value)}` : `source=${src}`;
     renderExplain(await api(`/api/explain?${q}`));
   } catch (err) { $("#ex-body").innerHTML = `<p class="err-text">${esc(err.message)}</p>`; }
 });
@@ -357,16 +365,20 @@ function renderExplain(ex) {
   if (!ex.ready) { $("#ex-body").innerHTML = `<p class="muted">${esc(ex.reason)}</p>`; return; }
   Object.assign(CLASS_NAMES, ex.class_names || {});
   const keys = Object.keys(ex.models);
-  $("#ex-meta").innerHTML = `${ex.source === "replay" ? '<span class="badge replay">REPLAY</span>' : '<span class="badge live">LIVE</span>'}
+  const badge = {replay: '<span class="badge replay">REPLAY</span>', live: '<span class="badge live">LIVE</span>',
+                 simulate: '<span class="badge sim">SIMULATED</span>'}[ex.source] || "";
+  $("#ex-meta").innerHTML = `${badge}
     ${esc(ex.group || "")} · snapshot at ${ex.time ? new Date(ex.time).toLocaleString() : "–"}
-    ${ex.truth != null ? ` · annotation: <b>${esc(phaseName(ex.truth))}</b>` : ""}`;
+    ${ex.truth != null ? ` · annotation${ex.source === "simulate" ? " of the unmodified recording" : ""}: <b>${esc(phaseName(ex.truth))}</b>` : ""}
+    ${ex.adjust ? ` · changes: moisture ${signed(ex.adjust.moisture_delta)} %pt, conductivity ×${ex.adjust.conductivity_factor.toFixed(2)}, temperature ${signed(ex.adjust.temperature_delta)} °C` : ""}`;
 
   // step 1 · uplinks
   const ups = ex.uplinks.map((u) => `<tr><td>${new Date(u.time).toLocaleTimeString()}</td><td>${esc(u.sensor)}</td>
     <td>${Object.entries(u.values).map(([k, v]) => fmtVal(k, v)).join("") || '<span class="muted">environment (not a model input)</span>'}</td></tr>`).join("");
   const s1 = `<section class="ex-step" id="ex-s1"><h3><b>1</b>Uplinks received</h3>
     <p>The models never see a single reading. They see the last ${ex.uplinks.length} uplinks from this sausage's sensors,
-    ${(ex.window_seconds / 60).toFixed(0)} minutes of data, in the order they arrived through gateway and router.</p>
+    ${(ex.window_seconds / 60).toFixed(0)} minutes of data, in the order they arrived through gateway and router.
+    ${ex.source === "simulate" ? "<b>Simulated:</b> these are recorded uplinks with the levels changed by the sliders." : ex.source === "replay" ? "These are recorded uplinks from the historical run." : ""}</p>
     <table class="uplinks"><thead><tr><th>Received</th><th>Sensor</th><th>Payload (decoded)</th></tr></thead><tbody>${ups}</tbody></table></section>`;
 
   // step 2 · features
@@ -464,3 +476,60 @@ function exNet(d, m) {
   return `<svg class="net" viewBox="0 0 ${W} ${H + 4}">${svg}</svg>
     <div class="muted" style="font-size:.75rem">Lines: the most influential neurons of the last hidden layer for "${esc(phaseName(m.label))}". Output circles are coloured by phase, darker means more likely.</div>`;
 }
+
+
+// ── virtual sausage (what-if simulation) ───────────────────────────────────
+const signed = (v, d = 1) => (v > 0 ? "+" : v < 0 ? "−" : "±") + Math.abs(v).toFixed(d);
+let simTimer = null, simSeq = 0, simRunDays = null;
+const PRESETS = {
+  fresh: {pos: 20, dm: 0, cf: 100, dt: 0},
+  dry: {dm: -20, cf: 60},
+  warm: {dt: 6},
+  reset: {dm: 0, cf: 100, dt: 0},
+};
+function simLabels() {
+  const pos = Number($("#sim-pos").value) / 1000;
+  $("#sim-pos-v").textContent = simRunDays != null ? `day ${(pos * simRunDays).toFixed(1)}` : `${(pos * 100).toFixed(0)} %`;
+  $("#sim-dm-v").textContent = `${signed(Number($("#sim-dm").value), 0)} %pt`;
+  $("#sim-cf-v").textContent = `× ${(Number($("#sim-cf").value) / 100).toFixed(2)}`;
+  $("#sim-dt-v").textContent = `${signed(Number($("#sim-dt").value))} °C`;
+}
+function scheduleSim() { simLabels(); clearTimeout(simTimer); simTimer = setTimeout(runSim, 120); }
+async function runSim() {
+  if (!$("#sim-rec").value) return;
+  simLabels();
+  const seq = ++simSeq;
+  let res;
+  try {
+    res = await api("/api/simulate", {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({group: $("#sim-rec").value, position: Number($("#sim-pos").value) / 1000,
+        adjust: {moisture_delta: Number($("#sim-dm").value), conductivity_factor: Number($("#sim-cf").value) / 100,
+                 temperature_delta: Number($("#sim-dt").value)}})});
+  } catch (e) { $("#sim-models").innerHTML = `<p class="err-text">${esc(e.message)}</p>`; return; }
+  if (seq !== simSeq) return;  // a newer slider position is already on its way
+  simRunDays = res.run_days;
+  simLabels();
+  const fmt = {lse01_moisture: ["moisture", "%", 1], lse01_conductivity: ["conductivity", "µS/cm", 0],
+               lse01_temperature: ["core temp", "°C", 1], ltcfs_temperature: ["probe temp", "°C", 1]};
+  $("#sim-values").innerHTML = "Window average, recorded → simulated: " + Object.entries(fmt).map(([k, [n, u, d]]) => {
+    const a = res.recorded_means[k], b = res.simulated_means[k];
+    if (a == null) return "";
+    const changed = Math.abs(a - b) > 1e-9;
+    return `<span class="val">${n} ${a.toFixed(d)}${changed ? ` → <span class="chg">${b.toFixed(d)}</span>` : ""} ${u}</span>`;
+  }).join("");
+  $("#sim-models").innerHTML = modelCards(res, (STATE && STATE.models.models) || [], {
+    truth: res.truth, showTruth: true, compareTruth: !res.truth_is_for_unmodified, simulated: true, explain: "simulate",
+    truthNote: res.truth_is_for_unmodified ? "label of the UNMODIFIED recording at this day" : "human label from the recording",
+  });
+}
+["#sim-pos", "#sim-dm", "#sim-cf", "#sim-dt"].forEach((id) => $(id).addEventListener("input", scheduleSim));
+$("#sim-rec").addEventListener("change", runSim);
+document.querySelectorAll("[data-preset]").forEach((b) => b.addEventListener("click", () => {
+  const p = PRESETS[b.dataset.preset];
+  if (p.pos != null) $("#sim-pos").value = p.pos;
+  if (p.dm != null) $("#sim-dm").value = p.dm;
+  if (p.cf != null) $("#sim-cf").value = p.cf;
+  if (p.dt != null) $("#sim-dt").value = p.dt;
+  runSim();
+}));
+simLabels();

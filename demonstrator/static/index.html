@@ -47,6 +47,7 @@
       <h2>2 · What does each model predict?</h2>
       <div class="tabs" role="tablist">
         <button class="tab active" data-tab="replay">Recorded run (replay)</button>
+        <button class="tab" data-tab="sim">Virtual sausage (simulate)</button>
         <button class="tab" data-tab="live">Live sensors</button>
       </div>
     </div>
@@ -80,6 +81,30 @@
       </div>
       <svg id="timeline" viewBox="0 0 1000 260" preserveAspectRatio="none" role="img" aria-label="Phase timeline"></svg>
       <div class="legend" id="legend"></div>
+    </div>
+
+    <div id="tab-sim" hidden>
+      <div class="banner sim"><span class="badge sim">SIMULATED</span>
+        There is no sausage in the case. This takes a real recorded window from any day of a curing run and lets you
+        change the measured levels. The models re-predict instantly, so you can ask "what if the sausage were drier, warmer, saltier?"
+      </div>
+      <div class="controls">
+        <label>Recorded run <select id="sim-rec"></select></label>
+        <span class="presets">Try:
+          <button data-preset="fresh">Fresh sausage</button>
+          <button data-preset="dry">Dried out</button>
+          <button data-preset="warm">Too warm</button>
+          <button data-preset="reset">Reset changes</button>
+        </span>
+      </div>
+      <div class="sim-grid">
+        <label class="slider"><span>Day of curing</span><input type="range" id="sim-pos" min="0" max="1000" value="200"><b id="sim-pos-v"></b></label>
+        <label class="slider"><span>Moisture</span><input type="range" id="sim-dm" min="-30" max="30" step="1" value="0"><b id="sim-dm-v"></b></label>
+        <label class="slider"><span>Conductivity</span><input type="range" id="sim-cf" min="30" max="200" step="5" value="100"><b id="sim-cf-v"></b></label>
+        <label class="slider"><span>Temperature</span><input type="range" id="sim-dt" min="-10" max="10" step="0.5" value="0"><b id="sim-dt-v"></b></label>
+      </div>
+      <div class="muted" id="sim-values"></div>
+      <div id="sim-models"></div>
     </div>
 
     <div id="tab-live" hidden>

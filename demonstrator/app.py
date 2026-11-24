@@ -16,6 +16,7 @@ from .explain import explain
 from .inference import ModelRegistry
 from .live import LiveState
 from .replay import ReplayEngine
+from .simulate import LIMITS, Simulator
 
 log = logging.getLogger(__name__)
 STATIC = os.path.join(os.path.dirname(__file__), "static")
@@ -72,6 +73,7 @@ def create_app(cfg: Config) -> FastAPI:
     models = ModelRegistry(cfg.models_dir)
     live = LiveState(cfg, models)
     replay = ReplayEngine(models, cfg.replay_dirs)
+    simulator = Simulator(models, cfg.replay_dirs)
     mqtt_ingest = MqttIngest(cfg, live)
     started = time.time()
 
@@ -152,6 +154,14 @@ def create_app(cfg: Config) -> FastAPI:
         """Explain the prediction currently on screen (replay) or the latest live window."""
         if not models.ok:
             raise HTTPException(409, models.error or "models not loaded")
+        if source == "simulate":
+            if simulator.last is None:
+                raise HTTPException(404, "no simulation yet")
+            rows, group, res = simulator.last
+            out = explain(models, rows, group)
+            out.update(source="simulate", group=group, time=res["time"], truth=res["truth"],
+                       adjust=res["adjust"])
+            return out
         if source == "replay":
             rows, group, latest = replay.current_window()
             if rows is None:
@@ -166,6 +176,22 @@ def create_app(cfg: Config) -> FastAPI:
             out.update(source="live", group=slot, truth=None,
                        time=rows["timestamp"].iloc[-1].isoformat() if len(rows) else None)
         return out
+
+    @app.post("/api/simulate")
+    async def simulate(request: Request):
+        """What-if on a recorded window: {group, position 0..1, adjust{...}}."""
+        if not models.ok:
+            raise HTTPException(409, models.error or "models not loaded")
+        body = await request.json()
+        try:
+            return await _run_sync(simulator.run, body["group"], float(body.get("position", 0.5)),
+                                   body.get("adjust") or {})
+        except (KeyError, ValueError) as e:
+            raise HTTPException(400, str(e))
+
+    @app.get("/api/simulate/limits")
+    def simulate_limits():
+        return LIMITS
 
     @app.post("/api/models/reload")
     def models_reload():

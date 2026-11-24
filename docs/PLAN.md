@@ -13,6 +13,7 @@ Status as of 23 Nov 2026. Scope: [assignment requirements](ASSIGNMENT_REQUIREMEN
 | Explaining predictions | "How was this decided?" overlay. (1) the uplinks in the window, (2) the 29 features with training range, (3) **one** occlusion test for all models (hide one sensor signal → change in confidence), (4) model-specific internals: LogReg weighted sum (exact), RF tree votes + Saabas split contributions, MLP neuron activations | (3) makes the models comparable, and (4) shows the three different principles, which is the point of A6/A7. Occlusion and Saabas are approximations: correlated signals share credit. This is stated in the UI. SHAP would be more rigorous but adds a dependency and seconds of latency per click. |
 | Live vs. recorded | Two separate panels; replay is always labeled REPLAY in orange | Curing takes days (§3.1). Replay is where the model comparison is meaningful; live proves the data path. |
 | Honest replay | Replaying a labeled sausage uses the **fold model trained without it** | Otherwise the demo would show memorised training data. The unlabeled series 2 (independent run) uses the final models. |
+| No sausage in the case | Three views of one system: **live** (real sensors, proves the LoRaWAN path), **replay** (a real recorded run with held-out models), **virtual sausage** (a recorded window from any day, levels shifted by sliders, models re-predict instantly) | Considered: mixing live readings into a recorded run, so that a live uplink advances the "sausage". Rejected: live air readings mixed with sausage readings would be a third, unrealistic kind of data and hard to label honestly. The simulator keeps real uplink timing and noise and changes only levels, and is labelled SIMULATED everywhere. Limit: shifting a level does not create a realistic *history* (e.g. a sausage that dried slowly). It answers "what does the model do with these numbers?", not "what would this sausage really do?". |
 | Live compatibility | Out-of-range check against training feature percentiles | Implements "only show live predictions where data is compatible": the dashboard warns instead of hiding. |
 | Random Forest size | Demo preset `max_depth=10, n_estimators=100` (HPO winner was unbounded, 500 trees) | An unbounded forest on ~160k windows grows to hundreds of MB. Compare both with `--rf-preset hpo` and report the difference. |
 
@@ -50,11 +51,8 @@ Status as of 23 Nov 2026. Scope: [assignment requirements](ASSIGNMENT_REQUIREMEN
 
 ## Open items (in order)
 
-0. **Sensors in the case vs. training sensors.** The brief (25 Mar 2026) shows a Dragino **LSN50-v2-S31** (air temp/humidity)
-   and an **LTC2-FS**. The models need the **LSE01** (moisture, conductivity, soil temp). Without an LSE01 in the case, live data
-   cannot feed the models, and the AI part runs on replay only. Option: a second, live-compatible model set on the LTC2-FS +
-   ambient temp/humidity. The raw Excel has an "Umgebung Temperatur & Luftfeuchtigkeit" device that the conversion notebook currently
-   drops. The S31 is supported as a display-only `generic` device.
+0. ~~Sensors in the case vs. training sensors.~~ Resolved 24 Nov: the case holds **WS202, LSE01, LTC-FS**, the same types as
+   the training data. Live values still come from air rather than a sausage. That is handled by the virtual sausage and the out-of-range warning.
 1. **Run `train_models.py` on the real data** and look at `metrics.json`. Check whether the slope fix changed scores.
 2. **Collect sensor data:** DevEUI/AppEUI/AppKey for every sensor; check that the sensors are not still joined to another network
    server (TTN, company LNS).
