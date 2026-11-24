@@ -1,0 +1,260 @@
+"use strict";
+// UI texts in German and English. Add a language by adding a block with the same keys;
+// missing keys fall back to English. Placeholders: {name}. Keys ending in _html may contain markup.
+const I18N = {
+  en: {
+    "header.sub": "LoRaWAN sensors → gateway → network → laptop → three CPU models, side by side",
+    "path.sensors": "LoRaWAN sensors", "path.radio": "LoRa radio", "path.gateway": "gateway + network server",
+    "path.router": "Router / Wi-Fi", "path.router_sub": "stands in for \"the Internet\"",
+    "path.laptop_sub": "decode → windows → features → 3 models",
+
+    "live.title": "1 · Which sensor sent what?", "live.th_sensor": "Sensor", "live.th_slot": "Slot",
+    "live.th_values": "Last values", "live.th_radio": "Radio", "live.th_seen": "Last seen", "live.th_uplinks": "Uplinks",
+    "live.recent": "Recent uplinks", "live.summary": "{n} uplinks since start", "live.not_in_config": "not in config",
+    "live.waiting": "waiting…", "live.decoded_codec": "decoded by gateway codec", "live.decoded_builtin": "decoded by built-in decoder",
+    "live.no_devices": "No devices configured. Copy config/demo.example.toml to config/demo.toml.",
+
+    "ago.never": "never", "ago.s": "{n} s ago", "ago.min": "{n} min ago", "ago.h": "{n} h ago",
+    "chip.gateway_last": "Gateway: last uplink {ago}", "chip.gateway_none": "Gateway: no uplink yet",
+    "chip.models": "{n} models loaded", "chip.quick": " (QUICK TEST MODELS)", "chip.models_err": "Models: {err}",
+    "chip.not_loaded": "not loaded", "chip.sklearn": "⚠ sklearn version mismatch",
+    "chip.replay_running": "REPLAY running", "chip.replay_idle": "Replay idle", "chip.unreachable": "Server unreachable: {err}",
+
+    "ai.title": "2 · What does each model predict?",
+    "tab.replay": "Recorded run (replay)", "tab.sim": "Virtual sausage (simulate)", "tab.live": "Live sensors",
+    "replay.recording": "Recording", "replay.speed": "Speed", "replay.start_at": "Start at",
+    "replay.start": "▶ Start replay", "replay.pause": "❚❚ Pause", "replay.resume": "▶ Resume", "replay.stop": "■ Stop",
+    "replay.chart_head": "Phase over time · top lanes: annotation and each model, bottom: measured signal",
+    "speed.600": "10 min / s", "speed.1800": "30 min / s", "speed.3600": "1 h / s", "speed.10800": "3 h / s", "speed.43200": "12 h / s",
+    "signal.lse01_moisture": "LSE01 moisture", "signal.lse01_conductivity": "LSE01 conductivity",
+    "signal.lse01_temperature": "LSE01 temperature", "signal.ltcfs_temperature": "LTC-FS temperature",
+    "replay.banner_html": "<span class=\"badge replay\">REPLAY</span> Recorded data, not live: <b>{group}</b> ({kind}, recorded {from} – {to}). Replay time <b>{now}</b> {state}",
+    "replay.state_paused_html": "· <b>PAUSED</b>", "replay.state_running": "at {min} min of data per second",
+    "replay.state_finished": "· finished", "replay.state_stopped": "· stopped",
+    "replay.empty": "Select a recording and start the replay.", "replay.train_first": "Train the models first (see README).",
+    "replay.timeline_empty": "Start a replay to see the run unfold.", "replay.day": "day {n}",
+    "rec.unlabeled": " (unlabeled, independent run)", "rec.live": " (live recording)", "rec.lfs": " (LFS pointer – git lfs pull)",
+    "kind.training data": "training data", "kind.live recording": "live recording",
+
+    "card.no_prediction": "No prediction yet.", "card.waiting": "Waiting for data: {reason}",
+    "card.matches": "✓ matches annotation", "card.differs": "✗ differs from annotation", "card.ms": "{ms} ms on CPU",
+    "card.annotation": "Annotation", "card.annotation_note": "human label from the recording",
+    "card.annotation_unmod": "label of the UNMODIFIED recording at this day", "card.none_unlabeled": "none (unlabeled run)",
+    "card.score_note": "agreement with annotation so far ({n} windows)",
+    "agree.all": "All three models agree.", "agree.partial": "The models disagree: two against one.", "agree.none": "All three models disagree.",
+    "warn.ood": "{pct} % of the input features are outside the training range. Treat these predictions as unreliable.",
+    "warn.seen": "These models were trained on this recording. They are reproducing training data, not predicting.",
+    "btn.explain": "🔍 How was this decided?",
+
+    "model.logreg": "Logistic Regression", "model.rf": "Random Forest", "model.mlp": "MLP (neural net)",
+    "short.logreg": "Log. Regr.", "short.rf": "Rand. Forest", "short.mlp": "MLP",
+    "kind.logreg": "linear · interpretable baseline", "kind.rf": "tree ensemble · nonlinear", "kind.mlp": "small neural network",
+    "phase.0": "Curing (Umrötung)", "phase.1": "Ripening phase 1", "phase.2": "Ripening phase 2",
+
+    "val.conductivity": "conductivity", "val.moisture": "moisture", "val.temp": "temp", "val.light": "light", "val.motion": "motion",
+    "val.light_on": "light", "val.light_off": "dark", "val.motion_on": "triggered", "val.motion_off": "idle",
+
+    "sim.banner_html": "<span class=\"badge sim\">SIMULATED</span> There is no sausage in the case. This takes a real recorded window from any day of a curing run and lets you change the measured levels. The models re-predict instantly, so you can ask \"what if the sausage were drier, warmer, saltier?\"",
+    "sim.run": "Recorded run", "sim.try": "Try:", "sim.fresh": "Fresh sausage", "sim.dry": "Dried out", "sim.warm": "Too warm",
+    "sim.reset": "Reset changes", "sim.day": "Day of curing", "sim.moisture": "Moisture", "sim.conductivity": "Conductivity",
+    "sim.temperature": "Temperature", "sim.day_v": "day {n}", "sim.pt": "%pt",
+    "sim.values": "Window average, recorded → simulated: ",
+    "simv.lse01_moisture": "moisture", "simv.lse01_conductivity": "conductivity", "simv.lse01_temperature": "core temp", "simv.ltcfs_temperature": "probe temp",
+
+    "livetab.note": "Live data proves the radio → gateway → network → laptop path. A sausage on the table does not ripen for days, so live phase predictions are only meaningful during a real curing run. The models are flagged when the live window falls outside the range they were trained on.",
+    "livetab.slot": "Sausage slot", "livetab.empty": "No live uplinks for this slot yet.",
+
+    "eval.title": "3 · How do the models compare on held-out data?", "eval.loading": "Loading evaluation…",
+    "eval.meta": "{s} sausages · {w} windows · trained {date}",
+    "eval.quick": "QUICK TEST MODELS: these numbers come from a smoke test, not the real evaluation.",
+    "eval.intro": "Leave-one-sausage-out: each model is scored on a sausage it never saw during training (mean ± std over {n} folds, in %). Balanced accuracy and macro-F1 weight all phases equally, even though the phases have different lengths.",
+    "eval.th_model": "Model", "eval.th_bal": "Balanced acc.", "eval.th_f1": "Macro-F1", "eval.th_acc": "Accuracy",
+    "eval.th_pred": "1 prediction", "eval.th_size": "Model size", "eval.th_fit": "Training time",
+    "eval.agree": "How often two models give the same label on held-out windows: ", "eval.cm": "Confusion matrices (row-normalised)",
+    "eval.cm_corner": "annotated ↓ / predicted →",
+    "eval.note": "All labeled sausages come from ONE curing run (series 1). Leave-one-sausage-out separates sausages, not runs; scores are likely optimistic for a new run.",
+
+    "limits.title_html": "4 · What this does <em>not</em> show",
+    "limits.1_html": "All labeled data comes from <b>one curing run</b> (five sausages). Held-out scores separate sausages, not runs, so they are probably optimistic for a new run.",
+    "limits.2": "Each prediction uses a short window of the latest uplinks. It reflects the current sensor levels, not the full history of the run.",
+    "limits.3": "The labels are human phase annotations, not a measured ground truth for food safety or quality. Model outputs are estimates, not decisions.",
+    "limits.4": "\"Confidence\" is the model's own probability, not a calibrated guarantee. The three models have different calibration, so compare their labels, not their confidence values.",
+    "footer": "Server up {min} min · config: {cfg} · gateway URL: http://<laptop-ip>:<port>{path}",
+    "footer.none": "none",
+
+    "ex.title": "How did the models reach this answer?", "ex.resume": "▶ Close & resume replay", "ex.close": "Close",
+    "ex.step1": "Uplinks received", "ex.step2": "Numbers the models see", "ex.step3": "Which signals mattered", "ex.step4": "Inside each model",
+    "ex.computing": "Computing explanation…",
+    "ex.snapshot": "snapshot at {time}", "ex.annotation": "annotation", "ex.annotation_unmod": "annotation of the unmodified recording",
+    "ex.changes": "changes: moisture {dm} %pt, conductivity ×{cf}, temperature {dt} °C",
+    "ex.s1_title": "Uplinks received",
+    "ex.s1_text": "The models never see a single reading. They see the last {n} uplinks from this sausage's sensors, {min} minutes of data, in the order they arrived through gateway and router.",
+    "ex.s1_sim_html": "<b>Simulated:</b> these are recorded uplinks with the levels changed by the sliders.",
+    "ex.s1_replay": "These are recorded uplinks from the historical run.",
+    "ex.th_received": "Received", "ex.th_sensor": "Sensor", "ex.th_payload": "Payload (decoded)",
+    "ex.env": "environment (not a model input)",
+    "ex.s2_title": "The {n} numbers the models see",
+    "ex.s2_text": "For every sensor signal the window is summarised into a few statistics: level (min, mean, max), spread, trend and the timing of the uplinks. The bar shows where each number sits within the training data. A red marker means it lies outside anything seen in training.",
+    "ex.range": "training range {lo} … {hi}",
+    "ex.s3_title": "Which signals mattered? (same test for all three models)",
+    "ex.s3_text_html": "We hide one sensor signal at a time, replacing its numbers with a typical training value, and watch how sure each model stays of its answer. A long bar means the model relied on that signal. Grey bars: hiding the signal made the model <i>more</i> sure. Signals that move together, such as two temperature probes, can stand in for each other, so this is a guide, not a proof.",
+    "ex.th_hidden": "Hidden signal", "ex.would_switch": "would switch to {phase}",
+    "ex.s4_title": "Inside each model: three different principles",
+    "ex.s4_text": "The same numbers go into three very different kinds of model. Each column shows what that model actually computed for this snapshot.",
+    "ex.seen": "This model was trained on this recording.",
+    "ex.lr_text": "Each input is multiplied by a learned weight and the products are summed. A higher sum means more evidence for the class.",
+    "ex.lr_head": "weight × input = evidence for \"{phase}\"",
+    "ex.lr_sum_html": "+ {n} smaller inputs: {rest} · + bias: {bias}<br>= score <b>{score}</b> → probability <b>{p}</b> after normalising across the three phases",
+    "ex.rf_text": "{n} decision trees each ask a series of yes/no questions about the inputs (e.g. \"is mean moisture < 41 %?\") and vote. The forest averages the votes.",
+    "ex.rf_votes_html": "<b>{k} of {n}</b> trees vote \"{phase}\"", "ex.rf_other": " · {k} vote {phase}",
+    "ex.rf_head": "Which questions moved the trees towards this answer (average over all trees, up to {d} questions per tree, in percentage points)",
+    "ex.mlp_text": "Numbers flow through {l} layers of artificial neurons ({p} learned parameters). Each neuron combines the layer before and passes it on if the result is positive. Brightness shows how strongly a neuron fired.",
+    "ex.mlp_inputs": "{n} inputs", "ex.mlp_output": "output", "ex.mlp_active": "{a}/{n} active",
+    "ex.mlp_note": "Lines: the most influential neurons of the last hidden layer for \"{phase}\". Output circles are coloured by phase, darker means more likely.",
+
+    "sig.lse01_moisture": "Moisture (LSE01)", "sig.lse01_conductivity": "Conductivity (LSE01)",
+    "sig.lse01_temperature": "Core temperature (LSE01)", "sig.ltcfs_temperature": "Temperature probe (LTC-FS)", "sig.timestamp": "Uplink timing",
+    "stat.min": "minimum", "stat.max": "maximum", "stat.mean": "mean", "stat.std": "spread (std)", "stat.skew": "skew",
+    "stat.slope": "trend (slope)", "stat.count": "uplinks", "stat.duration": "window length", "stat.interval": "avg gap",
+    "stat.min_interval": "shortest gap", "stat.max_interval": "longest gap", "unit.per_uplink": "/uplink",
+  },
+
+  de: {
+    "header.sub": "LoRaWAN-Sensoren → Gateway → Netzwerk → Laptop → drei KI-Modelle auf der CPU im direkten Vergleich",
+    "path.sensors": "LoRaWAN-Sensoren", "path.radio": "LoRa-Funk", "path.gateway": "Gateway + Netzwerkserver",
+    "path.router": "Router / WLAN", "path.router_sub": "steht für „das Internet“",
+    "path.laptop_sub": "dekodieren → Fenster → Merkmale → 3 Modelle",
+
+    "live.title": "1 · Welcher Sensor hat was gesendet?", "live.th_sensor": "Sensor", "live.th_slot": "Zuordnung",
+    "live.th_values": "Letzte Werte", "live.th_radio": "Funk", "live.th_seen": "Zuletzt", "live.th_uplinks": "Uplinks",
+    "live.recent": "Letzte Uplinks", "live.summary": "{n} Uplinks seit Start", "live.not_in_config": "nicht konfiguriert",
+    "live.waiting": "warte…", "live.decoded_codec": "dekodiert vom Gateway-Codec", "live.decoded_builtin": "dekodiert vom eingebauten Decoder",
+    "live.no_devices": "Keine Geräte konfiguriert. config/demo.example.toml nach config/demo.toml kopieren.",
+
+    "ago.never": "nie", "ago.s": "vor {n} s", "ago.min": "vor {n} min", "ago.h": "vor {n} h",
+    "chip.gateway_last": "Gateway: letzter Uplink {ago}", "chip.gateway_none": "Gateway: noch kein Uplink",
+    "chip.models": "{n} Modelle geladen", "chip.quick": " (SCHNELLTEST-MODELLE)", "chip.models_err": "Modelle: {err}",
+    "chip.not_loaded": "nicht geladen", "chip.sklearn": "⚠ sklearn-Version passt nicht",
+    "chip.replay_running": "WIEDERGABE läuft", "chip.replay_idle": "Wiedergabe aus", "chip.unreachable": "Server nicht erreichbar: {err}",
+
+    "ai.title": "2 · Was sagt jedes Modell vorher?",
+    "tab.replay": "Aufgezeichneter Lauf (Wiedergabe)", "tab.sim": "Virtuelle Wurst (Simulation)", "tab.live": "Live-Sensoren",
+    "replay.recording": "Aufzeichnung", "replay.speed": "Tempo", "replay.start_at": "Start bei",
+    "replay.start": "▶ Wiedergabe starten", "replay.pause": "❚❚ Pause", "replay.resume": "▶ Weiter", "replay.stop": "■ Stopp",
+    "replay.chart_head": "Phase im Zeitverlauf · oben: Annotation und jedes Modell, unten: Messwert",
+    "speed.600": "10 min / s", "speed.1800": "30 min / s", "speed.3600": "1 h / s", "speed.10800": "3 h / s", "speed.43200": "12 h / s",
+    "signal.lse01_moisture": "LSE01 Feuchte", "signal.lse01_conductivity": "LSE01 Leitfähigkeit",
+    "signal.lse01_temperature": "LSE01 Temperatur", "signal.ltcfs_temperature": "LTC-FS Temperatur",
+    "replay.banner_html": "<span class=\"badge replay\">WIEDERGABE</span> Aufgezeichnete Daten, nicht live: <b>{group}</b> ({kind}, aufgezeichnet {from} – {to}). Wiedergabezeit <b>{now}</b> {state}",
+    "replay.state_paused_html": "· <b>PAUSIERT</b>", "replay.state_running": "mit {min} min Daten pro Sekunde",
+    "replay.state_finished": "· beendet", "replay.state_stopped": "· gestoppt",
+    "replay.empty": "Aufzeichnung wählen und Wiedergabe starten.", "replay.train_first": "Zuerst die Modelle trainieren (siehe README).",
+    "replay.timeline_empty": "Wiedergabe starten, um den Reifeverlauf zu sehen.", "replay.day": "Tag {n}",
+    "rec.unlabeled": " (ohne Annotation, unabhängiger Lauf)", "rec.live": " (Live-Aufzeichnung)", "rec.lfs": " (LFS-Platzhalter – git lfs pull)",
+    "kind.training data": "Trainingsdaten", "kind.live recording": "Live-Aufzeichnung",
+
+    "card.no_prediction": "Noch keine Vorhersage.", "card.waiting": "Warte auf Daten: {reason}",
+    "card.matches": "✓ stimmt mit Annotation überein", "card.differs": "✗ weicht von Annotation ab", "card.ms": "{ms} ms auf der CPU",
+    "card.annotation": "Annotation", "card.annotation_note": "menschliche Einordnung aus der Aufzeichnung",
+    "card.annotation_unmod": "Einordnung der UNVERÄNDERTEN Aufzeichnung an diesem Tag", "card.none_unlabeled": "keine (Lauf ohne Annotation)",
+    "card.score_note": "Übereinstimmung mit der Annotation bisher ({n} Fenster)",
+    "agree.all": "Alle drei Modelle sind sich einig.", "agree.partial": "Die Modelle sind uneinig: zwei gegen eins.", "agree.none": "Alle drei Modelle sagen etwas anderes.",
+    "warn.ood": "{pct} % der Eingangsmerkmale liegen außerhalb des Trainingsbereichs. Diese Vorhersagen sind unzuverlässig.",
+    "warn.seen": "Diese Modelle wurden mit dieser Aufzeichnung trainiert. Sie geben Trainingsdaten wieder, statt vorherzusagen.",
+    "btn.explain": "🔍 Wie kam die Entscheidung zustande?",
+
+    "model.logreg": "Logistische Regression", "model.rf": "Random Forest", "model.mlp": "MLP (neuronales Netz)",
+    "short.logreg": "Log. Regr.", "short.rf": "Rand. Forest", "short.mlp": "MLP",
+    "kind.logreg": "linear · gut nachvollziehbar", "kind.rf": "Ensemble aus Entscheidungsbäumen · nichtlinear", "kind.mlp": "kleines neuronales Netz",
+    "phase.0": "Umrötung", "phase.1": "Reifung Phase 1", "phase.2": "Reifung Phase 2",
+
+    "val.conductivity": "Leitfähigkeit", "val.moisture": "Feuchte", "val.temp": "Temp.", "val.light": "Licht", "val.motion": "Bewegung",
+    "val.light_on": "hell", "val.light_off": "dunkel", "val.motion_on": "erkannt", "val.motion_off": "keine",
+
+    "sim.banner_html": "<span class=\"badge sim\">SIMULIERT</span> Im Koffer ist keine Wurst. Hier wird ein echtes aufgezeichnetes Zeitfenster von einem beliebigen Reifetag genommen, und die Messwerte lassen sich verändern. Die Modelle rechnen sofort neu, so lässt sich fragen: „Was wäre, wenn die Wurst trockener, wärmer oder salziger wäre?“",
+    "sim.run": "Aufgezeichneter Lauf", "sim.try": "Ausprobieren:", "sim.fresh": "Frische Wurst", "sim.dry": "Ausgetrocknet", "sim.warm": "Zu warm",
+    "sim.reset": "Änderungen zurücksetzen", "sim.day": "Reifetag", "sim.moisture": "Feuchte", "sim.conductivity": "Leitfähigkeit",
+    "sim.temperature": "Temperatur", "sim.day_v": "Tag {n}", "sim.pt": "%-Pkt.",
+    "sim.values": "Fenstermittel, aufgezeichnet → simuliert: ",
+    "simv.lse01_moisture": "Feuchte", "simv.lse01_conductivity": "Leitfähigkeit", "simv.lse01_temperature": "Kerntemp.", "simv.ltcfs_temperature": "Fühlertemp.",
+
+    "livetab.note": "Die Live-Daten zeigen den Weg Funk → Gateway → Netzwerk → Laptop. Eine Wurst auf dem Tisch reift nicht über Tage, daher sind Live-Phasenvorhersagen nur während eines echten Reifeprozesses aussagekräftig. Liegt das Live-Fenster außerhalb dessen, worauf die Modelle trainiert wurden, wird das angezeigt.",
+    "livetab.slot": "Wurst-Zuordnung", "livetab.empty": "Für diese Zuordnung noch keine Live-Uplinks.",
+
+    "eval.title": "3 · Wie schneiden die Modelle auf ungesehenen Daten ab?", "eval.loading": "Lade Auswertung…",
+    "eval.meta": "{s} Würste · {w} Fenster · trainiert am {date}",
+    "eval.quick": "SCHNELLTEST-MODELLE: Diese Zahlen stammen aus einem Funktionstest, nicht aus der echten Auswertung.",
+    "eval.intro": "Leave-one-sausage-out: Jedes Modell wird auf einer Wurst bewertet, die es im Training nie gesehen hat (Mittelwert ± Standardabweichung über {n} Durchläufe, in %). Balanced Accuracy und Makro-F1 gewichten alle Phasen gleich, obwohl die Phasen unterschiedlich lang sind.",
+    "eval.th_model": "Modell", "eval.th_bal": "Balanced Acc.", "eval.th_f1": "Makro‑F1", "eval.th_acc": "Genauig&shy;keit",
+    "eval.th_pred": "1 Vorher&shy;sage", "eval.th_size": "Modell&shy;größe", "eval.th_fit": "Trainings&shy;zeit",
+    "eval.agree": "Wie oft zwei Modelle auf ungesehenen Fenstern dieselbe Phase nennen: ", "eval.cm": "Konfusionsmatrizen (zeilennormiert)",
+    "eval.cm_corner": "annotiert ↓ / vorhergesagt →",
+    "eval.note": "Alle annotierten Würste stammen aus EINEM Reifedurchlauf (Serie 1). Leave-one-sausage-out trennt Würste, nicht Durchläufe; für einen neuen Durchlauf sind die Werte vermutlich zu optimistisch.",
+
+    "limits.title_html": "4 · Was das <em>nicht</em> zeigt",
+    "limits.1_html": "Alle annotierten Daten stammen aus <b>einem Reifedurchlauf</b> (fünf Würste). Die Bewertung trennt Würste, nicht Durchläufe, und ist für einen neuen Durchlauf daher vermutlich zu optimistisch.",
+    "limits.2": "Jede Vorhersage nutzt ein kurzes Fenster der letzten Uplinks. Sie spiegelt das aktuelle Messniveau wider, nicht den gesamten Verlauf.",
+    "limits.3": "Die Labels sind menschliche Phaseneinordnungen, keine gemessene Wahrheit über Lebensmittelsicherheit oder Qualität. Modellausgaben sind Schätzungen, keine Entscheidungen.",
+    "limits.4": "„Konfidenz“ ist die eigene Wahrscheinlichkeit des Modells, keine kalibrierte Garantie. Die drei Modelle sind unterschiedlich kalibriert, daher besser die Phasen vergleichen als die Prozentwerte.",
+    "footer": "Server läuft seit {min} min · Konfiguration: {cfg} · Gateway-URL: http://<laptop-ip>:<port>{path}",
+    "footer.none": "keine",
+
+    "ex.title": "Wie sind die Modelle zu dieser Antwort gekommen?", "ex.resume": "▶ Schließen & Wiedergabe fortsetzen", "ex.close": "Schließen",
+    "ex.step1": "Empfangene Uplinks", "ex.step2": "Zahlen, die die Modelle sehen", "ex.step3": "Welche Signale zählten", "ex.step4": "Im Inneren der Modelle",
+    "ex.computing": "Erklärung wird berechnet…",
+    "ex.snapshot": "Momentaufnahme {time}", "ex.annotation": "Annotation", "ex.annotation_unmod": "Annotation der unveränderten Aufzeichnung",
+    "ex.changes": "Änderungen: Feuchte {dm} %-Pkt., Leitfähigkeit ×{cf}, Temperatur {dt} °C",
+    "ex.s1_title": "Empfangene Uplinks",
+    "ex.s1_text": "Die Modelle sehen nie einen einzelnen Messwert, sondern die letzten {n} Uplinks der Sensoren dieser Wurst, {min} Minuten Daten, in der Reihenfolge, in der sie über Gateway und Router ankamen.",
+    "ex.s1_sim_html": "<b>Simuliert:</b> Das sind aufgezeichnete Uplinks, deren Werte mit den Schiebereglern verändert wurden.",
+    "ex.s1_replay": "Das sind aufgezeichnete Uplinks aus dem historischen Durchlauf.",
+    "ex.th_received": "Empfangen", "ex.th_sensor": "Sensor", "ex.th_payload": "Nutzdaten (dekodiert)",
+    "ex.env": "Umgebung (kein Modelleingang)",
+    "ex.s2_title": "Die {n} Zahlen, die die Modelle sehen",
+    "ex.s2_text": "Für jedes Sensorsignal wird das Fenster zu wenigen Kennzahlen verdichtet: Niveau (Min., Mittel, Max.), Streuung, Trend und das Timing der Uplinks. Der Balken zeigt, wo jede Zahl innerhalb der Trainingsdaten liegt. Eine rote Markierung bedeutet: außerhalb von allem, was im Training vorkam.",
+    "ex.range": "Trainingsbereich {lo} … {hi}",
+    "ex.s3_title": "Welche Signale zählten? (gleicher Test für alle drei Modelle)",
+    "ex.s3_text_html": "Wir blenden jeweils ein Sensorsignal aus, indem wir seine Zahlen durch einen typischen Trainingswert ersetzen, und beobachten, wie sicher sich jedes Modell noch ist. Ein langer Balken heißt: Das Modell hat sich auf dieses Signal gestützt. Graue Balken: Ohne das Signal war das Modell sich <i>sicherer</i>. Signale, die sich gemeinsam bewegen (etwa zwei Temperaturfühler), können sich gegenseitig ersetzen. Das ist also ein Hinweis, kein Beweis.",
+    "ex.th_hidden": "Ausgeblendetes Signal", "ex.would_switch": "würde wechseln zu {phase}",
+    "ex.s4_title": "Im Inneren der Modelle: drei verschiedene Prinzipien",
+    "ex.s4_text": "Dieselben Zahlen gehen in drei sehr unterschiedliche Modellarten. Jede Spalte zeigt, was das Modell für diese Momentaufnahme tatsächlich berechnet hat.",
+    "ex.seen": "Dieses Modell wurde mit dieser Aufzeichnung trainiert.",
+    "ex.lr_text": "Jeder Eingangswert wird mit einem gelernten Gewicht multipliziert, die Produkte werden addiert. Eine höhere Summe bedeutet mehr Evidenz für die Phase.",
+    "ex.lr_head": "Gewicht × Eingang = Evidenz für „{phase}“",
+    "ex.lr_sum_html": "+ {n} kleinere Eingänge: {rest} · + Achsenabschnitt: {bias}<br>= Wert <b>{score}</b> → Wahrscheinlichkeit <b>{p}</b> nach Normierung über die drei Phasen",
+    "ex.rf_text": "{n} Entscheidungsbäume stellen jeweils eine Reihe von Ja/Nein-Fragen an die Eingänge (z. B. „ist die mittlere Feuchte < 41 %?“) und stimmen ab. Der Wald mittelt die Stimmen.",
+    "ex.rf_votes_html": "<b>{k} von {n}</b> Bäumen stimmen für „{phase}“", "ex.rf_other": " · {k} für {phase}",
+    "ex.rf_head": "Welche Fragen die Bäume zu dieser Antwort geführt haben (Mittel über alle Bäume, bis zu {d} Fragen pro Baum, in Prozentpunkten)",
+    "ex.mlp_text": "Die Zahlen fließen durch {l} Schichten künstlicher Neuronen ({p} gelernte Parameter). Jedes Neuron verrechnet die Schicht davor und gibt das Ergebnis weiter, wenn es positiv ist. Die Helligkeit zeigt, wie stark ein Neuron aktiviert ist.",
+    "ex.mlp_inputs": "{n} Eingänge", "ex.mlp_output": "Ausgabe", "ex.mlp_active": "{a}/{n} aktiv",
+    "ex.mlp_note": "Linien: die einflussreichsten Neuronen der letzten verborgenen Schicht für „{phase}“. Ausgabekreise sind nach Phase eingefärbt, dunkler heißt wahrscheinlicher.",
+
+    "sig.lse01_moisture": "Feuchte (LSE01)", "sig.lse01_conductivity": "Leitfähigkeit (LSE01)",
+    "sig.lse01_temperature": "Kerntemperatur (LSE01)", "sig.ltcfs_temperature": "Temperaturfühler (LTC-FS)", "sig.timestamp": "Uplink-Timing",
+    "stat.min": "Minimum", "stat.max": "Maximum", "stat.mean": "Mittelwert", "stat.std": "Streuung (Std.)", "stat.skew": "Schiefe",
+    "stat.slope": "Trend (Steigung)", "stat.count": "Uplinks", "stat.duration": "Fensterlänge", "stat.interval": "mittl. Abstand",
+    "stat.min_interval": "kürzester Abstand", "stat.max_interval": "längster Abstand", "unit.per_uplink": "/Uplink",
+  },
+};
+
+let LANG = (() => {
+  const q = new URLSearchParams(location.search).get("lang");
+  if (q && I18N[q]) return q;
+  try { const s = localStorage.getItem("lang"); if (s && I18N[s]) return s; } catch (e) { /* storage unavailable */ }
+  return (navigator.language || "en").toLowerCase().startsWith("de") ? "de" : "en";
+})();
+
+function t(key, params) {
+  let s = (I18N[LANG] && I18N[LANG][key]) ?? I18N.en[key] ?? key;
+  if (params) s = s.replace(/\{(\w+)\}/g, (m, k) => (params[k] ?? m));
+  return s;
+}
+const LOCALE = () => (LANG === "de" ? "de-DE" : "en-GB");
+const fmtNum = (v, d = 0) => Number(v).toLocaleString(LOCALE(), {minimumFractionDigits: d, maximumFractionDigits: d});
+
+function applyStaticI18n() {
+  document.documentElement.lang = LANG;
+  document.querySelectorAll("[data-i18n]").forEach((el) => (el.textContent = t(el.dataset.i18n)));
+  document.querySelectorAll("[data-i18n-html]").forEach((el) => (el.innerHTML = t(el.dataset.i18nHtml + "_html")));
+  document.querySelectorAll("[data-lang]").forEach((b) => b.classList.toggle("active", b.dataset.lang === LANG));
+}

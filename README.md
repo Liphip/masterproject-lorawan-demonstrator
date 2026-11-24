@@ -45,6 +45,12 @@ pushes fake uplinks (marked *test*, never recorded) through the same HTTP path a
 **Gateway:** point the UG63 HTTP uplink integration at `http://<laptop-ip>:8000/ingest/uplink`.
 The start script prints the URL. See [docs/RUNBOOK.md](docs/RUNBOOK.md).
 
+## Language
+
+The dashboard is available in **German and English** (DE/EN switch top right, also in the explanation overlay).
+It starts in the browser's language; `http://localhost:8000/?lang=de` forces German. The choice is remembered per browser.
+All texts are in `demonstrator/static/i18n.js`. Technical error messages from the server stay in English.
+
 ## Train the models
 
 `training/train_models.py` reuses the HPO winners from the notebook. It produces:

@@ -188,7 +188,8 @@ def explain(registry, rows: pd.DataFrame, group: str | None) -> dict:
         pos = None
         if lo is not None and np.isfinite(v) and hi > lo:
             pos = float((v - lo) / (hi - lo))
-        features.append({"feature": name, "signal": sig, "signal_label": sig_label, "stat": stat,
+        stat_key = name[len(sig) + 1:] if name.startswith(sig + "_") else name
+        features.append({"feature": name, "signal": sig, "signal_label": sig_label, "stat": stat, "stat_key": stat_key,
                          "unit": UNITS.get(sig, ""), "value": None if not np.isfinite(v) else float(v),
                          "range": [lo, hi], "position": pos})
     uplinks = []
