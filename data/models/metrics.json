@@ -1,0 +1,330 @@
+{
+  "created_at": "2026-11-24T23:09:43.853010+00:00",
+  "classes": [
+    "Umroetung",
+    "Reifung Phase 1",
+    "Reifung Phase 2"
+  ],
+  "models": {
+    "logreg": {
+      "name": "Logistic Regression",
+      "params": {
+        "C": 100,
+        "class_weight": "balanced",
+        "l1_ratio": 0,
+        "max_iter": 1000,
+        "solver": "liblinear"
+      },
+      "folds": [
+        {
+          "held_out": "series_1_sausage_1",
+          "accuracy": 0.6828291600328075,
+          "balanced_accuracy": 0.7165043073529729,
+          "macro_f1": 0.6889721767123397,
+          "n_windows": 20727,
+          "fit_seconds": 34.83793370006606,
+          "batch_ms_per_window": 0.0007161866330175063
+        },
+        {
+          "held_out": "series_1_sausage_2",
+          "accuracy": 0.7798408488063661,
+          "balanced_accuracy": 0.8078733548778453,
+          "macro_f1": 0.7720172019867902,
+          "n_windows": 20735,
+          "fit_seconds": 25.419895200058818,
+          "batch_ms_per_window": 0.0008346611952347614
+        },
+        {
+          "held_out": "series_1_sausage_3",
+          "accuracy": 0.7867342016401351,
+          "balanced_accuracy": 0.7572522243040476,
+          "macro_f1": 0.764110209449757,
+          "n_windows": 20730,
+          "fit_seconds": 36.083636900410056,
+          "batch_ms_per_window": 0.0008357790767341435
+        },
+        {
+          "held_out": "series_1_sausage_4",
+          "accuracy": 0.7784101871502991,
+          "balanced_accuracy": 0.7530140939370148,
+          "macro_f1": 0.7585412331456243,
+          "n_windows": 20732,
+          "fit_seconds": 40.74717009998858,
+          "batch_ms_per_window": 0.0007963968797031802
+        },
+        {
+          "held_out": "series_1_sausage_5",
+          "accuracy": 0.8722983404091085,
+          "balanced_accuracy": 0.859699683930646,
+          "macro_f1": 0.8660052382472415,
+          "n_windows": 20728,
+          "fit_seconds": 28.589615100063384,
+          "batch_ms_per_window": 0.000756040122216213
+        }
+      ],
+      "accuracy": {
+        "mean": 0.7800225476077433,
+        "std": 0.06001509067886483,
+        "min": 0.6828291600328075,
+        "max": 0.8722983404091085
+      },
+      "balanced_accuracy": {
+        "mean": 0.7788687328805053,
+        "std": 0.04979953436367108,
+        "min": 0.7165043073529729,
+        "max": 0.859699683930646
+      },
+      "macro_f1": {
+        "mean": 0.7699292119083505,
+        "std": 0.05648460133041659,
+        "min": 0.6889721767123397,
+        "max": 0.8660052382472415
+      },
+      "confusion_matrix": [
+        [
+          33194,
+          3308,
+          33
+        ],
+        [
+          2944,
+          28210,
+          9437
+        ],
+        [
+          0,
+          7079,
+          19447
+        ]
+      ],
+      "single_prediction_ms": 3.9021498523652554,
+      "batch_ms_per_window": 0.0007878127813811609,
+      "fit_seconds_all_data": 40.006426100153476,
+      "model_file_bytes": 6730
+    },
+    "rf": {
+      "name": "Random Forest",
+      "params": {
+        "bootstrap": true,
+        "class_weight": "balanced_subsample",
+        "criterion": "gini",
+        "max_depth": 10,
+        "max_features": "sqrt",
+        "min_samples_leaf": 1,
+        "min_samples_split": 2,
+        "n_estimators": 100
+      },
+      "folds": [
+        {
+          "held_out": "series_1_sausage_1",
+          "accuracy": 0.6740000964924977,
+          "balanced_accuracy": 0.7099945481382348,
+          "macro_f1": 0.6798056285299792,
+          "n_windows": 20727,
+          "fit_seconds": 1.504337599966675,
+          "batch_ms_per_window": 0.0024888744104982325
+        },
+        {
+          "held_out": "series_1_sausage_2",
+          "accuracy": 0.8260429225946467,
+          "balanced_accuracy": 0.8200634271323585,
+          "macro_f1": 0.8259375297131623,
+          "n_windows": 20735,
+          "fit_seconds": 1.7004285999573767,
+          "batch_ms_per_window": 0.0026232601811088424
+        },
+        {
+          "held_out": "series_1_sausage_3",
+          "accuracy": 0.825277375783888,
+          "balanced_accuracy": 0.8269066206326118,
+          "macro_f1": 0.8318888030688795,
+          "n_windows": 20730,
+          "fit_seconds": 1.5948106003925204,
+          "batch_ms_per_window": 0.0025393053605340266
+        },
+        {
+          "held_out": "series_1_sausage_4",
+          "accuracy": 0.6212618174802238,
+          "balanced_accuracy": 0.603154438904946,
+          "macro_f1": 0.610200643804598,
+          "n_windows": 20732,
+          "fit_seconds": 1.6567905996926129,
+          "batch_ms_per_window": 0.003737483113233633
+        },
+        {
+          "held_out": "series_1_sausage_5",
+          "accuracy": 0.7692010806638364,
+          "balanced_accuracy": 0.7399371977873804,
+          "macro_f1": 0.7412311135516573,
+          "n_windows": 20728,
+          "fit_seconds": 1.4592593000270426,
+          "batch_ms_per_window": 0.003369413354890209
+        }
+      ],
+      "accuracy": {
+        "mean": 0.7431566586030185,
+        "std": 0.08238111342361179,
+        "min": 0.6212618174802238,
+        "max": 0.8260429225946467
+      },
+      "balanced_accuracy": {
+        "mean": 0.7400112465191063,
+        "std": 0.0819633468307694,
+        "min": 0.603154438904946,
+        "max": 0.8269066206326118
+      },
+      "macro_f1": {
+        "mean": 0.7378127437336552,
+        "std": 0.0851793890078432,
+        "min": 0.610200643804598,
+        "max": 0.8318888030688795
+      },
+      "confusion_matrix": [
+        [
+          33033,
+          3502,
+          0
+        ],
+        [
+          5445,
+          26233,
+          8913
+        ],
+        [
+          35,
+          8727,
+          17764
+        ]
+      ],
+      "single_prediction_ms": 9.727400029078126,
+      "batch_ms_per_window": 0.002951667284052989,
+      "fit_seconds_all_data": 2.0070756003260612,
+      "model_file_bytes": 4183970
+    },
+    "mlp": {
+      "name": "MLP (neural net)",
+      "params": {
+        "activation": "tanh",
+        "alpha": 0.001,
+        "batch_size": 32,
+        "early_stopping": true,
+        "hidden_layer_sizes": [
+          64,
+          32
+        ],
+        "learning_rate_init": 0.001,
+        "max_iter": 500,
+        "validation_fraction": 0.15
+      },
+      "folds": [
+        {
+          "held_out": "series_1_sausage_1",
+          "accuracy": 0.6031746031746031,
+          "balanced_accuracy": 0.64703449090973,
+          "macro_f1": 0.6050592020565372,
+          "n_windows": 20727,
+          "fit_seconds": 52.13038039999083,
+          "batch_ms_per_window": 0.0018401746499950797
+        },
+        {
+          "held_out": "series_1_sausage_2",
+          "accuracy": 0.7048468772606704,
+          "balanced_accuracy": 0.7431897409890742,
+          "macro_f1": 0.6850578476228116,
+          "n_windows": 20735,
+          "fit_seconds": 30.15218780003488,
+          "batch_ms_per_window": 0.0017492645196679531
+        },
+        {
+          "held_out": "series_1_sausage_3",
+          "accuracy": 0.702315484804631,
+          "balanced_accuracy": 0.7254983909572141,
+          "macro_f1": 0.7091593834004072,
+          "n_windows": 20730,
+          "fit_seconds": 59.82377150002867,
+          "batch_ms_per_window": 0.0017684177678389302
+        },
+        {
+          "held_out": "series_1_sausage_4",
+          "accuracy": 0.7059135635732201,
+          "balanced_accuracy": 0.6521344818505063,
+          "macro_f1": 0.6396155722850247,
+          "n_windows": 20732,
+          "fit_seconds": 47.57300559990108,
+          "batch_ms_per_window": 0.001683349404164189
+        },
+        {
+          "held_out": "series_1_sausage_5",
+          "accuracy": 0.6746912389038981,
+          "balanced_accuracy": 0.6774520858932886,
+          "macro_f1": 0.6556951228032366,
+          "n_windows": 20728,
+          "fit_seconds": 34.906363799702376,
+          "batch_ms_per_window": 0.0017965264359236753
+        }
+      ],
+      "accuracy": {
+        "mean": 0.6781883535434046,
+        "std": 0.03924480902252569,
+        "min": 0.6031746031746031,
+        "max": 0.7059135635732201
+      },
+      "balanced_accuracy": {
+        "mean": 0.6890618381199627,
+        "std": 0.0387870239977634,
+        "min": 0.64703449090973,
+        "max": 0.7431897409890742
+      },
+      "macro_f1": {
+        "mean": 0.6589174256336034,
+        "std": 0.03603117818532459,
+        "min": 0.6050592020565372,
+        "max": 0.7091593834004072
+      },
+      "confusion_matrix": [
+        [
+          32521,
+          3987,
+          27
+        ],
+        [
+          7480,
+          18903,
+          14208
+        ],
+        [
+          11,
+          7643,
+          18872
+        ]
+      ],
+      "single_prediction_ms": 3.6582998000085354,
+      "batch_ms_per_window": 0.0017675465555179654,
+      "fit_seconds_all_data": 56.222416900098324,
+      "model_file_bytes": 111597
+    }
+  },
+  "agreement_on_held_out": {
+    "logreg|rf": 0.7932794350326091,
+    "logreg|mlp": 0.8014703044803766,
+    "rf|mlp": 0.786883031682939
+  },
+  "quick": false,
+  "dataset": {
+    "labeled_groups": [
+      "series_1_sausage_1",
+      "series_1_sausage_2",
+      "series_1_sausage_3",
+      "series_1_sausage_4",
+      "series_1_sausage_5"
+    ],
+    "n_windows": 103652,
+    "class_counts": {
+      "Umroetung": 36535,
+      "Reifung Phase 1": 40591,
+      "Reifung Phase 2": 26526
+    },
+    "window_size": 10,
+    "stride": 2
+  }
+}

@@ -1,0 +1,275 @@
+{
+  "created_at": "2026-11-24T23:09:43.853010+00:00",
+  "window_size": 10,
+  "stride": 2,
+  "feature_order": [
+    "timestamp",
+    "sensor",
+    "lse01_conductivity",
+    "lse01_moisture",
+    "lse01_temperature",
+    "ltcfs_temperature"
+  ],
+  "output_columns": [
+    "lse01_conductivity_max",
+    "lse01_conductivity_mean",
+    "lse01_conductivity_min",
+    "lse01_conductivity_skew",
+    "lse01_conductivity_slope",
+    "lse01_conductivity_std",
+    "lse01_moisture_max",
+    "lse01_moisture_mean",
+    "lse01_moisture_min",
+    "lse01_moisture_skew",
+    "lse01_moisture_slope",
+    "lse01_moisture_std",
+    "lse01_temperature_max",
+    "lse01_temperature_mean",
+    "lse01_temperature_min",
+    "lse01_temperature_skew",
+    "lse01_temperature_slope",
+    "lse01_temperature_std",
+    "ltcfs_temperature_max",
+    "ltcfs_temperature_mean",
+    "ltcfs_temperature_min",
+    "ltcfs_temperature_skew",
+    "ltcfs_temperature_slope",
+    "ltcfs_temperature_std",
+    "timestamp_count",
+    "timestamp_duration",
+    "timestamp_interval",
+    "timestamp_max_interval",
+    "timestamp_min_interval"
+  ],
+  "classes": [
+    "Umroetung",
+    "Reifung Phase 1",
+    "Reifung Phase 2"
+  ],
+  "labeled_groups": [
+    "series_1_sausage_1",
+    "series_1_sausage_2",
+    "series_1_sausage_3",
+    "series_1_sausage_4",
+    "series_1_sausage_5"
+  ],
+  "models": [
+    {
+      "key": "logreg",
+      "name": "Logistic Regression",
+      "final": {
+        "dir": "final",
+        "name": "logreg_final"
+      },
+      "folds": {
+        "series_1_sausage_1": {
+          "dir": "folds\\series_1_sausage_1",
+          "name": "logreg_without_series_1_sausage_1"
+        },
+        "series_1_sausage_2": {
+          "dir": "folds\\series_1_sausage_2",
+          "name": "logreg_without_series_1_sausage_2"
+        },
+        "series_1_sausage_3": {
+          "dir": "folds\\series_1_sausage_3",
+          "name": "logreg_without_series_1_sausage_3"
+        },
+        "series_1_sausage_4": {
+          "dir": "folds\\series_1_sausage_4",
+          "name": "logreg_without_series_1_sausage_4"
+        },
+        "series_1_sausage_5": {
+          "dir": "folds\\series_1_sausage_5",
+          "name": "logreg_without_series_1_sausage_5"
+        }
+      }
+    },
+    {
+      "key": "rf",
+      "name": "Random Forest",
+      "final": {
+        "dir": "final",
+        "name": "rf_final"
+      },
+      "folds": {
+        "series_1_sausage_1": {
+          "dir": "folds\\series_1_sausage_1",
+          "name": "rf_without_series_1_sausage_1"
+        },
+        "series_1_sausage_2": {
+          "dir": "folds\\series_1_sausage_2",
+          "name": "rf_without_series_1_sausage_2"
+        },
+        "series_1_sausage_3": {
+          "dir": "folds\\series_1_sausage_3",
+          "name": "rf_without_series_1_sausage_3"
+        },
+        "series_1_sausage_4": {
+          "dir": "folds\\series_1_sausage_4",
+          "name": "rf_without_series_1_sausage_4"
+        },
+        "series_1_sausage_5": {
+          "dir": "folds\\series_1_sausage_5",
+          "name": "rf_without_series_1_sausage_5"
+        }
+      }
+    },
+    {
+      "key": "mlp",
+      "name": "MLP (neural net)",
+      "final": {
+        "dir": "final",
+        "name": "mlp_final"
+      },
+      "folds": {
+        "series_1_sausage_1": {
+          "dir": "folds\\series_1_sausage_1",
+          "name": "mlp_without_series_1_sausage_1"
+        },
+        "series_1_sausage_2": {
+          "dir": "folds\\series_1_sausage_2",
+          "name": "mlp_without_series_1_sausage_2"
+        },
+        "series_1_sausage_3": {
+          "dir": "folds\\series_1_sausage_3",
+          "name": "mlp_without_series_1_sausage_3"
+        },
+        "series_1_sausage_4": {
+          "dir": "folds\\series_1_sausage_4",
+          "name": "mlp_without_series_1_sausage_4"
+        },
+        "series_1_sausage_5": {
+          "dir": "folds\\series_1_sausage_5",
+          "name": "mlp_without_series_1_sausage_5"
+        }
+      }
+    }
+  ],
+  "feature_ranges": {
+    "lse01_conductivity_max": [
+      9.0,
+      6212.0
+    ],
+    "lse01_conductivity_mean": [
+      8.333333015441895,
+      6209.0
+    ],
+    "lse01_conductivity_min": [
+      8.0,
+      6203.0
+    ],
+    "lse01_conductivity_skew": [
+      -0.38518208265304565,
+      0.38518208265304565
+    ],
+    "lse01_conductivity_slope": [
+      -5.5,
+      4.5
+    ],
+    "lse01_conductivity_std": [
+      0.0,
+      15.55634880065918
+    ],
+    "lse01_moisture_max": [
+      0.0,
+      16.809999465942383
+    ],
+    "lse01_moisture_mean": [
+      0.0,
+      16.809999465942383
+    ],
+    "lse01_moisture_min": [
+      0.0,
+      16.799999237060547
+    ],
+    "lse01_moisture_skew": [
+      -0.5443309545516968,
+      0.5443309545516968
+    ],
+    "lse01_moisture_slope": [
+      -0.030000005449567522,
+      0.03199997186660767
+    ],
+    "lse01_moisture_std": [
+      0.0,
+      0.12503333389759064
+    ],
+    "lse01_temperature_max": [
+      2.680000066757202,
+      24.969999313354492
+    ],
+    "lse01_temperature_mean": [
+      2.6700000762939453,
+      24.93000030517578
+    ],
+    "lse01_temperature_min": [
+      2.5899999141693115,
+      24.889999389648438
+    ],
+    "lse01_temperature_skew": [
+      -0.385010302066803,
+      0.385010302066803
+    ],
+    "lse01_temperature_slope": [
+      -0.08500003814697266,
+      0.09142862047467913
+    ],
+    "lse01_temperature_std": [
+      0.0,
+      0.22621763713657753
+    ],
+    "ltcfs_temperature_max": [
+      2.4912500083446503,
+      24.899999618530273
+    ],
+    "ltcfs_temperature_mean": [
+      2.4800000190734863,
+      24.854374647140503
+    ],
+    "ltcfs_temperature_min": [
+      2.450000047683716,
+      24.799999237060547
+    ],
+    "ltcfs_temperature_skew": [
+      -0.385010302066803,
+      0.385010302066803
+    ],
+    "ltcfs_temperature_slope": [
+      -0.08428573608398438,
+      0.08500003814697266
+    ],
+    "ltcfs_temperature_std": [
+      0.0,
+      0.21920272707939148
+    ],
+    "timestamp_count": [
+      10.0,
+      10.0
+    ],
+    "timestamp_duration": [
+      219.828138,
+      3598.9240516449995
+    ],
+    "timestamp_interval": [
+      24.425348666666665,
+      399.8804501827778
+    ],
+    "timestamp_max_interval": [
+      120.002017,
+      975.6600785649384
+    ],
+    "timestamp_min_interval": [
+      0.0,
+      0.0
+    ]
+  },
+  "quick": false,
+  "hyperparameters": "hyperparameters.json from 2026-11-24",
+  "size_limited": true,
+  "versions": {
+    "python": "3.11.4",
+    "scikit-learn": "1.9.1",
+    "numpy": "2.4.6",
+    "pandas": "3.1.1"
+  }
+}

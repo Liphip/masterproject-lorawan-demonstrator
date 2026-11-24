@@ -1,0 +1,13 @@
+{
+  "name": "mlp_without_series_1_sausage_2",
+  "model_type": "MLP (neural net)",
+  "feature_order": [
+    "timestamp",
+    "sensor",
+    "lse01_conductivity",
+    "lse01_moisture",
+    "lse01_temperature",
+    "ltcfs_temperature"
+  ],
+  "created_at": "2026-11-25T00:06:24.691551"
+}
