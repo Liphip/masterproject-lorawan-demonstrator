@@ -7,7 +7,8 @@
 3. In an **admin** PowerShell, allow the gateway in (the setup script prints this command):
    `New-NetFirewallRule -DisplayName "LoRaWAN demonstrator 8000" -Direction Inbound -Protocol TCP -LocalPort 8000 -Action Allow -Profile Private,Domain`
    Set the demo Wi-Fi network profile to **Private** in Windows.
-4. `.\.venv\Scripts\python.exe training\train_models.py` (once, or after data changes).
+4. Trained models in `data\models\`: run the notebooks (README, "Train the models") on any machine with the same
+   scikit-learn version and commit `data/models/`, or train directly on the laptop with `.\.venv\Scripts\python.exe -m ml_core.training`.
 5. Edit `config\demo.toml`: one `[[devices]]` block per sensor, with its DevEUI, type and slot.
 
 ## 2 · One-time gateway setup (Milesight UG63)
@@ -58,7 +59,7 @@ Replaying the unlabeled `series_2_*` (an independent run, no annotation) shows t
 | No uplinks in panel 1 | Laptop IP still the same? Firewall rule present and network profile *Private*? Open `http://<laptop-ip>:8000/healthz` from another device on the same Wi-Fi. Check the HTTP URL in the UG63 application. Are the sensors joined (UG63 device list)? |
 | Device listed as "not in config" | DevEUI in `config\demo.toml` (case and separators do not matter). Restart the app after editing. |
 | "no usable values … configure a payload codec" | Add the codec on the gateway, or add a `fields` override (see §2.7). |
-| "Models: No models found" | Run `training\train_models.py`. Run `git lfs pull` if the data files are 130-byte pointers. |
+| "Models: No models found" | Train the models (step 1.4). Run `git lfs pull` if the data files are 130-byte pointers. |
 | "sklearn version mismatch" chip | Retrain on this laptop, or install the scikit-learn version shown in the chip tooltip. |
 | Replay options say "LFS pointer" | `git lfs pull` |
 | Test without gateway | `.\.venv\Scripts\python.exe scripts\send_test_uplink.py --rounds 12` |

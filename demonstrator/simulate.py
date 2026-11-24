@@ -16,7 +16,7 @@ import threading
 import numpy as np
 import pandas as pd
 
-from ml_app.data import FEATURE_ORDER, load_converted_csv
+from ml_core.data import FEATURE_ORDER, load_recording
 
 from .inference import ModelRegistry
 from .replay import list_recordings
@@ -45,7 +45,7 @@ class Simulator:
                     raise ValueError(f"{group} is a Git LFS pointer – run `git lfs pull`")
                 if len(self._cache) > 8:
                     self._cache.clear()
-                self._cache[group] = load_converted_csv(rec["path"])
+                self._cache[group] = load_recording(rec["path"])
             return self._cache[group]
 
     @staticmethod

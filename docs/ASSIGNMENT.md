@@ -3,8 +3,8 @@
 **University of Kassel · ComTec · Master's Project**  
 **Date:** 23 November 2026  
 **Reference:** *Studentische Arbeit: Erstellen eines IoT KI Demonstrators* (25 March 2026)  
-**Repository:** [github.com/Liphip/masterproject-lorawan-demonstrator](https://github.com/Liphip/masterproject-lorawan-demonstrator)  
-**Status:** Assignment scope and intended outcome; not an implementation-completion report.
+**Repository:** University GitLab (mirror: [github.com/Liphip/masterproject-lorawan-demonstrator](https://github.com/Liphip/masterproject-lorawan-demonstrator))  
+**Status:** Assignment scope and intended outcome; not a status report. Current status: [PLAN.md](PLAN.md).
 
 ## 1. Objective
 
@@ -20,7 +20,7 @@ The original assignment refers to the *“Ahle Wurst meets KI”* use case. The 
 
 The gateway–router–laptop connection **symbolically represents the Internet/network segment**, as requested by the assignment. MQTT is a plausible transport mechanism, but the original brief does **not** mandate MQTT or any particular dashboard technology.
 
-The physical hardware is already available. The planned setup uses the existing laptop, **Milesight UG63 gateway**, router/Wi-Fi equipment, LoRaWAN sensors and transport case. Exact sensor and power-supply models should be documented during final assembly rather than inferred from the data files.
+The physical hardware is already available. The planned setup uses the existing laptop, **Milesight UG63 gateway**, router/Wi-Fi equipment, LoRaWAN sensors and transport case. The case holds a **Milesight WS202** (PIR/light), a **Dragino LSE01** (moisture, conductivity, temperature) and a **Dragino LTC-FS** (temperature probe): the same sensor types as in the training data. (The sketch in the March brief shows an LSN50-v2-S31 instead; it is not part of the case.) Power-supply models should be documented during final assembly.
 
 ## 3. Requirements for the assignment
 
@@ -87,10 +87,10 @@ The work is complete at the assignment level when the following results can be p
 
 This is a **student demonstration assignment**, not a commission to produce an industrial IoT product. It does **not** require a microservice architecture, production-grade authentication, a comprehensive automated test suite, 24/7 operation, cloud deployment, mobile applications, or a broad survey of deep-learning methods. Training can be performed separately; the presentation-time inference must be practical on the laptop CPU. Internet independence is desirable if the installed gateway/network setup supports it, but it is not an explicit requirement of the original assignment.
 
-**Current baseline (GitHub mirror checked 23 November 2026):** the repository contains historic training data, conversion/training notebooks, feature extraction, windowing and ML pipeline code. Logistic Regression, Random Forest and MLP are defined in the training notebook. The repository tree does not yet show a complete gateway ingestion application, integrated comparison display or deployment-ready demonstrator startup. The **hardware exists**, as confirmed for this project; its final assembly and operation have not been independently verified here.
+**Baseline at the start of this scope (23 November 2026):** the repository contained historic training data, conversion/training notebooks, feature extraction, windowing and ML pipeline code. Logistic Regression, Random Forest and MLP were defined in the training notebook. A gateway ingestion application, an integrated comparison display and a deployment-ready demonstrator startup did not exist yet. The **hardware exists**, as confirmed for this project; its final assembly and operation have not been independently verified here.
 
 The existing data files and notebook code are a starting point; completing the assignment means integrating and **demonstrating the whole chain**, not writing a much larger requirements or software architecture package.
 
 ---
 
-*Source distinction: the March 2026 ComTec brief establishes the core assignment; the side-by-side algorithm comparison and CPU-only emphasis are later project goals. The implementation baseline refers to the GitHub `main` branch inspected on the date above. This document is a proposed concise assignment scope, not a supervisor-approved change to the original brief.*
+*Source distinction: the March 2026 ComTec brief establishes the core assignment; the side-by-side algorithm comparison and CPU-only emphasis are later project goals. The baseline refers to the repository state on the date above. This document is a proposed concise assignment scope, not a supervisor-approved change to the original brief.*

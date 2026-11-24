@@ -22,7 +22,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from ml_app.data import FEATURE_ORDER
+from ml_core.data import FEATURE_ORDER
 
 SIGNALS = ["lse01_conductivity", "lse01_moisture", "lse01_temperature", "ltcfs_temperature", "timestamp"]
 UNITS = {"lse01_moisture": "%", "lse01_conductivity": "µS/cm", "lse01_temperature": "°C",
@@ -39,7 +39,7 @@ def describe_feature(name: str) -> tuple[str, str]:
 
 def _steps(pipe):
     s = dict(pipe.steps)
-    return s["windowing"], s["inputer"], s["scaler"], pipe.steps[-1][1]
+    return s["windows"], s["imputer"], s["scaler"], pipe.steps[-1][1]
 
 
 def _proba(clf, x):
@@ -103,6 +103,7 @@ def _mlp(clf, xs, k):
     strongest = [int(i) for i in np.argsort(-W_last)[:5] if W_last[i] > 0]
     n_params = int(sum(W.size + b.size for W, b in zip(clf.coefs_, clf.intercepts_)))
     return {"kind": "network", "layers": layers, "strongest_last_hidden": strongest,
+            "classes": [str(c) for c in clf.classes_],
             "n_params": n_params, "activation": clf.activation}
 
 

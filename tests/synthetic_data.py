@@ -1,4 +1,4 @@
-"""Synthetic stand-in for data/training/converted/*.csv.
+"""Synthetic stand-ins for data/converted/*.csv and data/raw/*.xlsx.
 
 TEST USE ONLY. The values are invented and only mimic the *schema* and rough
 shape of the real "Ahle Wurst" recordings (columns, sensor names, German phase
@@ -68,3 +68,49 @@ def make_dataset(out_dir: str, n_sausages: int = 5, days: float = 4.0, seed: int
 if __name__ == "__main__":
     import sys
     print(make_dataset(sys.argv[1] if len(sys.argv) > 1 else "/tmp/synthetic_converted"))
+
+
+def make_raw_workbooks(out_dir: str, n_sausages: int = 2, rows_per_device: int = 30, seed: int = 0) -> list[str]:
+    """Excel files with the layout of the real exports (sheet names, headers, device names).
+
+    Layout taken from the saved output of the original conversion notebook. Series 2's
+    device names are assumed to follow series 1's pattern.
+    """
+    rng = np.random.default_rng(seed)
+    os.makedirs(out_dir, exist_ok=True)
+    t0 = pd.Timestamp("2023-03-30 08:00")
+    states = {"light": ["light", "dark"], "pir": ["not triggered", "triggered"]}
+
+    def rows(series):
+        out = []
+        for i in range(rows_per_device):
+            t = t0 + pd.Timedelta(minutes=10 * i)
+            phase = PHASES[min(2, i * 3 // rows_per_device)]
+            for k in range(1, n_sausages + 1):
+                out.append({"t": t, "dev": f"Wurst {k} Feuchtigkeit, Temperatur & Leitwert", "cond": 4000 - i,
+                            "moist": 50 - 0.1 * i, "soil_t": 15.0, "phase": phase})
+                out.append({"t": t, "dev": f"Wurst {k} Temperatur", "probe_t": 15.5, "phase": phase})
+                out.append({"t": t, "dev": f"Wurst {k} PH-Wert", "ph": 5.5, "phase": phase})
+            out.append({"t": t, "dev": "Umgebung Temperatur & Luftfeuchtigkeit", "hum": 80.0, "air_t": 14.0, "phase": phase})
+            out.append({"t": t, "dev": "Milesight Umgebung PIR & Lichtintensität",
+                        "light": states["light"][i % 2], "pir": states["pir"][int(rng.random() < .1)], "phase": phase})
+        return out
+
+    s1 = pd.DataFrame([{"Gemessen am": r["t"], "Gerät": r["dev"], "Environment Humdity": r.get("hum"),
+                        "Environment Light status": r.get("light"), "Environment Pir status": r.get("pir"),
+                        "Sausage conductivity": r.get("cond"), "Sausage moisture": r.get("moist"), "Sausage ph": r.get("ph"),
+                        "Sausage Temperature Sensor 1": r.get("air_t"), "Sausage Temperature Sensor 2": r.get("probe_t"),
+                        "Sausage Temperature Sensor 3": r.get("soil_t"), "Annotation": r["phase"]} for r in rows(1)])
+    s2 = pd.DataFrame([{"Gemessen am": r["t"] + pd.Timedelta(days=60), "Gerät": r["dev"], "Humdity": r.get("hum"),
+                        "Light status": r.get("light"), "Pir status": r.get("pir"), "Soil conductivity": r.get("cond"),
+                        "Soil moisture": r.get("moist"), "Soil ph": r.get("ph"), "Soil temperature": r.get("soil_t"),
+                        "Temp1": r.get("probe_t"), "Temperature2": r.get("air_t")} for r in rows(2)])
+    paths = []
+    for name, df, sheets in (("series_1.xlsx", s1, ["Filtered", "+ Annotation", "Messwerte Wurst 1, 1. Messreihe"]),
+                             ("series_2.xlsx", s2, ["Alle", "Wurst1"])):
+        p = os.path.join(out_dir, name)
+        with pd.ExcelWriter(p, engine="openpyxl") as xw:
+            for sh in sheets:
+                (df if sh in ("+ Annotation", "Alle") else df.head(3)).to_excel(xw, sheet_name=sh, index=False)
+        paths.append(p)
+    return paths

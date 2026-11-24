@@ -16,7 +16,7 @@ import time
 import numpy as np
 import pandas as pd
 
-from ml_app.data import FEATURE_ORDER, group_name, load_converted_csv
+from ml_core.data import FEATURE_ORDER, is_lfs_pointer, load_recording, recording_name
 
 from .inference import ModelRegistry
 
@@ -30,9 +30,7 @@ def list_recordings(dirs: list[str]) -> list[dict]:
     out = []
     for d in dirs:
         for p in sorted(glob.glob(os.path.join(d, "*.csv"))):
-            with open(p, "rb") as fh:
-                lfs = fh.read(40).startswith(b"version https://git-lfs")
-            out.append({"group": group_name(p), "path": p, "lfs_pointer": lfs,
+            out.append({"group": recording_name(p), "path": p, "lfs_pointer": is_lfs_pointer(p),
                         "kind": "live recording" if os.path.basename(p).startswith("live_") else "training data"})
     return out
 
@@ -87,7 +85,7 @@ class ReplayEngine:
         if rec["lfs_pointer"]:
             raise ValueError(f"{group} is a Git LFS pointer – run `git lfs pull`")
         self.stop()
-        df = load_converted_csv(rec["path"])
+        df = load_recording(rec["path"])
         labeled = "label" in df.columns and df["label"].notna().any()
         with self.lock:
             self.reset()

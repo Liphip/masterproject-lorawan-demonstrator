@@ -3,70 +3,66 @@
 Portable demonstrator (University of Kassel, ComTec): real LoRaWAN sensors send measurements via a
 **Milesight UG63** gateway and a router to a laptop. The laptop decodes them, runs **three lightweight
 CPU models** (Logistic Regression, Random Forest, MLP) and shows the results side by side in a browser.
-The models classify the curing phase of a sausage (*Umrötung → Reifung 1 → Reifung 2*).
-Without a sausage in the case, the **virtual sausage** tab takes a real recorded day and lets you shift moisture, conductivity and temperature with sliders. For any moment, **"How was this decided?"** opens a step-by-step explanation: uplinks → features → which signals mattered →
-what happened inside each model.
+The models classify the curing phase of a sausage (*Umrötung → Reifung Phase 1 → Reifung Phase 2*).
+
+Without a sausage in the case, the **virtual sausage** tab takes a real recorded day and lets you shift
+moisture, conductivity and temperature with sliders. For any moment, **"How was this decided?"** walks through
+uplinks → features → which signals mattered → what happened inside each model. UI in German and English.
 
 ```
 LSE01 / LTC-FS / WS202 ──LoRa──▶ UG63 (embedded network server) ──HTTP POST──▶ router/Wi-Fi ──▶ laptop
                                                                                  │
-             dashboard (browser) ◀── FastAPI ◀── windowing + features ◀── decode ┘
+             dashboard (browser) ◀── FastAPI ◀── window features ◀── decode ─────┘
                     ▲                               │
-                    └── replay of recorded runs ────┴──▶ LogReg · RandomForest · MLP (CPU)
+                    └── replay / simulation ────────┴──▶ LogReg · RandomForest · MLP (CPU)
 ```
 
-| Folder | Content |
+## Layout
+
+| Path | Content |
 |---|---|
-| `ml_app/` | Shared preprocessing (windowing, feature extraction), `CustomPipeline`, data conventions (`data.py`) |
-| `data-preperation/` | Notebook: raw Excel → `data/training/converted/*.csv` |
-| `training/01_create_pipelines.ipynb` | Hyperparameter search (HPO) |
-| `training/train_models.py` | Evaluation (leave-one-sausage-out) + model export → `data/models/` |
-| `demonstrator/` | Laptop app: gateway ingest, live state, replay, inference, dashboard |
+| `notebooks/` | `01_convert_raw_data` → `02_search_hyperparameters` → `03_train_and_evaluate`. Run in this order; outputs stay in the notebooks |
+| `ml_core/` | Shared library used by the notebooks and the demonstrator: `data` (paths, columns), `windowing` (window features), `pipeline` (`ModelPipeline`), `conversion`, `training` |
+| `demonstrator/` | Laptop app: gateway ingest, live state, replay, simulation, explanations, dashboard (`static/`) |
+| `data/raw/` | Excel exports `series_1.xlsx` (annotated), `series_2.xlsx` (not annotated), via Git LFS |
+| `data/converted/` | One CSV per sausage, written by notebook 01, via Git LFS |
+| `data/models/` | Written by notebooks 02/03: `hyperparameters.json`, `final/`, `folds/`, `manifest.json`, `metrics.json` |
 | `config/demo.example.toml` | Device list (DevEUI → sensor type, sausage slot) and server settings |
-| `scripts/` | `setup.ps1`, `start_demo.ps1` / `.sh`, `send_test_uplink.py` |
-| `requirements.txt` | Demonstrator, training script and tests. `requirements-notebooks.txt` adds Jupyter etc. for the notebooks |
-| `docs/PLAN.md` | Project plan, requirement mapping (A1–A11), open items |
-| `docs/RUNBOOK.md` | Gateway setup, demo procedure, packing, troubleshooting |
+| `scripts/` | `setup.ps1`, `start_demo.ps1` / `.sh`, `send_test_uplink.py` (fake uplinks without hardware) |
+| `docs/` | `PLAN.md` (decisions, requirement mapping, open items), `RUNBOOK.md` (gateway setup, demo, packing), assignment |
+| `tests/` | `python -m pytest -q`, on synthetic data (see below) |
 
 ## Quick start (Windows laptop)
 
 ```powershell
 git clone <gitlab-url> ; cd masterproject-lorawan-demonstrator
-powershell -ExecutionPolicy Bypass -File scripts\setup.ps1     # venv, deps, git lfs pull, config copy
-.\.venv\Scripts\python.exe training\train_models.py              # ~minutes on CPU; writes data\models\
-powershell -ExecutionPolicy Bypass -File scripts\start_demo.ps1  # opens http://localhost:8000/
+powershell -ExecutionPolicy Bypass -File scripts\setup.ps1     # venv, packages, git lfs pull, config copy
+powershell -ExecutionPolicy Bypass -File scripts\start_demo.ps1  # opens http://localhost:8000/?lang=de
 ```
 
-Linux: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && git lfs pull`,
-then `.venv/bin/python training/train_models.py` and `scripts/start_demo.sh`.
+Linux: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && git lfs pull`, then `scripts/start_demo.sh`.
 
-**Without hardware:** start the demonstrator, then `python scripts/send_test_uplink.py --rounds 12`
-pushes fake uplinks (marked *test*, never recorded) through the same HTTP path as the gateway.
-
-**Gateway:** point the UG63 HTTP uplink integration at `http://<laptop-ip>:8000/ingest/uplink`.
-The start script prints the URL. See [docs/RUNBOOK.md](docs/RUNBOOK.md).
-
-## Language
-
-The dashboard is available in **German and English** (DE/EN switch top right, also in the explanation overlay).
-It starts in the browser's language; `http://localhost:8000/?lang=de` forces German. The choice is remembered per browser.
-All texts are in `demonstrator/static/i18n.js`. Technical error messages from the server stay in English.
+The dashboard needs trained models in `data/models/` (see below). The UG63 HTTP integration must point to
+`http://<laptop-ip>:8000/ingest/uplink`; the start script prints the URL. Details: [docs/RUNBOOK.md](docs/RUNBOOK.md).
 
 ## Train the models
 
-`training/train_models.py` reuses the HPO winners from the notebook. It produces:
+```powershell
+.\.venv\Scripts\pip install -r requirements-notebooks.txt
+.\.venv\Scripts\jupyter lab notebooks
+```
 
-- `data/models/final/` — models fitted on all labeled sausages (used for live data and the unlabeled series 2)
-- `data/models/folds/<sausage>/` — models fitted **without** that sausage; replaying a labeled sausage uses these,
-  so the replayed predictions are real held-out predictions
-- `metrics.json` — per-fold accuracy, balanced accuracy, macro-F1, confusion matrices, CPU latency, model size,
-  pairwise model agreement
-- `manifest.json` — window settings, feature schema, training feature ranges (for the out-of-range warning), library versions
+1. **01_convert_raw_data**: only needed if the Excel exports change.
+2. **02_search_hyperparameters**: searches the three model families (leave-one-sausage-out, balanced accuracy) and
+   saves the winners to `data/models/hyperparameters.json`. Tens of minutes on CPU; uses a GPU via RAPIDS if installed.
+3. **03_train_and_evaluate**: evaluates, trains and exports the models the demonstrator loads. Without a search result it uses
+   the defaults in `ml_core/training.py`. Headless alternative: `python -m ml_core.training`.
 
-Options: `--rf-preset hpo` (the notebook's unbounded Random Forest; very large files), `--no-fold-models`,
-`--window-size/--stride`. **Train with the same scikit-learn version that runs the demo.** The dashboard warns on a mismatch.
+Train with **the same scikit-learn version as the demo laptop** (pinned to 1.9.x in `requirements.txt`).
+Model files are not portable across versions; the dashboard warns on a mismatch.
 
 ## Tests
 
-`python -m pytest -q`. The tests run on a **synthetic** dataset with the real schema (`tests/synthetic_data.py`),
-because the real CSVs are Git LFS objects. The synthetic data is trivially separable. Its scores say nothing about the real task.
+`python -m pytest -q` (the notebook test also needs `requirements-notebooks.txt`). The tests use **synthetic** data
+with the real file layout (`tests/synthetic_data.py`), so they run without the LFS files. The synthetic data is easy
+to separate. Its scores say nothing about the real task.

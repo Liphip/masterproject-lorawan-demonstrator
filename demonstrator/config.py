@@ -5,7 +5,8 @@ import os
 import tomllib
 from dataclasses import dataclass, field
 
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+from ml_core.data import CONVERTED_DIR, MODELS_DIR, RECORDINGS_DIR, ROOT
+
 SENSOR_TYPES = ("lse01", "ltcfs", "ws202")
 
 
@@ -23,11 +24,9 @@ class Config:
     host: str = "0.0.0.0"
     port: int = 8000
     ingest_token: str = ""
-    models_dir: str = os.path.join(ROOT, "data", "models")
-    replay_dirs: list = field(default_factory=lambda: [
-        os.path.join(ROOT, "data", "training", "converted"),
-        os.path.join(ROOT, "data", "recordings")])
-    recordings_dir: str = os.path.join(ROOT, "data", "recordings")
+    models_dir: str = MODELS_DIR
+    replay_dirs: list = field(default_factory=lambda: [CONVERTED_DIR, RECORDINGS_DIR])
+    recordings_dir: str = RECORDINGS_DIR
     record_live: bool = True
     devices: list = field(default_factory=list)
     path: str = ""

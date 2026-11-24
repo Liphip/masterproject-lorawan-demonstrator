@@ -1,6 +1,6 @@
 # Project plan
 
-Status as of 24 Nov 2026. Scope: [assignment requirements](ASSIGNMENT_REQUIREMENTS.md)
+Status as of 24 Nov 2026. Scope: [assignment requirements](ASSIGNMENT.md)
 (A1–A11). The principle: **demonstrate the whole chain reliably**. This is not a general IoT platform.
 
 ## Architecture decisions
@@ -14,7 +14,7 @@ Status as of 24 Nov 2026. Scope: [assignment requirements](ASSIGNMENT_REQUIREMEN
 | Honest replay | Replaying a labeled sausage uses the **fold model trained without it** | Otherwise the demo would show memorised training data. The unlabeled series 2 (independent run) uses the final models. |
 | No sausage in the case | Three views of one system: **live** (real sensors, proves the LoRaWAN path), **replay** (a real recorded run with held-out models), **virtual sausage** (a recorded window from any day, levels shifted by sliders, models re-predict instantly) | Considered: mixing live readings into a recorded run, so that a live uplink advances the "sausage". Rejected: live air readings mixed with sausage readings would be a third, unrealistic kind of data and hard to label honestly. The simulator keeps real uplink timing and noise and changes only levels, and is labelled SIMULATED everywhere. Limit: shifting a level does not create a realistic *history* (e.g. a sausage that dried slowly). It answers "what does the model do with these numbers?", not "what would this sausage really do?". |
 | Live compatibility | Out-of-range check against training feature percentiles | Implements "only show live predictions where data is compatible": the dashboard warns instead of hiding. |
-| Random Forest size | Demo preset `max_depth=10, n_estimators=100` (HPO winner was unbounded, 500 trees) | An unbounded forest on ~160k windows grows to hundreds of MB. Compare both with `--rf-preset hpo` and report the difference. |
+| Random Forest size | Demo preset `max_depth=10, n_estimators=100` (HPO winner was unbounded, 500 trees) | An unbounded forest on ~160k windows grows to hundreds of MB. Compare with `LIMIT_SIZE = False` in notebook 03 and report the difference. |
 
 ## Requirement mapping
 
@@ -32,25 +32,34 @@ Status as of 24 Nov 2026. Scope: [assignment requirements](ASSIGNMENT_REQUIREMEN
 | A10 Repeatable operation | `scripts/setup.ps1`, `start_demo.ps1`, RUNBOOK | Done; **test with a second person** |
 | A11 Limitations | Panel 4, single-run note in metrics, out-of-range and "seen in training" warnings | Done |
 
-## Changes to existing code (and why)
+## Changes to the original code (and why)
 
-- `ml_app/preprocessing/windowing.py`
-  - **Slope feature fixed.** It used the first/last row of the window, which almost always belongs to another
-    sensor, so every `*_slope` feature was NaN and the imputer dropped it (see the notebook warnings). It now uses
-    the first/last valid reading of the sensor. **Consequence: the notebook's HPO results were obtained without slope
-    features. Re-run the HPO if time permits.**
-  - Timestamps are normalised to ns before the int64 cast. pandas ≥ 3 can parse ISO strings at µs resolution,
-    which would silently scale all interval features by 1000 between environments.
-  - Optional `output_columns` fixes the feature schema, so that windows where a sensor did not report (common live) still
-    match the trained models.
-- `ml_app/pipeline/pipeline.py`: `created_at` default was evaluated once at import time.
-- Notebook cells 11–13 were removed (a commented-out old search and two cells that could not run: `Pipeline.fit` with the
-  windowing step windows X but not y). `train_models.py` replaces them. Logistic Regression is wrapped in `OneVsRestClassifier`, because scikit-learn ≥ 1.8
-  dropped implicit one-vs-rest for `liblinear` (same model as before).
+- **Feature bugs fixed** (`ml_core/windowing.py`, formerly `ml_app/preprocessing/windowing.py`):
+  - The slope used the window's first/last row, which almost always belongs to another sensor, so every `*_slope`
+    feature was NaN and the imputer dropped it. It now uses the first/last valid reading of the sensor.
+    **The first hyperparameter search ran without slope features; re-run notebook 02.**
+  - Timestamps are normalised to ns before the int64 cast. pandas ≥ 3 can parse at µs resolution, which would scale
+    all interval features by 1000 between environments.
+  - `output_columns` fixes the feature schema, so windows in which a sensor did not report still match the models.
+- **Conversion bug fixed:** an operator-precedence error in the conversion notebook would have written empty CSVs for
+  every unannotated file (series 2) on the next run. The committed CSVs predate the bug and are fine.
+- **Dead code removed:** `feature_extraction.py` (never called; the window features are computed vectorised in
+  `windowing.py`), `training_only/wrappers.py` (imported but unused by the search), the label translation in the
+  conversion notebook (never applied), MQTT ingest and the display-only sensor type.
+- **Restructured:** logic lives in `ml_core/` (tested), the three notebooks only call it and keep their output.
+  The search writes `data/models/hyperparameters.json`, which training reads, so the winners are no longer copied by hand.
+  `ModelPipeline.fit` raises a clear error, because a plain `fit` cannot work with a windowing step (X is windowed, y is not).
+  This was also why the original final notebook cells failed.
+- **Renamed:** `ml_app` → `ml_core`, `CustomPipeline` → `ModelPipeline`, `WindowingMethod` → `WindowFeatures`,
+  pipeline step `inputer` → `imputer`, `data/training/{raw,converted}` → `data/{raw,converted}`,
+  `raw.xlsx`/`raw2.xlsx` → `series_1.xlsx`/`series_2.xlsx`. Model files trained before this change must be retrained.
+- **Logistic Regression** is always one-vs-rest (`OneVsRestClassifier`): scikit-learn ≥ 1.8 dropped the implicit
+  one-vs-rest of `liblinear`. The search uses `l1_ratio` (0 = L2, 1 = L1) instead of the deprecated `penalty`.
 
 ## Open items (in order)
 
-1. **Run `train_models.py` on the real data** and look at `metrics.json`. Check whether the slope fix changed scores.
+1. **Run notebooks 02 and 03 on the real data** and look at the results. Compare with the first search (defaults in
+   `ml_core/training.py`) to see whether the slope fix changed anything.
 2. **Collect sensor data:** DevEUI/AppEUI/AppKey for every sensor; check that the sensors are not still joined to another network
    server (TTN, company LNS).
 3. **UG63 setup** following RUNBOOK §2. Capture one real uplink JSON per sensor type (`data/recordings/raw_*.jsonl`) and
@@ -61,7 +70,7 @@ Status as of 24 Nov 2026. Scope: [assignment requirements](ASSIGNMENT_REQUIREMEN
    sausage measurements (seen on the synthetic data), the models may have learned the sensors' send rhythm instead of the
    curing. Then retrain without the `timestamp_*` features and compare scores. Either outcome is a good point for the presentation.
 7. Optional: longer windows (e.g. 6–12 h) are likely more meaningful for a multi-day process than 10 uplinks. This is a
-   small change via `--window-size`, but the HPO would need to be re-run. Worth one experiment for the evaluation chapter.
+   small change (`WINDOW_SIZE` in notebooks 02 and 03), but the search has to be re-run. Worth one experiment for the evaluation chapter.
 
 ## Known risks
 

@@ -11,7 +11,7 @@ from collections import deque
 
 import pandas as pd
 
-from ml_app.data import ALL_COLUMNS, FEATURE_ORDER
+from ml_core.data import ALL_COLUMNS, FEATURE_ORDER
 
 from .config import Config, normalize_eui
 from .decoders import DecodeError, decode_values, extract_envelope
@@ -105,7 +105,7 @@ class LiveState:
         with self.lock:
             self.errors.appendleft({"time": utcnow().isoformat(), "error": text})
 
-    # ── recording (same schema as data/training/converted -> replayable) ─────
+    # ── recording (same schema as data/converted → replayable) ──────────────
     def _record(self, row: dict, slots: list[str], raw: dict):
         try:
             os.makedirs(self.cfg.recordings_dir, exist_ok=True)

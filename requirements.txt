@@ -1,10 +1,11 @@
-# Demonstrator runtime + training script. Train and present with the SAME
-# scikit-learn version: joblib model files are not portable across versions.
+# Demonstrator, ml_core and tests. Train and present with the SAME scikit-learn
+# version: model files (joblib) are not portable across versions.
 numpy>=2.0,<3
 pandas>=2.2,<4
-scikit-learn>=1.8,<1.10
+scikit-learn>=1.9,<1.10
 joblib>=1.4
 scipy>=1.13
+openpyxl>=3.1
 fastapi>=0.110
 uvicorn>=0.29
 # tests

@@ -68,7 +68,7 @@ def create_app(cfg: Config) -> FastAPI:
     @app.get("/api/metrics")
     def metrics():
         if not models.metrics:
-            raise HTTPException(404, "metrics.json not found – run training/train_models.py")
+            raise HTTPException(404, "metrics.json not found – run notebooks/03_train_and_evaluate.ipynb")
         return models.metrics
 
     @app.get("/api/recordings")

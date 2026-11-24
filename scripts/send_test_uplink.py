@@ -17,9 +17,9 @@ import sys
 import time
 import urllib.request
 
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from demonstrator.config import load_config  # noqa: E402
+from ml_core.data import ROOT  # noqa: E402
 
 
 def payload(dev, i):

@@ -10,7 +10,7 @@ record_live = true      # append live uplinks to data/recordings (replayable lat
 
 [paths]
 models = "data/models"
-replay_data = ["data/training/converted", "data/recordings"]
+replay_data = ["data/converted", "data/recordings"]
 recordings = "data/recordings"
 
 # type: lse01 (moisture/temperature/conductivity probe), ltcfs (temperature

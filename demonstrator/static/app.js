@@ -495,7 +495,7 @@ function exNet(d, m) {
     const r = Math.max(2, Math.min(9, (H - 28) / ly.size / 2.4));
     ly.act.forEach((a, j) => {
       const isOut = i === L;
-      const fill = isOut ? phaseColor(STATE.models.classes[j]) : "var(--accent)";
+      const fill = isOut ? phaseColor(d.classes[j]) : "var(--accent)";
       svg += `<circle cx="${xs[i]}" cy="${ys(ly.size, j)}" r="${isOut ? 9 : r}" fill="${fill}" fill-opacity="${(0.08 + 0.92 * Math.abs(a)).toFixed(2)}" stroke="#bdb6a8" stroke-width=".4"/>`;
     });
     const lab = i === 0 ? t("ex.mlp_inputs", {n: ly.size}) : i === L ? t("ex.mlp_output") : t("ex.mlp_active", {a: ly.active, n: ly.size});

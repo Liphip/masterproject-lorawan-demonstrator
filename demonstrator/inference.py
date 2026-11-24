@@ -4,18 +4,14 @@ from __future__ import annotations
 import json
 import logging
 import os
-import sys
 import threading
 import time
 
 import numpy as np
 import pandas as pd
 
-from .config import ROOT
-
-sys.path.insert(0, ROOT)
-from ml_app import CustomPipeline, WindowingMethod  # noqa: E402
-from ml_app.data import FEATURE_ORDER  # noqa: E402
+from ml_core import ModelPipeline, WindowFeatures
+from ml_core.data import FEATURE_ORDER
 
 log = logging.getLogger(__name__)
 # share of in-range-checked features allowed outside the training range
@@ -39,7 +35,7 @@ class ModelRegistry:
         self.manifest: dict | None = None
         self.metrics: dict | None = None
         self.error: str | None = None
-        self._cache: dict[tuple, CustomPipeline] = {}
+        self._cache: dict[tuple, ModelPipeline] = {}
         self._lock = threading.Lock()
         self.reload()
 
@@ -51,7 +47,7 @@ class ModelRegistry:
             with open(mpath) as fh:
                 self.manifest = json.load(fh)
         except FileNotFoundError:
-            self.error = f"No models found ({mpath}). Run training/train_models.py first."
+            self.error = f"No models found ({mpath}). Run notebooks/03_train_and_evaluate.ipynb first."
             return
         try:
             with open(os.path.join(self.models_dir, "metrics.json")) as fh:
@@ -65,7 +61,7 @@ class ModelRegistry:
             self.error = f"Model loading failed: {e!r}"
             log.exception("model loading failed")
         w = self.manifest
-        self._wm = WindowingMethod(window_size=w["window_size"], stride=w["stride"],
+        self._wf = WindowFeatures(window_size=w["window_size"], stride=w["stride"],
                                    output_columns=w["output_columns"])
 
     @property
@@ -106,13 +102,13 @@ class ModelRegistry:
                 return m
         raise KeyError(key)
 
-    def _load(self, key: str, held_out: str | None) -> CustomPipeline:
+    def _load(self, key: str, held_out: str | None) -> ModelPipeline:
         ck = (key, held_out)
         with self._lock:
             if ck not in self._cache:
                 m = self._entry(key)
                 e = m["folds"][held_out] if held_out else m["final"]
-                pipe = CustomPipeline.load(os.path.join(self.models_dir, e["dir"]), e["version"])
+                pipe = ModelPipeline.load(os.path.join(self.models_dir, e["dir"]), e["name"])
                 single_threaded(pipe)
                 self._cache[ck] = pipe
             return self._cache[ck]
@@ -126,7 +122,7 @@ class ModelRegistry:
         return self._load(key, None), seen
 
     def ood_fraction(self, rows: pd.DataFrame) -> float:
-        feats = self._wm.transform(rows).iloc[-1]
+        feats = self._wf.transform(rows).iloc[-1]
         ranges = self.manifest.get("feature_ranges", {})
         checked = outside = 0
         for c, (lo, hi) in ranges.items():

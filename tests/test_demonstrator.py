@@ -1,28 +1,16 @@
-"""End-to-end and unit tests. Run from the repo root:  python -m pytest -q"""
+"""Demonstrator: decoders, live path, replay, explanation, simulation. Run: python -m pytest -q"""
 from __future__ import annotations
 
 import base64
-import os
-import sys
 import time
 
-import numpy as np
-import pandas as pd
 import pytest
+from fastapi.testclient import TestClient
 
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.insert(0, ROOT)
-sys.path.insert(0, os.path.dirname(__file__))
-
-from fastapi.testclient import TestClient  # noqa: E402
-
-from demonstrator.app import create_app  # noqa: E402
-from demonstrator.config import Config, Device  # noqa: E402
-from demonstrator.decoders import (decode_lse01, decode_values, decode_ws202,  # noqa: E402
-                                   extract_envelope)
-from ml_app import WindowingMethod  # noqa: E402
-from ml_app.data import FEATURE_ORDER  # noqa: E402
-from synthetic_data import make_dataset  # noqa: E402
+from demonstrator.app import create_app
+from demonstrator.config import Config, Device
+from demonstrator.decoders import decode_lse01, decode_values, decode_ws202, extract_envelope
+from ml_core.data import FEATURE_ORDER, load_recording
 
 
 # ── decoders ────────────────────────────────────────────────────────────────
@@ -57,48 +45,7 @@ def test_envelopes_and_codec_mapping():
         {"ws202_pir_status": 1.0, "ws202_light_status": 0.0}
 
 
-# ── windowing fixes ─────────────────────────────────────────────────────────
-def _rows():
-    t = pd.date_range("2024-01-01", periods=10, freq="60s", tz="UTC")
-    return pd.DataFrame({"timestamp": t,
-                         "sensor": ["ws202", "lse01", "ltcfs"] * 3 + ["ws202"],
-                         "lse01_conductivity": [np.nan, 100, np.nan, np.nan, 110, np.nan, np.nan, 130, np.nan, np.nan],
-                         "lse01_moisture": np.nan, "lse01_temperature": np.nan,
-                         "ltcfs_temperature": [np.nan, np.nan, 10, np.nan, np.nan, 11, np.nan, np.nan, 13, np.nan]})
-
-
-def test_slope_uses_valid_readings_and_resolution():
-    df = _rows()
-    out_ns = WindowingMethod(window_size=10, stride=2).transform(df)
-    assert out_ns["lse01_conductivity_slope"].iloc[0] == pytest.approx(30 / 6)
-    assert out_ns["ltcfs_temperature_slope"].iloc[0] == pytest.approx(3 / 6)
-    df_us = df.copy()
-    df_us["timestamp"] = df_us["timestamp"].astype("datetime64[us, UTC]")
-    out_us = WindowingMethod(window_size=10, stride=2).transform(df_us)
-    assert out_us["timestamp_duration"].iloc[0] == pytest.approx(540.0)
-    assert out_ns["timestamp_duration"].iloc[0] == pytest.approx(540.0)
-
-
-def test_output_columns_fixed_schema():
-    df = _rows()
-    df = df[df["sensor"] != "ltcfs"]  # a sensor missing from the window
-    cols = ["lse01_conductivity_mean", "ltcfs_temperature_mean", "timestamp_interval"]
-    out = WindowingMethod(window_size=5, stride=1, output_columns=cols).transform(df)
-    assert list(out.columns) == cols and out["ltcfs_temperature_mean"].isna().all()
-
-
 # ── end-to-end on synthetic data ────────────────────────────────────────────
-@pytest.fixture(scope="session")
-def trained(tmp_path_factory):
-    base = tmp_path_factory.mktemp("demo")
-    data = base / "converted"
-    make_dataset(str(data), n_sausages=3, days=2)
-    sys.path.insert(0, os.path.join(ROOT, "training"))
-    import train_models
-    train_models.main(["--data-dir", str(data), "--out", str(base / "models"), "--quick"])
-    return base
-
-
 @pytest.fixture
 def client(trained, tmp_path):
     cfg = Config(models_dir=str(trained / "models"), replay_dirs=[str(trained / "converted")],
@@ -189,14 +136,13 @@ def test_explain_logreg_sum_is_exact(trained):
     """The weighted-sum view must reproduce the model's own decision score."""
     from demonstrator.explain import explain_model
     from demonstrator.inference import ModelRegistry
-    from ml_app.data import load_converted_csv
     reg = ModelRegistry(str(trained / "models"))
     pipe, _ = reg.model_for("logreg", None)
-    rows = load_converted_csv(str(trained / "converted" / "series_1_sausage_1.csv"))[FEATURE_ORDER].iloc[100:110]
+    rows = load_recording(str(trained / "converted" / "series_1_sausage_1.csv"))[FEATURE_ORDER].iloc[100:110]
     d = explain_model(pipe, "logreg", rows)["detail"]
     s = dict(pipe.steps)
-    feats = s["windowing"].transform(rows).tail(1)
-    xs = s["scaler"].transform(s["inputer"].transform(feats))
+    feats = s["windows"].transform(rows).tail(1)
+    xs = s["scaler"].transform(s["imputer"].transform(feats))
     clf = pipe.steps[-1][1]
     k = list(clf.classes_).index(explain_model(pipe, "logreg", rows)["label"])
     expected = float(clf.estimators_[k].decision_function(xs)[0])
