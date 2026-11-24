@@ -126,6 +126,19 @@ def create_app(cfg: Config) -> FastAPI:
                        time=rows["timestamp"].iloc[-1].isoformat() if len(rows) else None)
         return out
 
+    @app.post("/api/ambient")
+    async def set_ambient(request: Request):
+        """Air temperature around the case (the case has no air sensor)."""
+        body = await request.json()
+        try:
+            value = float(body["value"])
+        except (KeyError, TypeError, ValueError):
+            raise HTTPException(400, "expected {\"value\": <°C>}")
+        if not -30 <= value <= 50:
+            raise HTTPException(400, "air temperature must be between -30 and 50 °C")
+        await _run_sync(live.set_ambient, value)
+        return {"ok": True, "value": value}
+
     @app.post("/api/simulate")
     async def simulate(request: Request):
         """What-if on a recorded window: {group, position 0..1, adjust{...}}."""

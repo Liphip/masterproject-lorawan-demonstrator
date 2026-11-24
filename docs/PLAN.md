@@ -13,7 +13,7 @@ Status as of 24 Nov 2026. Scope: [assignment requirements](ASSIGNMENT.md)
 | Explaining predictions | "How was this decided?" overlay. (1) the uplinks in the window, (2) the 29 features with training range, (3) **one** occlusion test for all models (hide one sensor signal → change in confidence), (4) model-specific internals: LogReg weighted sum (exact), RF tree votes + Saabas split contributions, MLP neuron activations | (3) makes the models comparable, and (4) shows the three different principles, which is the point of A6/A7. Occlusion and Saabas are approximations: correlated signals share credit. This is stated in the UI. SHAP would be more rigorous but adds a dependency and seconds of latency per click. |
 | Honest replay | Replaying a labeled sausage uses the **fold model trained without it** | Otherwise the demo would show memorised training data. The unlabeled series 2 (independent run) uses the final models. |
 | No sausage in the case | Three views of one system: **live** (real sensors, proves the LoRaWAN path), **replay** (a real recorded run with held-out models), **virtual sausage** (a recorded window from any day, levels shifted by sliders, models re-predict instantly) | Considered: mixing live readings into a recorded run, so that a live uplink advances the "sausage". Rejected: live air readings mixed with sausage readings would be a third, unrealistic kind of data and hard to label honestly. The simulator keeps real uplink timing and noise and changes only levels, and is labelled SIMULATED everywhere. Limit: shifting a level does not create a realistic *history* (e.g. a sausage that dried slowly). It answers "what does the model do with these numbers?", not "what would this sausage really do?". |
-| Seasonal confound | Default feature set **moisture + conductivity** (no temperature, no uplink timing). The unannotated series 2 (summer → spring) is used as a label-free check: predicted phases must advance in time (Spearman ρ of time vs. phase, shown in notebook 03 and the dashboard). Notebook 04 compares the feature sets | Series 1 (30.03.–02.08.2023, attic without climate control) has temperature rising with the phase, so a model can learn "summer" instead of "ripe" (already noted in the 2024 seminar paper). The series-1 score cannot reveal this; series 2 can. Cost: the LTC-FS and both temperature readings are display-only in the demo, and the simulator's temperature slider is disabled with an explanation. Series 2 is not used for training yet: its labels would come from the model itself and inherit its bias (see open items for the better option). |
+| Seasonal confound | Default feature set **`temperature_difference`**: moisture, conductivity and both probe temperatures *minus the air temperature* (no absolute temperature, no uplink timing). Optional training-only augmentation of the temperature features (random offset, scaled and mirrored swings). The unannotated series 2 (summer → spring) is used as a label-free check: predicted phases must advance in time (Spearman ρ of time vs. phase, shown in notebook 03 and the dashboard). Notebook 04 compares the feature sets | Series 1 (30.03.–02.08.2023, attic without climate control) has temperature rising with the phase, so a model can learn "summer" instead of "ripe" (already noted in the 2024 seminar paper). The series-1 score cannot reveal this; series 2 can. The difference removes the seasonal level and keeps the sausage's own behaviour (a moist sausage stays cooler than the air). The air temperature comes from the LSN50-v2-S31 in the raw data, aligned to every uplink in the conversion; the case has no air sensor, so live data uses a value set in the config/UI, while replay and simulation use the recorded air temperature. Series 2 is not used for training: it has no labels, its timing is unknown (probably slower in the cold), and labels from the model itself would inherit its bias. |
 | Live compatibility | Out-of-range check against training feature percentiles | Implements "only show live predictions where data is compatible": the dashboard warns instead of hiding. |
 | Random Forest size | Demo preset `max_depth=10, n_estimators=100` (HPO winner was unbounded, 500 trees) | An unbounded forest on ~160k windows grows to hundreds of MB. Compare with `LIMIT_SIZE = False` in notebook 03 and report the difference. |
 
@@ -61,12 +61,12 @@ Status as of 24 Nov 2026. Scope: [assignment requirements](ASSIGNMENT.md)
 
 1. **Run notebooks 02 and 03 on the real data** and look at the results. Compare with the first search (defaults in
    `ml_core/training.py`) to see whether the slope fix changed anything.
-2. **Annotate series 2 by the butcher's schedule** (decision pending). The phases were annotated by schedule, and series 2
-   uses the same recipe, so labels for series 2 follow from the days since its start, by the same definition as series 1.
-   That gives a second annotated run in another season: train on both, evaluate leave-one-run-out. This is the real
-   fix for the confound and replaces the label-free check by a proper score.
-3. **Temperature difference** (sausage − ambient) as a candidate feature set, tested leave-one-run-out after item 2.
-   Needs the ambient sensor (LSN50-v2-S31), which the conversion currently drops and which is not in the case.
+2. **Check the air temperature column** on the real data: notebook 01 reports which Excel column delivered it. Series 1:
+   "Sausage Temperature Sensor 1" (per the seminar paper); series 2: *assumed* "Temperature2". Fix `AMBIENT_COLUMNS` in
+   `ml_core/conversion.py` if wrong, then re-run notebook 01.
+3. **Run notebook 04 on the real data** and choose the variant: good on series 1 *and* advancing on series 2. Set
+   `DEFAULT_FEATURE_SET` / `AUGMENT` accordingly. On synthetic data the augmentation did not change anything; the real
+   day/night swings may differ.
 4. **Collect sensor data:** DevEUI/AppEUI/AppKey for every sensor; check that the sensors are not still joined to another network
    server (TTN, company LNS).
 5. **UG63 setup** following RUNBOOK §2. Capture one real uplink JSON per sensor type (`data/recordings/raw_*.jsonl`) and
@@ -82,8 +82,11 @@ Status as of 24 Nov 2026. Scope: [assignment requirements](ASSIGNMENT.md)
 ## Known risks
 
 - **Single labeled run.** Scores are per sausage within one run and are probably optimistic. Say so in the presentation.
-- **Labels are a schedule.** The butcher annotated by schedule, so the task is "where in the curing schedule is this
-  sausage", not a measured ripeness. In a cold winter the real ripening may lag behind the schedule.
+- **Labels are a schedule.** The butcher annotated series 1 by schedule, so every model learns "which phase of the
+  schedule would this be under spring/summer conditions", not a measured ripeness. Restricting the inputs to the
+  sausage's physical state (conductivity, moisture, temperature relative to the air) is what should let this carry over
+  to colder runs, where the same state is reached later. No available score can prove that it is the true ripening.
+- **Air temperature in the case is a setting**, not a measurement. Live predictions depend on it being roughly right.
 - **Short windows.** 10 uplinks ≈ minutes. The models mostly classify current absolute levels (moisture, conductivity,
   temperature), not the dynamics of the run.
 - **Gateway clock.** The laptop's receive time is used as the timestamp, because an offline gateway may have no NTP.

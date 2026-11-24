@@ -24,9 +24,10 @@ import pandas as pd
 
 from ml_core.data import FEATURE_ORDER
 
-SIGNALS = ["lse01_conductivity", "lse01_moisture", "lse01_temperature", "ltcfs_temperature", "timestamp"]
-UNITS = {"lse01_moisture": "%", "lse01_conductivity": "µS/cm", "lse01_temperature": "°C",
-         "ltcfs_temperature": "°C", "timestamp": "s"}
+SIGNALS = ["lse01_conductivity", "lse01_moisture", "lse01_temperature", "ltcfs_temperature",
+           "lse01_temperature_diff", "ltcfs_temperature_diff", "timestamp"]
+UNITS = {"lse01_moisture": "%", "lse01_conductivity": "µS/cm", "lse01_temperature": "°C", "ltcfs_temperature": "°C",
+         "lse01_temperature_diff": "°C", "ltcfs_temperature_diff": "°C", "timestamp": "s"}
 
 
 def describe_feature(name: str) -> tuple[str, str]:

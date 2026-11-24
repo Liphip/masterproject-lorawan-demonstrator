@@ -10,10 +10,13 @@ let activeTab = "replay";
 // [label key, unit, decimals]; decimals < 0 = on/off state
 const UNITS = {
   lse01_conductivity: ["val.conductivity", "µS/cm", 0], lse01_moisture: ["val.moisture", "%", 1],
+  lse01_temperature_diff: ["val.temp_diff", "°C", 1], ltcfs_temperature_diff: ["val.temp_diff", "°C", 1],
+  ambient_temperature: ["val.air", "°C", 1],
   lse01_temperature: ["val.temp", "°C", 1], ltcfs_temperature: ["val.temp", "°C", 1],
   ws202_light_status: ["val.light", "", -1], ws202_pir_status: ["val.motion", "", -1],
 };
-const SIGNAL_KEYS = ["lse01_conductivity", "lse01_moisture", "lse01_temperature", "ltcfs_temperature", "timestamp"];
+const SIGNAL_KEYS = ["lse01_temperature_diff", "ltcfs_temperature_diff", "lse01_conductivity", "lse01_moisture",
+                     "lse01_temperature", "ltcfs_temperature", "timestamp"];
 const modelName = (k, fallback) => (I18N.en["model." + k] ? t("model." + k) : fallback || k);
 
 async function api(path, opts) {
@@ -216,6 +219,10 @@ function renderReplay(st) {
 }
 
 function renderLive(st) {
+  const amb = $("#ambient");
+  if (document.activeElement !== amb) amb.value = st.live.ambient_temperature;
+  const signals = st.models.signals;
+  $("#ambient-note").hidden = !(signals && signals.some((s) => s.endsWith("_diff")));
   const sel = $("#slot");
   const slots = st.live.slots;
   if (sel.options.length !== slots.length) sel.innerHTML = slots.map((s) => `<option>${esc(s)}</option>`).join("");
@@ -318,6 +325,9 @@ $("#btn-pause").addEventListener("click", () => post("/api/replay/pause", {pause
 $("#btn-stop").addEventListener("click", () => post("/api/replay/stop"));
 $("#signal").addEventListener("change", () => STATE && renderTimeline(STATE.replay, STATE.models.models || []));
 $("#slot").addEventListener("change", () => STATE && renderLive(STATE));
+$("#ambient").addEventListener("change", async (e) => {
+  try { await post("/api/ambient", {value: Number(e.target.value)}); } catch (err) { alert(err.message); }
+});
 
 function render(st) {
   STATE = st;
@@ -549,6 +559,7 @@ function updateSimInputs() {
   $("#sim-dt").disabled = !usesTemp;
   document.querySelector("[data-preset=warm]").disabled = !usesTemp;
   $("#sim-dt-note").hidden = usesTemp;
+  $("#sim-dt-rel").hidden = !(signals && signals.some((s) => s.endsWith("_diff")));
   if (!usesTemp && Number($("#sim-dt").value) !== 0) $("#sim-dt").value = 0;
 }
 
@@ -556,7 +567,8 @@ function renderSim(res) {
   updateSimInputs();
   simRunDays = res.run_days;
   simLabels();
-  const fmt = {lse01_moisture: ["%", 1], lse01_conductivity: ["µS/cm", 0], lse01_temperature: ["°C", 1], ltcfs_temperature: ["°C", 1]};
+  const fmt = {lse01_moisture: ["%", 1], lse01_conductivity: ["µS/cm", 0], lse01_temperature: ["°C", 1], ltcfs_temperature: ["°C", 1],
+               ambient_temperature: ["°C", 1], ltcfs_temperature_diff: ["°C", 1]};
   $("#sim-values").innerHTML = t("sim.values") + Object.entries(fmt).map(([k, [u, d]]) => {
     const a = res.recorded_means[k], b = res.simulated_means[k];
     if (a == null) return "";

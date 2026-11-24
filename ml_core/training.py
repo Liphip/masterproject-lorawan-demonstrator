@@ -5,9 +5,12 @@ Headless alternative for the training step:  python -m ml_core.training
 
 Feature sets: the only annotated run (series 1) goes from spring to summer, so temperature
 rises together with the ripening phase and models can learn the season instead of the ripening.
-FEATURE_SETS selects which sensor signals the models may use; the unannotated series 2
-(summer to spring) serves as a label-free check: a model that learned ripening must predict
-phases that advance in time there too (see predict_progression / progression_scores).
+FEATURE_SETS selects which sensor signals the models may use. temperature_difference uses the
+probe temperatures relative to the air temperature, which removes the seasonal level. Optional
+augmentation (augment_temperature) additionally randomises temperature level and swings in the
+training data. The unannotated series 2 (summer to spring) serves as a label-free check: a model
+that learned ripening must predict phases that advance in time there too (predict_progression,
+progression_scores).
 
 Output in data/models/ (what the demonstrator loads):
     hyperparameters.json   search result (written by the search, read by training)
@@ -82,14 +85,29 @@ PARAM_GRIDS = {
 # A forest with unlimited depth on ~160k windows grows to hundreds of MB per model.
 # Capped for the demo laptop; pass limit_size=False to export the searched forest as is.
 SIZE_LIMITS = {"rf": {"n_estimators": 100, "max_depth": 10}}
-# Sensor signals the models may use. Temperature cannot be separated from the season with
-# one annotated run; uplink timing carries no ripening information and may be a shortcut.
+# Sensor signals the models may use.
+#   original               the first feature set: absolute temperatures and uplink timing included
+#   no_temperature         without temperature
+#   moisture_conductivity  without temperature and uplink timing (timing carries no ripening information)
+#   temperature_difference moisture, conductivity and probe temperature minus air temperature:
+#                          the seasonal level cancels out, the sausage's own behaviour (e.g. evaporative
+#                          cooling while it is moist) remains
 FEATURE_SETS = {
-    "all": ["lse01_conductivity", "lse01_moisture", "lse01_temperature", "ltcfs_temperature", "timestamp"],
+    "original": ["lse01_conductivity", "lse01_moisture", "lse01_temperature", "ltcfs_temperature", "timestamp"],
     "no_temperature": ["lse01_conductivity", "lse01_moisture", "timestamp"],
     "moisture_conductivity": ["lse01_conductivity", "lse01_moisture"],
+    "temperature_difference": ["lse01_conductivity", "lse01_moisture", "lse01_temperature_diff", "ltcfs_temperature_diff"],
 }
-DEFAULT_FEATURE_SET = "moisture_conductivity"
+DEFAULT_FEATURE_SET = "temperature_difference"
+# Statistics WindowFeatures computes per signal (used to select feature columns exactly).
+SIGNAL_STATS = {"min", "max", "mean", "std", "skew", "slope"}
+TIMING_STATS = {"count", "duration", "interval", "min_interval", "max_interval"}
+# Training-only augmentation of temperature features, per window (see augment_temperature):
+#   offset  ± °C shift of the absolute temperature level (the same for both probes)
+#   scale   factor range for the swings around the window mean (day/night amplitude is seasonal)
+#   mirror  flip the swings (rising ↔ falling) with probability 0.5
+#   copies  augmented copies per training window (the original is kept)
+AUGMENTATION = {"offset": 10.0, "scale": [0.5, 2.0], "mirror": True, "copies": 2}
 # Smoothing of predicted phases before scoring their progression (one day of windows).
 PROGRESSION_SMOOTHING = "1D"
 # Tiny settings for smoke tests (notebook QUICK flag, test suite).
@@ -122,7 +140,7 @@ class Windows:
     def select(self, feature_set: str) -> "Windows":
         """Same windows restricted to the signals of a feature set (see FEATURE_SETS)."""
         signals = FEATURE_SETS[feature_set]
-        cols = [c for c in self.columns if any(c.startswith(sig + "_") for sig in signals)]
+        cols = [c for c in self.columns if feature_signal(c) in signals]
         return Windows({g: x[cols] for g, x in self.X.items()}, self.y, self.times, self.raw, cols,
                        self.classes, self.window_size, self.stride, feature_set)
 
@@ -137,6 +155,60 @@ class Windows:
         return pd.DataFrame([{"recording": g, "rows": len(self.raw[g]), "windows": len(self.X[g]),
                               "from": self.times[g][0], "to": self.times[g][-1],
                               **{c: int((self.y[g] == c).sum()) for c in self.classes}} for g in self.recordings])
+
+
+def feature_signal(column: str) -> str | None:
+    """'lse01_temperature_diff_mean' -> 'lse01_temperature_diff'; 'timestamp_interval' -> 'timestamp'."""
+    if column.startswith("timestamp_") and column[len("timestamp_"):] in TIMING_STATS:
+        return "timestamp"
+    signal, _, stat = column.rpartition("_")
+    return signal if stat in SIGNAL_STATS else None
+
+
+def check_air_temperature(windows: Windows, log=print) -> None:
+    """Feature sets with temperature differences need the air temperature in the converted data."""
+    diff_cols = [c for c in windows.columns if c.endswith("_temperature_diff_mean")]
+    if not diff_cols:
+        return
+    X = pd.concat(list(windows.X.values()), ignore_index=True)
+    coverage = float(X[diff_cols].notna().any(axis=1).mean())
+    if coverage == 0:
+        raise ValueError("No air temperature in the converted data. Re-run notebook 01 (conversion) and check "
+                         "the reported air temperature column.")
+    if coverage < 0.5:
+        log(f"WARNING: only {coverage:.0%} of the windows have an air temperature.")
+
+
+def augment_temperature(X: pd.DataFrame, y: np.ndarray, settings: dict | None = None, seed: int = RANDOM_STATE):
+    """Training-only augmentation of the temperature features. Returns (X, y) with augmented copies added.
+
+    Per window it applies T' = mean + m·b·(T − mean) + a to every temperature signal: offset a (absolute
+    temperatures only, the same for both probes; differences keep their level), swing scale b and
+    mirror m = ±1. The window statistics have closed forms for this, so it works on the features directly.
+    """
+    s = {**AUGMENTATION, **(settings or {})}
+    signals = sorted({feature_signal(c) for c in X.columns
+                      if feature_signal(c) and "temperature" in feature_signal(c)})
+    if not signals or s["copies"] < 1:
+        return X, y
+    rng = np.random.default_rng(seed)
+    parts, n = [X], len(X)
+    for _ in range(s["copies"]):
+        a = rng.uniform(-s["offset"], s["offset"], n)
+        b = rng.uniform(*s["scale"], n)
+        m = np.where(s["mirror"] & (rng.random(n) < 0.5), -1.0, 1.0)
+        Xa = X.copy()
+        for sig in signals:
+            off = 0.0 if sig.endswith("_diff") else a
+            mean, lo, hi = X[f"{sig}_mean"], X[f"{sig}_min"], X[f"{sig}_max"]
+            Xa[f"{sig}_mean"] = mean + off
+            Xa[f"{sig}_min"] = np.where(m > 0, mean + b * (lo - mean), mean - b * (hi - mean)) + off
+            Xa[f"{sig}_max"] = np.where(m > 0, mean + b * (hi - mean), mean - b * (lo - mean)) + off
+            Xa[f"{sig}_std"] = X[f"{sig}_std"] * b
+            Xa[f"{sig}_skew"] = X[f"{sig}_skew"] * m
+            Xa[f"{sig}_slope"] = X[f"{sig}_slope"] * m * b
+        parts.append(Xa)
+    return pd.concat(parts, ignore_index=True), np.tile(y, len(parts))
 
 
 def load_windows(data_dir: str = CONVERTED_DIR, pattern: str = "series_1_*.csv", window_size: int = 10,
@@ -302,15 +374,19 @@ def _agg(folds, name):
     return {"mean": float(v.mean()), "std": float(v.std()), "min": float(v.min()), "max": float(v.max())}
 
 
-def cross_validate(windows: Windows, key: str, params: dict, on_fold=None, log=print) -> dict:
+def cross_validate(windows: Windows, key: str, params: dict, augmentation: dict | None = None,
+                   on_fold=None, log=print) -> dict:
     """Leave-one-sausage-out: fit on all but one annotated sausage, score on that one.
 
+    augmentation: settings for augment_temperature, applied to the training part only.
     on_fold(held_out, fitted_steps) is called after each fold (used to export fold models).
     """
     classes = windows.classes
     folds, cm, held_out_pred = [], np.zeros((len(classes), len(classes)), dtype=int), {}
     for held in windows.recordings:
         X_tr, y_tr, _ = windows.stack(exclude=held)
+        if augmentation is not None:
+            X_tr, y_tr = augment_temperature(X_tr, y_tr, augmentation)
         steps = build_steps(key, params)
         t = time.perf_counter()
         steps.fit(X_tr, y_tr)
@@ -335,34 +411,40 @@ def cross_validate(windows: Windows, key: str, params: dict, on_fold=None, log=p
             "macro_f1": _agg(folds, "macro_f1"), "batch_ms_per_window": _agg(folds, "batch_ms_per_window")["mean"]}
 
 
-def compare_feature_sets(windows: Windows, unannotated: Windows | None, feature_sets=None, keys=("logreg", "rf", "mlp"),
+def compare_feature_sets(windows: Windows, unannotated: Windows | None, variants=None, keys=("logreg", "rf", "mlp"),
                          params: dict | None = None, limit_size: bool = True, quick: bool = False, log=print):
-    """Held-out score on the annotated run vs. phase progression on the unannotated run, per feature set.
+    """Held-out score on the annotated run vs. phase progression on the unannotated run, per variant.
 
+    variants: feature set names; append "+augmentation" to train that set with augment_temperature.
     A model that learned the season scores well on series 1 but runs backwards on series 2.
-    Returns (table, progressions) where progressions[(feature_set, key)] = {recording: Series}.
+    Returns (table, progressions) where progressions[(variant, key)] = {recording: Series}.
     """
     params = params or load_hyperparameters()[0]
     rows, progressions = [], {}
-    for fs in feature_sets or list(FEATURE_SETS):
+    for variant in variants or list(FEATURE_SETS):
+        fs, _, aug = variant.partition("+")
+        augmentation = AUGMENTATION if aug == "augmentation" else None
         w = windows.select(fs)
+        check_air_temperature(w, log)
         u = unannotated.select(fs) if unannotated is not None else None
         for key in keys:
             p = training_params(key, params[key], limit_size, quick)
-            log(f"\n=== {fs} · {MODEL_NAMES[key]} ===")
-            cv = cross_validate(w, key, p, log=log)
-            row = {"feature set": fs, "model": MODEL_NAMES[key], "features": len(w.columns),
+            log(f"\n=== {variant} · {MODEL_NAMES[key]} ===")
+            cv = cross_validate(w, key, p, augmentation, log=log)
+            row = {"variant": variant, "model": MODEL_NAMES[key], "features": len(w.columns),
                    "series 1: balanced acc": round(cv["balanced_accuracy"]["mean"], 3),
                    "± std": round(cv["balanced_accuracy"]["std"], 3)}
             if u is not None:
                 X_all, y_all, _ = w.stack()
+                if augmentation is not None:
+                    X_all, y_all = augment_temperature(X_all, y_all, augmentation)
                 steps = build_steps(key, p).fit(X_all, y_all)
-                progressions[(fs, key)] = predict_progression(steps, u, w.classes)
-                sc = progression_scores(progressions[(fs, key)], w.classes)
+                progressions[(variant, key)] = predict_progression(steps, u, w.classes)
+                sc = progression_scores(progressions[(variant, key)], w.classes)
                 row["series 2: phase order ρ"] = None if sc["spearman_mean"] is None else round(sc["spearman_mean"], 3)
                 row["series 2: backwards share"] = round(sc["backward_share_mean"], 3)
             rows.append(row)
-    return pd.DataFrame(rows).set_index(["feature set", "model"]), progressions
+    return pd.DataFrame(rows).set_index(["variant", "model"]), progressions
 
 
 # ── training and export ─────────────────────────────────────────────────────
@@ -379,13 +461,14 @@ def _latency_ms(pipe: ModelPipeline, raw: pd.DataFrame, ws: int, repeats: int = 
 
 
 def train_and_evaluate(windows: Windows, out_dir: str = MODELS_DIR, feature_set: str = DEFAULT_FEATURE_SET,
-                       unannotated: Windows | None = None, params: dict | None = None,
+                       unannotated: Windows | None = None, params: dict | None = None, augmentation: dict | None = None,
                        keys=("logreg", "rf", "mlp"), limit_size: bool = True, fold_models: bool = True,
                        quick: bool = False, log=print) -> dict:
     """Evaluate, export fold and final models, write manifest.json and metrics.json. Returns the metrics.
 
     windows: all annotated windows (any feature set; feature_set selects the signals).
     unannotated: windows of the unannotated run for the phase-progression check (optional).
+    augmentation: settings for augment_temperature (training data only), None = off.
     """
     params_source, searched_with = "given", None
     if params is None:
@@ -395,6 +478,9 @@ def train_and_evaluate(windows: Windows, out_dir: str = MODELS_DIR, feature_set:
     if searched_with and searched_with != feature_set:
         log(f"WARNING: hyperparameters were searched with feature set '{searched_with}'. Re-run notebook 02.")
     windows = windows.select(feature_set)
+    check_air_temperature(windows, log)
+    if augmentation is not None:
+        log(f"Augmentation of temperature features: {augmentation}")
     if unannotated is not None:
         unannotated = unannotated.select(feature_set)
     classes, recs = windows.classes, windows.recordings
@@ -412,10 +498,12 @@ def train_and_evaluate(windows: Windows, out_dir: str = MODELS_DIR, feature_set:
                 build_pipeline(steps, windows, key, name).store(d)
                 fold_entries[held] = {"dir": os.path.relpath(d, out_dir), "name": name}
 
-        cv = cross_validate(windows, key, p, on_fold=export_fold, log=log)
+        cv = cross_validate(windows, key, p, augmentation, on_fold=export_fold, log=log)
         held_out_pred[key] = cv["held_out_pred"]
 
         X_all, y_all, _ = windows.stack()
+        if augmentation is not None:
+            X_all, y_all = augment_temperature(X_all, y_all, augmentation)
         steps = build_steps(key, p)
         t = time.perf_counter()
         steps.fit(X_all, y_all)
@@ -457,7 +545,7 @@ def train_and_evaluate(windows: Windows, out_dir: str = MODELS_DIR, feature_set:
 
     now = dt.datetime.now(dt.timezone.utc).isoformat()
     manifest = {"created_at": now, "window_size": windows.window_size, "stride": windows.stride,
-                "feature_set": feature_set, "signals": FEATURE_SETS[feature_set],
+                "feature_set": feature_set, "signals": FEATURE_SETS[feature_set], "augmentation": augmentation,
                 "feature_order": FEATURE_ORDER, "output_columns": windows.columns, "classes": classes,
                 "labeled_groups": recs, "models": manifest_models, "feature_ranges": ranges,
                 "quick": quick, "hyperparameters": params_source, "size_limited": limit_size,
@@ -465,6 +553,7 @@ def train_and_evaluate(windows: Windows, out_dir: str = MODELS_DIR, feature_set:
                              "numpy": np.__version__, "pandas": pd.__version__}}
     result = {"created_at": now, "classes": classes, "models": metrics, "agreement_on_held_out": agreement,
               "quick": quick, "feature_set": feature_set, "signals": FEATURE_SETS[feature_set],
+              "augmentation": augmentation,
               "unannotated_recordings": unannotated.recordings if unannotated is not None else [],
               "dataset": {"labeled_groups": recs, "n_windows": int(len(y_all)),
                           "class_counts": {c: int((y_all == c).sum()) for c in classes},
@@ -501,6 +590,7 @@ def main(argv=None):
     ap.add_argument("--data-dir", default=CONVERTED_DIR)
     ap.add_argument("--out", default=MODELS_DIR)
     ap.add_argument("--feature-set", default=DEFAULT_FEATURE_SET, choices=list(FEATURE_SETS))
+    ap.add_argument("--augment", action="store_true", help="augment temperature features (training data only)")
     ap.add_argument("--window-size", type=int, default=10)
     ap.add_argument("--stride", type=int, default=2)
     ap.add_argument("--no-size-limit", action="store_true", help="export the searched Random Forest without caps")
@@ -510,7 +600,8 @@ def main(argv=None):
     windows = load_windows(args.data_dir, window_size=args.window_size, stride=args.stride)
     unannotated = load_windows(args.data_dir, "series_2_*.csv", args.window_size, args.stride,
                                annotated=False, classes=windows.classes)
-    train_and_evaluate(windows, args.out, args.feature_set, unannotated, limit_size=not args.no_size_limit,
+    train_and_evaluate(windows, args.out, args.feature_set, unannotated,
+                       augmentation=AUGMENTATION if args.augment else None, limit_size=not args.no_size_limit,
                        fold_models=not args.no_fold_models, quick=args.quick)
 
 

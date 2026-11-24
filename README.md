@@ -59,8 +59,9 @@ The dashboard needs trained models in `data/models/` (see below). The UG63 HTTP 
    unannotated series 2 (phases must advance in time there too). Without a search result it uses
    the defaults in `ml_core/training.py`. Headless alternative: `python -m ml_core.training`.
 4. **04_check_seasonal_confound**: compares the feature sets. Series 1 (the only annotated run) goes from spring to
-   summer, so temperature rises with the phase. Models that use it look excellent on series 1 and run backwards on
-   series 2. The default feature set therefore uses moisture and conductivity only (`FEATURE_SETS` in `ml_core/training.py`).
+   summer, so the absolute temperature rises with the phase, and models that use it can learn the season. The default
+   feature set therefore uses the probe temperatures *relative to the air* (plus moisture and conductivity); optional
+   augmentation randomises temperature level and swings in the training data (`ml_core/training.py`).
 
 Train with **the same scikit-learn version as the demo laptop** (pinned to 1.9.x in `requirements.txt`).
 Model files are not portable across versions; the dashboard warns on a mismatch.

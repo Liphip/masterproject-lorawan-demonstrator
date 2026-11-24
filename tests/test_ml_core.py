@@ -10,9 +10,9 @@ import pytest
 
 from ml_core import ModelPipeline, WindowFeatures
 from ml_core.conversion import classify_device, convert_all
-from ml_core.data import ALL_COLUMNS, ROOT
-from ml_core.training import (FEATURE_SETS, QUICK_GRIDS, compare_feature_sets, load_hyperparameters, load_windows,
-                              save_hyperparameters, search_hyperparameters)
+from ml_core.data import ALL_COLUMNS, FEATURE_ORDER, ROOT, add_temperature_difference
+from ml_core.training import (FEATURE_SETS, QUICK_GRIDS, augment_temperature, compare_feature_sets, feature_signal,
+                              load_hyperparameters, load_windows, save_hyperparameters, search_hyperparameters)
 from synthetic_data import make_raw_workbooks
 
 
@@ -59,19 +59,23 @@ def test_classify_device_order_matters():
     assert classify_device("Wurst 3 Temperatur") == ("ltcfs", 3)
     assert classify_device("Milesight Umgebung PIR & Lichtintensität") == ("ws202", None)
     assert classify_device("Wurst 2 PH-Wert") == (None, None)
-    assert classify_device("Umgebung Temperatur & Luftfeuchtigkeit") == (None, None)
+    assert classify_device("Umgebung Temperatur & Luftfeuchtigkeit") == ("ambient", None)
 
 
 def test_conversion_of_both_layouts(tmp_path):
     make_raw_workbooks(str(tmp_path / "raw"), n_sausages=2, rows_per_device=12)
     summary = convert_all(str(tmp_path / "raw"), str(tmp_path / "converted"), log=_quiet)
     assert sorted(summary["file"]) == [f"series_{s}_sausage_{k}.csv" for s in (1, 2) for k in (1, 2)]
+    # air temperature: different column per export, reported, aligned to every probe uplink
+    assert set(summary["air temp source"]) == {"sausage_temperature_sensor_1", "temperature2"}
+    assert (summary["air temp coverage"] == 1.0).all()
     s1 = pd.read_csv(tmp_path / "converted" / "series_1_sausage_2.csv")
     s2 = pd.read_csv(tmp_path / "converted" / "series_2_sausage_1.csv")
     assert list(s1.columns) == ALL_COLUMNS + ["label"]
     assert list(s2.columns) == ALL_COLUMNS            # unlabeled run: no label column, but NOT empty
     for df in (s1, s2):
-        assert df["sensor"].value_counts().to_dict() == {"lse01": 12, "ltcfs": 12, "ws202": 12}  # pH/ambient dropped
+        assert df["sensor"].value_counts().to_dict() == {"lse01": 12, "ltcfs": 12, "ws202": 12}  # pH dropped, ambient no rows
+        assert df["ambient_temperature"].eq(14.0).all()
         assert set(df["ws202_light_status"].dropna()) == {0, 1}
         assert df["lse01_moisture"].notna().sum() == 12 and df["ltcfs_temperature"].notna().sum() == 12
         assert pd.to_datetime(df["timestamp"]).is_monotonic_increasing
@@ -98,8 +102,8 @@ def test_training_outputs(trained):
     assert set(m["models"]) == {"logreg", "rf", "mlp"}
     assert m["models"]["rf"]["params"]["max_depth"] == 10            # size limit applied
     assert m["classes"] == ["Umroetung", "Reifung Phase 1", "Reifung Phase 2"]  # chronological
-    assert man["feature_set"] == "moisture_conductivity"                 # default: no temperature, no timing
-    assert man["output_columns"] and all(c.startswith(("lse01_conductivity", "lse01_moisture")) for c in man["output_columns"])
+    assert man["feature_set"] == "temperature_difference"                # default: no absolute temperature, no timing
+    assert {feature_signal(c) for c in man["output_columns"]} == set(FEATURE_SETS["temperature_difference"])
     assert m["models"]["rf"]["unannotated_progression"]["spearman_mean"] > 0.5
     assert man["versions"]["scikit-learn"] and man["hyperparameters"].startswith("defaults")
     for e in man["models"]:
@@ -112,12 +116,50 @@ def test_progression_check_catches_the_season(synthetic_dir):
     With temperature the models look perfect on series 1 but run backwards on series 2."""
     w = load_windows(str(synthetic_dir / "converted"), log=_quiet)
     u = load_windows(str(synthetic_dir / "converted"), "series_2_*.csv", annotated=False, classes=w.classes, log=_quiet)
-    assert w.select("moisture_conductivity").columns == [c for c in w.columns if c.startswith(("lse01_conductivity", "lse01_moisture"))]
-    table, prog = compare_feature_sets(w, u, ["all", "moisture_conductivity"], keys=("logreg",), quick=True, log=_quiet)
+    # exact selection: lse01_temperature must not pick up lse01_temperature_diff
+    assert not any("diff" in c for c in w.select("original").columns)
+    assert {feature_signal(c) for c in w.select("temperature_difference").columns} == set(FEATURE_SETS["temperature_difference"])
+    variants = ["original", "temperature_difference", "temperature_difference+augmentation"]
+    table, prog = compare_feature_sets(w, u, variants, keys=("logreg",), quick=True, log=_quiet)
     rho = table["series 2: phase order ρ"]
-    assert rho[("all", "Logistic Regression")] < 0 < 0.5 < rho[("moisture_conductivity", "Logistic Regression")]
-    assert set(prog[("all", "logreg")]) == set(u.recordings)
-    assert set(FEATURE_SETS) == {"all", "no_temperature", "moisture_conductivity"}
+    assert rho[("original", "Logistic Regression")] < 0.8 < rho[("temperature_difference", "Logistic Regression")]
+    assert rho[("temperature_difference+augmentation", "Logistic Regression")] > 0.8
+    assert set(prog[("original", "logreg")]) == set(u.recordings)
+
+
+def test_temperature_difference_uses_recorded_or_given_air_temperature():
+    df = pd.DataFrame({"lse01_temperature": [10.0, np.nan], "ltcfs_temperature": [np.nan, 12.0], "ambient_temperature": [8.0, 9.0]})
+    add_temperature_difference(df)
+    assert df["lse01_temperature_diff"].iloc[0] == 2.0 and df["ltcfs_temperature_diff"].iloc[1] == 3.0
+    add_temperature_difference(df, ambient=20.0)                     # demonstrator case: configured air temperature
+    assert df["lse01_temperature_diff"].iloc[0] == -10.0 and df["ambient_temperature"].eq(20.0).all()
+
+
+def test_augmentation_equals_transforming_the_raw_temperatures():
+    """Feature-level augmentation must match T' = mean + m·b·(T - mean) + a on the raw rows of one window."""
+    rng = np.random.default_rng(3)
+    t = pd.date_range("2024-01-01", periods=10, freq="5min", tz="UTC")
+    raw = pd.DataFrame({"timestamp": t, "sensor": ["lse01", "ltcfs"] * 5,
+                        "lse01_conductivity": np.nan, "lse01_moisture": np.nan,
+                        "lse01_temperature": rng.normal(15, 2, 10), "ltcfs_temperature": rng.normal(15, 2, 10),
+                        "ambient_temperature": rng.normal(14, 3, 10)})
+    raw.loc[raw.sensor == "ltcfs", "lse01_temperature"] = np.nan
+    raw.loc[raw.sensor == "lse01", "ltcfs_temperature"] = np.nan
+    add_temperature_difference(raw)
+    wf = WindowFeatures(window_size=10, stride=1)
+    X = wf.transform(raw[FEATURE_ORDER])
+    cols = [c for c in X.columns if "temperature" in c]
+    Xa, _ = augment_temperature(X[cols], np.array(["x"]), {"copies": 1}, seed=11)
+    # draw the same random numbers as augment_temperature does for one window
+    r = np.random.default_rng(11)
+    a, b = r.uniform(-10, 10, 1)[0], r.uniform(0.5, 2.0, 1)[0]
+    m = -1.0 if r.random(1)[0] < 0.5 else 1.0
+    raw2 = raw.copy()
+    for col in ("lse01_temperature", "ltcfs_temperature", "lse01_temperature_diff", "ltcfs_temperature_diff"):
+        mean = raw2[col].mean()
+        raw2[col] = mean + m * b * (raw2[col] - mean) + (0.0 if col.endswith("_diff") else a)
+    expected = wf.transform(raw2[FEATURE_ORDER])[cols]
+    np.testing.assert_allclose(Xa.iloc[1].to_numpy(float), expected.iloc[0].to_numpy(float), rtol=1e-5, atol=1e-5)
 
 
 # ── notebooks ───────────────────────────────────────────────────────────────

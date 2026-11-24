@@ -28,6 +28,8 @@ class Config:
     replay_dirs: list = field(default_factory=lambda: [CONVERTED_DIR, RECORDINGS_DIR])
     recordings_dir: str = RECORDINGS_DIR
     record_live: bool = True
+    # The case has no air sensor; live temperature differences use this value (changeable in the UI).
+    ambient_temperature: float = 20.0
     devices: list = field(default_factory=list)
     path: str = ""
 
@@ -64,6 +66,7 @@ def load_config(path: str | None) -> Config:
     cfg.port = int(srv.get("port", cfg.port))
     cfg.ingest_token = srv.get("ingest_token", "")
     cfg.record_live = bool(srv.get("record_live", True))
+    cfg.ambient_temperature = float(raw.get("case", {}).get("ambient_temperature", cfg.ambient_temperature))
     if "models" in paths:
         cfg.models_dir = _abs(paths["models"], base)
     if "replay_data" in paths:

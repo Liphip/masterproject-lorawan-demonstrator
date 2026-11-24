@@ -16,7 +16,7 @@ import threading
 import numpy as np
 import pandas as pd
 
-from ml_core.data import FEATURE_ORDER, load_recording
+from ml_core.data import FEATURE_ORDER, add_temperature_difference, load_recording
 
 from .inference import ModelRegistry
 from .replay import list_recordings
@@ -24,7 +24,7 @@ from .replay import list_recordings
 LIMITS = {  # slider ranges, enforced server-side too
     "moisture_delta": (-30.0, 30.0),       # percentage points, LSE01
     "conductivity_factor": (0.3, 2.0),     # multiplier, LSE01
-    "temperature_delta": (-10.0, 10.0),    # °C, LSE01 core + LTC-FS probe
+    "temperature_delta": (-10.0, 10.0),    # °C, LSE01 core + LTC-FS probe (air temperature stays as recorded)
 }
 
 
@@ -66,19 +66,21 @@ class Simulator:
         target = t0 + (t1 - t0) * position
         k = int(np.searchsorted(ts.values, target.to_datetime64(), side="right")) - 1
         k = min(max(k, ws - 1), len(df) - 1)
-        base = df[FEATURE_ORDER].iloc[k + 1 - ws:k + 1].copy()
+        base = df[FEATURE_ORDER + ["ambient_temperature"]].iloc[k + 1 - ws:k + 1].copy()
         win = base.copy()
         win["lse01_moisture"] = (win["lse01_moisture"] + dm).clip(0, 100)
         win["lse01_conductivity"] = (win["lse01_conductivity"] * cf).clip(lower=0)
         win["lse01_temperature"] = win["lse01_temperature"] + dt
         win["ltcfs_temperature"] = win["ltcfs_temperature"] + dt
+        add_temperature_difference(win)  # recorded air temperature, shifted probe temperatures
 
         res = self.models.predict(win, group=group)
         truth = None
         if "label" in df.columns:
             lw = df["label"].iloc[k + 1 - ws:k + 1].dropna()
             truth = lw.mode().iloc[0] if len(lw) else None
-        cols = ["lse01_moisture", "lse01_conductivity", "lse01_temperature", "ltcfs_temperature"]
+        cols = ["lse01_moisture", "lse01_conductivity", "lse01_temperature", "ltcfs_temperature",
+                "ambient_temperature", "lse01_temperature_diff", "ltcfs_temperature_diff"]
         mean = lambda d: {c: (None if d[c].isna().all() else float(d[c].mean())) for c in cols}
         res.update(simulated=True, group=group, position=position,
                    time=ts.iloc[k].isoformat(), day=(ts.iloc[k] - t0).total_seconds() / 86400,

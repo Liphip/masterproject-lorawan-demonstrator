@@ -18,7 +18,8 @@ CONVERTED_DIR = os.path.join(DATA_DIR, "converted")  # series_<n>_sausage_<k>.cs
 MODELS_DIR = os.path.join(DATA_DIR, "models")        # trained pipelines, metrics, hyperparameters
 RECORDINGS_DIR = os.path.join(DATA_DIR, "recordings")  # live uplinks (not committed)
 
-# Raw-row columns the models consume: everything except the label and the WS202 values.
+# Raw-row columns the models consume. The *_temperature_diff columns are derived
+# (probe temperature minus air temperature, see add_temperature_difference).
 FEATURE_ORDER = [
     "timestamp",
     "sensor",
@@ -26,12 +27,16 @@ FEATURE_ORDER = [
     "lse01_moisture",
     "lse01_temperature",
     "ltcfs_temperature",
+    "lse01_temperature_diff",
+    "ltcfs_temperature_diff",
 ]
 # Annotated curing phases in chronological order (labels as in the raw data).
 PHASES = ["Umroetung", "Reifung Phase 1", "Reifung Phase 2"]
-# All value columns of a converted recording. WS202 (PIR/light) rows are kept because
-# they are part of the uplink stream the windows are built from, but not as features.
-ALL_COLUMNS = FEATURE_ORDER + ["ws202_light_status", "ws202_pir_status"]
+# All columns of a converted recording. WS202 (PIR/light) rows are kept because they are part
+# of the uplink stream the windows are built from, but not as features. ambient_temperature is
+# the air temperature at the time of each uplink (no own rows).
+ALL_COLUMNS = ["timestamp", "sensor", "lse01_conductivity", "lse01_moisture", "lse01_temperature",
+               "ltcfs_temperature", "ws202_light_status", "ws202_pir_status", "ambient_temperature"]
 
 
 def recording_name(path: str) -> str:
@@ -54,12 +59,27 @@ def load_recording(path: str) -> pd.DataFrame:
     for col in ALL_COLUMNS:
         if col not in df.columns:
             df[col] = np.nan
-    return df
+    return add_temperature_difference(df)
 
 
 def in_phase_order(labels) -> list:
     """Sort labels chronologically (unknown labels last, alphabetically)."""
     return sorted(set(labels), key=lambda c: (PHASES.index(c) if c in PHASES else len(PHASES), str(c)))
+
+
+def add_temperature_difference(df: pd.DataFrame, ambient: float | None = None) -> pd.DataFrame:
+    """Add probe temperature minus air temperature for both probes (in place, also returned).
+
+    ambient: use this air temperature for every row (the demonstrator case has no air sensor,
+    so live data uses a configured value). None: use the recorded ambient_temperature column.
+    """
+    if ambient is not None:
+        df["ambient_temperature"] = float(ambient)
+    elif "ambient_temperature" not in df.columns:
+        df["ambient_temperature"] = np.nan
+    for probe in ("lse01", "ltcfs"):
+        df[f"{probe}_temperature_diff"] = df[f"{probe}_temperature"] - df["ambient_temperature"]
+    return df
 
 
 def window_labels(labels: pd.Series, window_size: int, stride: int) -> np.ndarray:

@@ -8,6 +8,11 @@ port = 8000
 ingest_token = ""       # optional; if set, the gateway URL must end in ?token=<value>
 record_live = true      # append live uplinks to data/recordings (replayable later)
 
+[case]
+# Air temperature around the case. There is no air sensor in the case, but the models use the
+# probe temperatures relative to the air. Can be changed in the dashboard (Live tab).
+ambient_temperature = 20.0
+
 [paths]
 models = "data/models"
 replay_data = ["data/converted", "data/recordings"]

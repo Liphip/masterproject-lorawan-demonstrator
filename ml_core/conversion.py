@@ -9,8 +9,12 @@ Output: ``data/converted/series_<n>_sausage_<k>.csv`` with the columns of
 holds the rows of that sausage's two probes plus the shared WS202 rows, because
 the models see the uplink stream as it arrived.
 
-Not converted: pH probes and the ambient temperature/humidity device. They are
-not part of the demonstrator case.
+Air temperature: the ambient device (LSN50-v2-S31, "Umgebung Temperatur &
+Luftfeuchtigkeit") is not added as rows. Each uplink instead gets the most recent
+air temperature in ``ambient_temperature`` (at most AMBIENT_TOLERANCE old). Which
+Excel column holds it differs between the exports; convert_all reports the column used.
+
+Not converted: pH probes and air humidity.
 """
 from __future__ import annotations
 
@@ -24,6 +28,7 @@ from .data import ALL_COLUMNS
 # Device name → sensor type. Checked in this order: LSE01 names also contain "Temperatur".
 DEVICE_PATTERNS = [
     ("ws202", re.compile(r"milesight", re.I)),
+    ("ambient", re.compile(r"umgebung.*temperatur", re.I)),
     ("lse01", re.compile(r"wurst\D*(\d+).*feuchtigkeit", re.I)),
     ("ltcfs", re.compile(r"wurst\D*(\d+).*temperatur", re.I)),
 ]
@@ -41,6 +46,11 @@ COLUMN_MAP = {
     "sausage_temperature_sensor_3": "lse01_temperature", "soil_temperature": "lse01_temperature",
     "sausage_temperature_sensor_2": "ltcfs_temperature", "temp1": "ltcfs_temperature",
 }
+# Columns that may hold the air temperature of the ambient device, first match wins. Series 1 exports it as
+# "Sausage Temperature Sensor 1" (the seminar paper calls it "Temperatur 1 (Umgebungstemperatur)").
+# Series 2: assumed "Temperature2" — check the column reported by convert_all on the real data.
+AMBIENT_COLUMNS = ["sausage_temperature_sensor_1", "temperature2", "temperature", "air_temperature", "temp"]
+AMBIENT_TOLERANCE = pd.Timedelta(hours=2)
 STATE_MAP = {
     "ws202_light_status": {"dark": 0, "light": 1},
     "ws202_pir_status": {"not triggered": 0, "triggered": 1},
@@ -71,8 +81,19 @@ def read_sheet(path: str) -> pd.DataFrame:
     return pd.read_excel(path, sheet_name=target[0], engine="openpyxl")
 
 
-def convert_sheet(raw: pd.DataFrame, series: int) -> dict[str, pd.DataFrame]:
-    """Raw sheet → {"series_<n>_sausage_<k>": DataFrame}."""
+def ambient_series(df: pd.DataFrame) -> tuple[pd.DataFrame, str | None]:
+    """Air temperature readings of the ambient device and the column they came from."""
+    rows = df[df["sensor"] == "ambient"]
+    for col in AMBIENT_COLUMNS:
+        if col in rows.columns and rows[col].notna().any():
+            out = rows[["timestamp", col]].rename(columns={col: "ambient_temperature"})
+            out["ambient_temperature"] = pd.to_numeric(out["ambient_temperature"], errors="coerce")
+            return out.dropna().sort_values("timestamp"), col
+    return pd.DataFrame(columns=["timestamp", "ambient_temperature"]), None
+
+
+def convert_sheet(raw: pd.DataFrame, series: int) -> tuple[dict[str, pd.DataFrame], dict]:
+    """Raw sheet → ({"series_<n>_sausage_<k>": DataFrame}, info about the air temperature)."""
     df = raw.rename(columns=lambda c: str(c).strip().lower().replace(" ", "_")).rename(columns=COLUMN_MAP)
     kinds = df["sensor"].map(classify_device)
     df["sensor"] = [k[0] for k in kinds]
@@ -80,19 +101,24 @@ def convert_sheet(raw: pd.DataFrame, series: int) -> dict[str, pd.DataFrame]:
     df = df[df["sensor"].notna()]
 
     df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
+    df = df.dropna(subset=["timestamp"])
+    ambient, source = ambient_series(df)
+    df = df[df["sensor"] != "ambient"]
     for col, mapping in STATE_MAP.items():
         if col in df.columns:
             df[col] = df[col].map(lambda v, m=mapping: m.get(str(v).strip().lower(), v))
     columns = ALL_COLUMNS + (["label"] if "label" in df.columns else [])
-    df = df.reindex(columns=columns + ["sausage"])
+    df = df.reindex(columns=[c for c in columns if c != "ambient_temperature"] + ["sausage"])
 
     environment = df[df["sensor"] == "ws202"]
     out = {}
     for k in sorted(df["sausage"].dropna().unique()):
-        rows = pd.concat([df[df["sausage"] == k], environment])
-        rows = rows.sort_values("timestamp", kind="stable")[columns].reset_index(drop=True)
-        out[f"series_{series}_sausage_{int(k)}"] = rows
-    return out
+        rows = pd.concat([df[df["sausage"] == k], environment]).sort_values("timestamp", kind="stable")
+        rows = pd.merge_asof(rows, ambient, on="timestamp", direction="backward", tolerance=AMBIENT_TOLERANCE)
+        out[f"series_{series}_sausage_{int(k)}"] = rows[columns].reset_index(drop=True)
+    info = {"ambient source": source, "ambient readings": len(ambient),
+            "ambient °C": f"{ambient['ambient_temperature'].min():.1f} … {ambient['ambient_temperature'].max():.1f}" if len(ambient) else None}
+    return out, info
 
 
 def convert_all(raw_dir: str, out_dir: str, log=print) -> pd.DataFrame:
@@ -103,11 +129,19 @@ def convert_all(raw_dir: str, out_dir: str, log=print) -> pd.DataFrame:
     for f in files:
         path = os.path.join(raw_dir, f)
         log(f"Reading {f} …")
-        for name, rows in convert_sheet(read_sheet(path), series_number(path)).items():
+        converted, info = convert_sheet(read_sheet(path), series_number(path))
+        if info["ambient source"] is None:
+            log(f"  WARNING: no air temperature found (columns tried: {', '.join(AMBIENT_COLUMNS)})")
+        else:
+            log(f"  air temperature from column '{info['ambient source']}' ({info['ambient readings']:,} readings, {info['ambient °C']} °C)")
+        for name, rows in converted.items():
             rows.to_csv(os.path.join(out_dir, f"{name}.csv"), index=False)
             counts = rows["sensor"].value_counts()
+            probes = rows["sensor"].isin(["lse01", "ltcfs"])
             summary.append({"file": f"{name}.csv", "rows": len(rows),
                             **{f"{s} rows": int(counts.get(s, 0)) for s in ("lse01", "ltcfs", "ws202")},
+                            "air temp coverage": round(float(rows.loc[probes, "ambient_temperature"].notna().mean()), 3),
+                            "air temp source": info["ambient source"],
                             "first": rows["timestamp"].min(), "last": rows["timestamp"].max(),
                             "labeled": int(rows["label"].notna().sum()) if "label" in rows else 0})
             log(f"  wrote {name}.csv ({len(rows):,} rows)")

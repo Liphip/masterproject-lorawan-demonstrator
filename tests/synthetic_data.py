@@ -15,16 +15,20 @@ PHASES = ["Umroetung", "Reifung Phase 1", "Reifung Phase 2"]
 COLUMNS = [
     "timestamp", "sensor",
     "lse01_conductivity", "lse01_moisture", "lse01_temperature", "ltcfs_temperature",
-    "ws202_light_status", "ws202_pir_status", "label",
+    "ws202_light_status", "ws202_pir_status", "ambient_temperature", "label",
 ]
 
 
 def make_group(seed: int, days: float = 4.0, interval_min: float = 10.0,
                start: str = "2023-03-30T00:00:00Z", labeled: bool = True,
                temp_by_phase=(12.0, 15.0, 19.0)) -> pd.DataFrame:
-    """One sausage. Like the real data, temperature follows the SEASON: it rises over
-    series 1 (spring → summer, default) and falls over series 2 (summer → winter), while
-    moisture and conductivity follow the ripening in both runs."""
+    """One sausage, built to contain the same trap as the real data.
+
+    Air temperature follows the SEASON: its level per phase rises over series 1 (spring → summer,
+    default) and falls over series 2 (summer → winter), and the day/night swing is larger when it is
+    warm. The sausage follows the air damped and with a lag, and is cooler while it is moist
+    (evaporative cooling). Moisture and conductivity follow the ripening in both runs.
+    """
     rng = np.random.default_rng(seed)
     t0 = pd.Timestamp(start)
     n = int(days * 24 * 60 / interval_min)
@@ -32,23 +36,25 @@ def make_group(seed: int, days: float = 4.0, interval_min: float = 10.0,
     for i in range(n):
         frac = i / n
         phase = 0 if frac < 0.25 else (1 if frac < 0.6 else 2)
-        base_t = temp_by_phase[phase]
         ts = t0 + pd.Timedelta(minutes=i * interval_min)
-        jitter = lambda: pd.Timedelta(seconds=float(rng.uniform(0, 90)))
+        hours = i * interval_min / 60
+        level = temp_by_phase[phase]
+        swing = 0.25 * level                                   # warmer → larger day/night swing
+        air = level + swing * np.sin(2 * np.pi * hours / 24)
         moisture = 60 - 35 * frac + rng.normal(0, 1.5) + seed % 3
+        cooling = 1.8 * moisture / 60                          # moist sausage stays cooler than the air
+        sausage = level + 0.6 * swing * np.sin(2 * np.pi * (hours - 2) / 24) - cooling
         cond = 5000 - 3000 * frac + rng.normal(0, 150)
-        rows.append({"timestamp": ts + jitter(), "sensor": "lse01",
-                     "lse01_conductivity": cond, "lse01_moisture": moisture,
-                     "lse01_temperature": base_t + rng.normal(0, 0.3),
-                     "label": PHASES[phase]})
-        rows.append({"timestamp": ts + jitter(), "sensor": "ltcfs",
-                     "ltcfs_temperature": base_t + 0.4 + rng.normal(0, 0.3),
-                     "label": PHASES[phase]})
+        jitter = lambda: pd.Timedelta(seconds=float(rng.uniform(0, 90)))
+        label = PHASES[phase]
+        rows.append({"timestamp": ts + jitter(), "sensor": "lse01", "lse01_conductivity": cond,
+                     "lse01_moisture": moisture, "lse01_temperature": sausage + rng.normal(0, 0.2),
+                     "ambient_temperature": air, "label": label})
+        rows.append({"timestamp": ts + jitter(), "sensor": "ltcfs", "ltcfs_temperature": sausage + 0.4 + rng.normal(0, 0.2),
+                     "ambient_temperature": air, "label": label})
         if i % 2 == 0:
-            rows.append({"timestamp": ts + jitter(), "sensor": "ws202",
-                         "ws202_light_status": float(rng.random() < 0.3),
-                         "ws202_pir_status": float(rng.random() < 0.05),
-                         "label": PHASES[phase]})
+            rows.append({"timestamp": ts + jitter(), "sensor": "ws202", "ws202_light_status": float(rng.random() < 0.3),
+                         "ws202_pir_status": float(rng.random() < 0.05), "ambient_temperature": air, "label": label})
     df = pd.DataFrame(rows).reindex(columns=COLUMNS).sort_values("timestamp")
     df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
     if not labeled:

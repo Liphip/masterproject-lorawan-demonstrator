@@ -11,7 +11,7 @@ from collections import deque
 
 import pandas as pd
 
-from ml_core.data import ALL_COLUMNS, FEATURE_ORDER
+from ml_core.data import ALL_COLUMNS, FEATURE_ORDER, add_temperature_difference
 
 from .config import Config, normalize_eui
 from .decoders import DecodeError, decode_values, extract_envelope
@@ -33,6 +33,7 @@ class LiveState:
         self.slot_rows: dict[str, deque] = {}
         self.env_rows = deque(maxlen=200)
         self.predictions: dict[str, dict] = {}
+        self.ambient = cfg.ambient_temperature
         self.uplinks = 0
         self.errors = deque(maxlen=20)
         self.last_uplink_at: str | None = None
@@ -131,7 +132,15 @@ class LiveState:
             return pd.DataFrame(columns=FEATURE_ORDER)
         df = pd.DataFrame(rows).reindex(columns=FEATURE_ORDER).sort_values("timestamp", kind="stable")
         df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
-        return df.reset_index(drop=True)
+        return add_temperature_difference(df, ambient=self.ambient)[FEATURE_ORDER].reset_index(drop=True)
+
+    def set_ambient(self, value: float):
+        """Air temperature around the case (no sensor); re-predicts every slot."""
+        with self.lock:
+            self.ambient = float(value)
+            slots = list(self.slot_rows)
+        for slot in slots:
+            self._predict(slot)
 
     def _predict(self, slot: str):
         if not self.models.ok:
@@ -150,6 +159,7 @@ class LiveState:
     def snapshot(self) -> dict:
         with self.lock:
             return {
+                "ambient_temperature": self.ambient,
                 "devices": sorted(self.devices.values(), key=lambda d: (not d["configured"], d["slot"], d["name"])),
                 "recent": list(self.recent)[:25],
                 "slots": sorted(set(self.slot_rows)),

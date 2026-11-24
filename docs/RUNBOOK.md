@@ -35,7 +35,7 @@
 
 | Step | Action | What to say |
 |---|---|---|
-| 0 · Before guests arrive | Power the router, then the gateway, then the laptop. Run `scripts\start_demo.ps1`. Pick the audience's language (DE/EN, top right). Wait for a green "Gateway: last uplink …" chip. If the sensors send rarely, press the sensor button to force an uplink. | – |
+| 0 · Before guests arrive | Power the router, then the gateway, then the laptop. Run `scripts\start_demo.ps1`. Pick the audience's language (DE/EN, top right). Set the air temperature of the room in the *Live sensors* tab (the case has no air sensor). Wait for a green "Gateway: last uplink …" chip. If the sensors send rarely, press the sensor button to force an uplink. | – |
 | 1 · Data path | Point at the strip at the top and at panel 1 (sensor, values, RSSI). | LoRa radio → gateway (network server) → router (stands in for the Internet) → laptop. Nothing leaves the case. |
 | 2 · AI comparison | Panel 2 → *Recorded run*. Pick a `series_1` sausage, 1 h/s, start. Show the three cards, the annotation card and the timeline lanes. | Replay because curing takes days. The models never saw this sausage. Look at where they disagree: at phase transitions. |
 | 2b · Why? | At a phase transition press **❚❚ Pause**, then **🔍 How was this decided?** Walk through the 4 steps: uplinks → 29 numbers → which signals mattered → inside each model. **Close & resume replay** continues. | The same numbers, three principles: a weighted sum, 100 trees voting, a small neural network. Step 3 shows whether they rely on the same signals. |

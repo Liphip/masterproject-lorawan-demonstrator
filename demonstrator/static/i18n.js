@@ -28,6 +28,7 @@ const I18N = {
     "speed.600": "10 min / s", "speed.1800": "30 min / s", "speed.3600": "1 h / s", "speed.10800": "3 h / s", "speed.43200": "12 h / s",
     "signal.lse01_moisture": "LSE01 moisture", "signal.lse01_conductivity": "LSE01 conductivity",
     "signal.lse01_temperature": "LSE01 temperature", "signal.ltcfs_temperature": "LTC-FS temperature",
+    "signal.ltcfs_temperature_diff": "LTC-FS temperature − air",
     "replay.banner_html": "<span class=\"badge replay\">REPLAY</span> Recorded data, not live: <b>{group}</b> ({kind}, recorded {from} – {to}). Replay time <b>{now}</b> {state}",
     "replay.state_paused_html": "· <b>PAUSED</b>", "replay.state_running": "at {min} min of data per second",
     "replay.state_finished": "· finished", "replay.state_stopped": "· stopped",
@@ -53,6 +54,7 @@ const I18N = {
 
     "val.conductivity": "conductivity", "val.moisture": "moisture", "val.temp": "temp", "val.light": "light", "val.motion": "motion",
     "val.light_on": "light", "val.light_off": "dark", "val.motion_on": "triggered", "val.motion_off": "idle",
+    "val.temp_diff": "temp − air", "val.air": "air",
 
     "sim.banner_html": "<span class=\"badge sim\">SIMULATED</span> There is no sausage in the case. This takes a real recorded window from any day of a curing run and lets you change the measured levels. The models re-predict instantly, so you can ask \"what if the sausage were drier, warmer, saltier?\"",
     "sim.run": "Recorded run", "sim.try": "Try:", "sim.fresh": "Fresh sausage", "sim.dry": "Dried out", "sim.warm": "Too warm",
@@ -60,9 +62,12 @@ const I18N = {
     "sim.temperature": "Temperature", "sim.day_v": "day {n}", "sim.pt": "%pt",
     "sim.values": "Window average, recorded → simulated: ",
     "simv.lse01_moisture": "moisture", "simv.lse01_conductivity": "conductivity", "simv.lse01_temperature": "core temp", "simv.ltcfs_temperature": "probe temp",
+    "simv.ambient_temperature": "air (recorded)", "simv.ltcfs_temperature_diff": "probe − air",
 
     "livetab.note": "Live data proves the radio → gateway → network → laptop path. A sausage on the table does not ripen for days, so live phase predictions are only meaningful during a real curing run. The models are flagged when the live window falls outside the range they were trained on.",
     "livetab.slot": "Sausage slot", "livetab.empty": "No live uplinks for this slot yet.",
+    "livetab.ambient": "Air temperature around the case",
+    "livetab.ambient_note": "The case has no air sensor. The models use the probe temperatures relative to this value.",
 
     "eval.title": "3 · How do the models compare on held-out data?", "eval.loading": "Loading evaluation…",
     "eval.meta": "{s} sausages · {w} windows · trained {date}",
@@ -73,10 +78,12 @@ const I18N = {
     "eval.agree": "How often two models give the same label on held-out windows: ", "eval.cm": "Confusion matrices (row-normalised)",
     "eval.cm_corner": "annotated ↓ / predicted →",
     "eval.features": "model inputs: {fs}",
-    "fs.all": "all signals", "fs.no_temperature": "without temperature", "fs.moisture_conductivity": "moisture & conductivity",
+    "fs.original": "original features (incl. absolute temperature)", "fs.no_temperature": "without temperature",
+    "fs.moisture_conductivity": "moisture & conductivity", "fs.temperature_difference": "moisture, conductivity & temperature relative to the air",
     "eval.th_order": "Series 2: phase order",
     "eval.order_note_html": "<b>Series 2: phase order (ρ).</b> The second run (summer → spring) has no annotations, but ripening only moves forward. +1 means the predicted phase only advances over time. A negative value means it runs backwards, e.g. because the model follows the falling temperature instead of the ripening (notebook 04).",
     "sim.temp_unused": "Temperature is not a model input: in the only annotated run it follows the season, not the ripening.",
+    "sim.temp_relative": "Shifts the sausage temperature. The air stays as recorded, so the models see a changed temperature difference.",
     "eval.note": "All labeled sausages come from ONE curing run (series 1). Leave-one-sausage-out separates sausages, not runs; scores are likely optimistic for a new run.",
 
     "limits.title_html": "4 · What this does <em>not</em> show",
@@ -119,6 +126,7 @@ const I18N = {
 
     "sig.lse01_moisture": "Moisture (LSE01)", "sig.lse01_conductivity": "Conductivity (LSE01)",
     "sig.lse01_temperature": "Core temperature (LSE01)", "sig.ltcfs_temperature": "Temperature probe (LTC-FS)", "sig.timestamp": "Uplink timing",
+    "sig.lse01_temperature_diff": "Core temperature − air (LSE01)", "sig.ltcfs_temperature_diff": "Probe temperature − air (LTC-FS)",
     "stat.min": "minimum", "stat.max": "maximum", "stat.mean": "mean", "stat.std": "spread (std)", "stat.skew": "skew",
     "stat.slope": "trend (slope)", "stat.count": "uplinks", "stat.duration": "window length", "stat.interval": "avg gap",
     "stat.min_interval": "shortest gap", "stat.max_interval": "longest gap", "unit.per_uplink": "/uplink",
@@ -150,6 +158,7 @@ const I18N = {
     "speed.600": "10 min / s", "speed.1800": "30 min / s", "speed.3600": "1 h / s", "speed.10800": "3 h / s", "speed.43200": "12 h / s",
     "signal.lse01_moisture": "LSE01 Feuchte", "signal.lse01_conductivity": "LSE01 Leitfähigkeit",
     "signal.lse01_temperature": "LSE01 Temperatur", "signal.ltcfs_temperature": "LTC-FS Temperatur",
+    "signal.ltcfs_temperature_diff": "LTC-FS Temperatur − Luft",
     "replay.banner_html": "<span class=\"badge replay\">WIEDERGABE</span> Aufgezeichnete Daten, nicht live: <b>{group}</b> ({kind}, aufgezeichnet {from} – {to}). Wiedergabezeit <b>{now}</b> {state}",
     "replay.state_paused_html": "· <b>PAUSIERT</b>", "replay.state_running": "mit {min} min Daten pro Sekunde",
     "replay.state_finished": "· beendet", "replay.state_stopped": "· gestoppt",
@@ -175,6 +184,7 @@ const I18N = {
 
     "val.conductivity": "Leitfähigkeit", "val.moisture": "Feuchte", "val.temp": "Temp.", "val.light": "Licht", "val.motion": "Bewegung",
     "val.light_on": "hell", "val.light_off": "dunkel", "val.motion_on": "erkannt", "val.motion_off": "keine",
+    "val.temp_diff": "Temp. − Luft", "val.air": "Luft",
 
     "sim.banner_html": "<span class=\"badge sim\">SIMULIERT</span> Im Koffer ist keine Wurst. Hier wird ein echtes aufgezeichnetes Zeitfenster von einem beliebigen Reifetag genommen, und die Messwerte lassen sich verändern. Die Modelle rechnen sofort neu, so lässt sich fragen: „Was wäre, wenn die Wurst trockener, wärmer oder salziger wäre?“",
     "sim.run": "Aufgezeichneter Lauf", "sim.try": "Ausprobieren:", "sim.fresh": "Frische Wurst", "sim.dry": "Ausgetrocknet", "sim.warm": "Zu warm",
@@ -182,9 +192,12 @@ const I18N = {
     "sim.temperature": "Temperatur", "sim.day_v": "Tag {n}", "sim.pt": "%-Pkt.",
     "sim.values": "Fenstermittel, aufgezeichnet → simuliert: ",
     "simv.lse01_moisture": "Feuchte", "simv.lse01_conductivity": "Leitfähigkeit", "simv.lse01_temperature": "Kerntemp.", "simv.ltcfs_temperature": "Fühlertemp.",
+    "simv.ambient_temperature": "Luft (aufgezeichnet)", "simv.ltcfs_temperature_diff": "Fühler − Luft",
 
     "livetab.note": "Die Live-Daten zeigen den Weg Funk → Gateway → Netzwerk → Laptop. Eine Wurst auf dem Tisch reift nicht über Tage, daher sind Live-Phasenvorhersagen nur während eines echten Reifeprozesses aussagekräftig. Liegt das Live-Fenster außerhalb dessen, worauf die Modelle trainiert wurden, wird das angezeigt.",
     "livetab.slot": "Wurst-Zuordnung", "livetab.empty": "Für diese Zuordnung noch keine Live-Uplinks.",
+    "livetab.ambient": "Lufttemperatur um den Koffer",
+    "livetab.ambient_note": "Im Koffer ist kein Luftsensor. Die Modelle nutzen die Fühlertemperaturen relativ zu diesem Wert.",
 
     "eval.title": "3 · Wie schneiden die Modelle auf ungesehenen Daten ab?", "eval.loading": "Lade Auswertung…",
     "eval.meta": "{s} Würste · {w} Fenster · trainiert am {date}",
@@ -195,10 +208,12 @@ const I18N = {
     "eval.agree": "Wie oft zwei Modelle auf ungesehenen Fenstern dieselbe Phase nennen: ", "eval.cm": "Konfusionsmatrizen (zeilennormiert)",
     "eval.cm_corner": "annotiert ↓ / vorhergesagt →",
     "eval.features": "Modelleingänge: {fs}",
-    "fs.all": "alle Signale", "fs.no_temperature": "ohne Temperatur", "fs.moisture_conductivity": "Feuchte & Leitfähigkeit",
+    "fs.original": "ursprüngliche Merkmale (inkl. absoluter Temperatur)", "fs.no_temperature": "ohne Temperatur",
+    "fs.moisture_conductivity": "Feuchte & Leitfähigkeit", "fs.temperature_difference": "Feuchte, Leitfähigkeit & Temperatur relativ zur Luft",
     "eval.th_order": "Serie 2: Phasen&shy;reihenfolge",
     "eval.order_note_html": "<b>Serie 2: Phasenreihenfolge (ρ).</b> Der zweite Durchlauf (Sommer → Frühling) ist nicht annotiert, aber die Reifung schreitet nur vorwärts. +1 heißt: Die vorhergesagte Phase steigt mit der Zeit nur an. Ein negativer Wert heißt: Sie läuft rückwärts, z. B. weil das Modell der fallenden Temperatur folgt statt der Reifung (Notebook 04).",
     "sim.temp_unused": "Temperatur ist kein Modelleingang: Im einzigen annotierten Durchlauf folgt sie der Jahreszeit, nicht der Reifung.",
+    "sim.temp_relative": "Verschiebt die Wursttemperatur. Die Luft bleibt wie aufgezeichnet, die Modelle sehen also eine veränderte Temperaturdifferenz.",
     "eval.note": "Alle annotierten Würste stammen aus EINEM Reifedurchlauf (Serie 1). Leave-one-sausage-out trennt Würste, nicht Durchläufe; für einen neuen Durchlauf sind die Werte vermutlich zu optimistisch.",
 
     "limits.title_html": "4 · Was das <em>nicht</em> zeigt",
@@ -241,6 +256,7 @@ const I18N = {
 
     "sig.lse01_moisture": "Feuchte (LSE01)", "sig.lse01_conductivity": "Leitfähigkeit (LSE01)",
     "sig.lse01_temperature": "Kerntemperatur (LSE01)", "sig.ltcfs_temperature": "Temperaturfühler (LTC-FS)", "sig.timestamp": "Uplink-Timing",
+    "sig.lse01_temperature_diff": "Kerntemperatur − Luft (LSE01)", "sig.ltcfs_temperature_diff": "Fühlertemperatur − Luft (LTC-FS)",
     "stat.min": "Minimum", "stat.max": "Maximum", "stat.mean": "Mittelwert", "stat.std": "Streuung (Std.)", "stat.skew": "Schiefe",
     "stat.slope": "Trend (Steigung)", "stat.count": "Uplinks", "stat.duration": "Fensterlänge", "stat.interval": "mittl. Abstand",
     "stat.min_interval": "kürzester Abstand", "stat.max_interval": "längster Abstand", "unit.per_uplink": "/Uplink",

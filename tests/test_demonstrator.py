@@ -11,6 +11,7 @@ from demonstrator.app import create_app
 from demonstrator.config import Config, Device
 from demonstrator.decoders import decode_lse01, decode_values, decode_ws202, extract_envelope
 from ml_core.data import FEATURE_ORDER, load_recording
+from ml_core.training import FEATURE_SETS
 
 
 # ── decoders ────────────────────────────────────────────────────────────────
@@ -127,7 +128,7 @@ def test_explain_replay_snapshot(client):
     assert sum(rf["detail"]["votes"]) == rf["detail"]["n_trees"]
     assert mlp["detail"]["layers"][0]["size"] == mlp["n_features_used"]
     for m in ex["models"].values():
-        assert {o["signal"] for o in m["occlusion"]} == {"lse01_moisture", "lse01_conductivity"}  # default feature set
+        assert {o["signal"] for o in m["occlusion"]} == set(FEATURE_SETS["temperature_difference"])  # default feature set
         assert abs(sum(m["proba"].values()) - 1) < 1e-6
     client.post("/api/replay/stop")
 
@@ -163,6 +164,23 @@ def test_virtual_sausage_simulation(client):
     assert simm["lse01_moisture"] == pytest.approx(rec["lse01_moisture"] - 20, abs=1e-6)
     assert simm["lse01_conductivity"] == pytest.approx(rec["lse01_conductivity"] * 0.5, rel=1e-6)
     assert simm["ltcfs_temperature"] == pytest.approx(rec["ltcfs_temperature"] + 10, abs=1e-6)
+    assert simm["ambient_temperature"] == pytest.approx(rec["ambient_temperature"])        # air stays as recorded
+    assert simm["ltcfs_temperature_diff"] == pytest.approx(rec["ltcfs_temperature_diff"] + 10, abs=1e-6)
     ex = client.get("/api/explain?source=simulate").json()
     assert ex["ready"] and ex["source"] == "simulate" and ex["adjust"]["conductivity_factor"] == 0.5
     assert client.post("/api/simulate", json={"group": "nope"}).status_code == 400
+
+
+def test_air_temperature_setting_drives_live_differences(client):
+    for i in range(12):
+        msg = [{"devEUI": "A840410000000001", "object": {"water_SOIL": 40, "temp_SOIL": 15, "conduct_SOIL": 3000}},
+               {"devEUI": "A840410000000002", "object": {"TempC1": 16.0}},
+               {"devEUI": "24E1240000000000", "object": {"pir": 0, "daylight": 1}}][i % 3]
+        client.post("/ingest/uplink", json=msg)
+    assert client.post("/api/ambient", json={"value": 99}).status_code == 400
+    assert client.post("/api/ambient", json={"value": 12.5}).json()["value"] == 12.5
+    st = client.get("/api/state").json()
+    assert st["live"]["ambient_temperature"] == 12.5 and st["live"]["predictions"]["sausage_1"]["ready"]
+    ex = client.get("/api/explain?source=live&slot=sausage_1").json()
+    diff = next(f for f in ex["features"] if f["feature"] == "ltcfs_temperature_diff_mean")
+    assert diff["value"] == pytest.approx(16.0 - 12.5)
