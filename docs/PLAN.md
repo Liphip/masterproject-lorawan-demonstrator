@@ -67,9 +67,13 @@ Status as of 24 Nov 2026. Scope: [assignment requirements](ASSIGNMENT.md)
    (≈ 7 → 22 %). Augmentation changes nothing (the swings of the difference are small).
 2. **February 2024 event in series 2:** no log; probes moved or re-inserted is plausible. The series-2 check only
    scores the time before `PROGRESSION_UNTIL` (2024-02-01, `ml_core/training.py`); notebook 04 marks it in the plots.
-3. **Choose the default feature set.** Among the non-`original` sets the series-1 differences are within one standard
-   deviation; `temperature_difference` keeps temperature in the demo without the seasonal level. Re-run 04 after the
-   warm-up fix in the progression check (the first day of series 2 no longer counts; it made "backwards share" ≈ 0.7–1).
+3. **Second run (25 Nov, with the February cut-off):** series-2 phase order ρ `original` 0.54–0.65; all others
+   0.76–0.84 (`temperature_difference` 0.77–0.81 at series-1 balanced accuracy 0.68–0.71). The seasonal confound is
+   real and the restricted feature sets avoid it. `temperature_difference` stays the default (it keeps temperature in
+   the demo); `no_temperature` is equally good. The "backwards share" was still dominated by 1–3 days of "Phase 2" at the
+   start of series 2: now skipped (`PROGRESSION_WARMUP` 3 days) and regressions only count if they last
+   (`PROGRESSION_SUSTAINED` 7 days). Logistic Regression: best C=100 is at the grid edge and liblinear does not
+   converge there (warnings in the log); the effect on the score is small.
 4. **Collect sensor data:** DevEUI/AppEUI/AppKey for every sensor; check that the sensors are not still joined to another network
    server (TTN, company LNS).
 5. **UG63 setup** following RUNBOOK §2. Capture one real uplink JSON per sensor type (`data/recordings/raw_*.jsonl`) and

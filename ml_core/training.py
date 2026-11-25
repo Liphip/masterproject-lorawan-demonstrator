@@ -34,7 +34,7 @@ import warnings
 from dataclasses import dataclass, replace
 
 import numpy as np
-from joblib import Parallel, delayed, effective_n_jobs
+from joblib import Parallel, delayed, effective_n_jobs, parallel_config
 import pandas as pd
 import sklearn
 from sklearn.ensemble import RandomForestClassifier
@@ -61,6 +61,10 @@ RANDOM_STATE = 42
 # Parallel worker processes for windowing, cross-validation folds and feature-set comparison (-1 = all cores).
 # Each worker fits single-threaded, so there is no oversubscription. Set ML_N_JOBS to override (e.g. 4 if RAM is short).
 N_JOBS = int(os.environ.get("ML_N_JOBS", "-1"))
+# Workers get their data pickled instead of memory-mapped from temp folders: on Windows, loky's resource tracker
+# otherwise prints harmless but alarming "KeyError: ...joblib_memmapping_folder..." tracebacks when it cleans up.
+# Costs one copy of the training windows per worker (tens of MB).
+NO_MEMMAP = {"max_nbytes": None}
 MODEL_NAMES = {"logreg": "Logistic Regression", "rf": "Random Forest", "mlp": "MLP (neural net)"}
 HYPERPARAMETERS_FILE = "hyperparameters.json"
 
@@ -114,6 +118,11 @@ TIMING_STATS = {"count", "duration", "interval", "min_interval", "max_interval"}
 AUGMENTATION = {"offset": 10.0, "scale": [0.5, 2.0], "mirror": True, "copies": 2}
 # Smoothing of predicted phases before scoring their progression (one day of windows).
 PROGRESSION_SMOOTHING = "1D"
+# Not scored at the start of a run: in series 2 every model predicts Phase 2 for the first 1–3 days, probably while the
+# probes were not yet (fully) in the sausage.
+PROGRESSION_WARMUP = "3D"
+# Backwards share counts only regressions that last: the phase is smoothed again over this period first.
+PROGRESSION_SUSTAINED = "7D"
 # Series 2: from early February 2024 LSE01 moisture jumps from ~7 % to ~22 % and every model falls back to earlier
 # phases. Probably the probes were moved or re-inserted (no log exists). The check only scores the time before this.
 PROGRESSION_UNTIL = "2024-02-01"
@@ -243,7 +252,7 @@ def load_windows(data_dir: str = CONVERTED_DIR, pattern: str = "series_1_*.csv",
     if not paths:
         raise FileNotFoundError(f"No files match {pattern} in {data_dir}")
     X, y, times, raw = {}, {}, {}, {}
-    jobs = Parallel(n_jobs=min(effective_n_jobs(n_jobs), len(paths)), return_as="generator")(
+    jobs = Parallel(n_jobs=min(effective_n_jobs(n_jobs), len(paths)), return_as="generator", **NO_MEMMAP)(
         delayed(_window_recording)(p, window_size, stride, annotated) for p in paths)
     for g, raw[g], X[g], y[g], times[g] in jobs:
         log(f"{g}: {len(raw[g]):,} rows → {len(X[g]):,} windows")
@@ -313,7 +322,8 @@ def search_hyperparameters(windows: Windows, keys=("logreg", "rf", "mlp"), grids
                                      cv=LeaveOneGroupOut(), scoring=scoring, random_state=RANDOM_STATE,
                                      n_jobs=n_jobs, verbose=verbose, error_score="raise")
         t = time.perf_counter()
-        search.fit(X, y, groups=groups)
+        with parallel_config(**NO_MEMMAP):
+            search.fit(X, y, groups=groups)
         best = {k[len(pre):]: (list(v) if isinstance(v, tuple) else v) for k, v in search.best_params_.items()}
         res = pd.DataFrame(search.cv_results_)
         res = res[res["iter"] == res["iter"].max()].sort_values("rank_test_score")
@@ -360,10 +370,17 @@ def predict_progression(steps: Pipeline, unannotated: Windows, classes: list[str
         idx = pd.Series([order[p] for p in steps.predict(unannotated.X[g])],
                         index=pd.DatetimeIndex(unannotated.times[g]), dtype=float)
         smooth = idx.rolling(PROGRESSION_SMOOTHING).median()
-        # the first period has an incomplete smoothing window (and probes settling in): not scored
-        warmup = min(pd.Timedelta(PROGRESSION_SMOOTHING), (smooth.index[-1] - smooth.index[0]) / 10)
+        # the first days: incomplete smoothing window and probes settling in; not scored
+        warmup = min(pd.Timedelta(PROGRESSION_WARMUP), (smooth.index[-1] - smooth.index[0]) / 10)
         out[g] = smooth[smooth.index >= smooth.index[0] + warmup]
     return out
+
+
+def _backward_share(s: pd.Series) -> float:
+    if not len(s):
+        return float("nan")
+    sustained = s.rolling(PROGRESSION_SUSTAINED).median()
+    return float((sustained < sustained.cummax()).mean())
 
 
 def progression_scores(progression: dict[str, pd.Series], classes: list[str], until: str | None = PROGRESSION_UNTIL) -> dict:
@@ -371,7 +388,8 @@ def progression_scores(progression: dict[str, pd.Series], classes: list[str], un
 
     spearman:       rank correlation of time and predicted phase. +1 = phases only advance,
                     near 0 = no order, negative = phases run backwards (e.g. following a falling temperature).
-    backward_share: share of time the smoothed phase is below a phase reached earlier.
+    backward_share: share of time the phase, smoothed over PROGRESSION_SUSTAINED, is below a phase it reached earlier
+                    (short flickers between neighbouring phases do not count).
     phase_share:    share of time predicted in each phase.
     until:          only score the time before this date (see PROGRESSION_UNTIL); None = everything.
     """
@@ -382,7 +400,7 @@ def progression_scores(progression: dict[str, pd.Series], classes: list[str], un
         ranks = pd.Series(np.arange(len(s)), dtype=float)
         rho = ranks.corr(s.reset_index(drop=True), method="spearman") if s.nunique() > 1 else np.nan
         per[g] = {"spearman": None if np.isnan(rho) else float(rho),
-                  "backward_share": float((s < s.cummax()).mean()),
+                  "backward_share": _backward_share(s),
                   "phase_share": {c: float((s.round() == i).mean()) for i, c in enumerate(classes)}}
     rhos = [v["spearman"] for v in per.values() if v["spearman"] is not None]
     return {"spearman_mean": float(np.mean(rhos)) if rhos else None,
@@ -418,7 +436,7 @@ def _fit_task(windows: Windows, key: str, params: dict, held: str | None, augmen
 def _run_tasks(tasks: list[tuple], n_jobs: int):
     """Run (_fit_task args) in worker processes; yields (task, result) in task order as results arrive."""
     n = min(effective_n_jobs(n_jobs), len(tasks))
-    results = Parallel(n_jobs=n, return_as="generator")(delayed(_fit_task)(*t) for t in tasks) if n > 1 \
+    results = Parallel(n_jobs=n, return_as="generator", **NO_MEMMAP)(delayed(_fit_task)(*t) for t in tasks) if n > 1 \
         else (_fit_task(*t) for t in tasks)
     yield from zip(tasks, results)
 
