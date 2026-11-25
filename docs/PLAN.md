@@ -24,7 +24,7 @@ Status as of 24 Nov 2026. Scope: [assignment requirements](ASSIGNMENT.md)
 | A1 LoRaWAN system | UG63 config ([RUNBOOK](RUNBOOK.md) §2), `/ingest/uplink` | **Code done; hardware setup open** |
 | A2 Readable measurements | Dashboard panel 1 (sensor, DevEUI, values with units, RSSI/SNR, age, uplink log) | Done |
 | A3 ML on laptop | `demonstrator/inference.py`, scikit-learn on CPU | Done |
-| A4 Visualisation | Data path strip, panels 1–3 | Done; to refine after a dry run |
+| A4 Visualisation | Presentation view (`/`: consensus phase, three models, four values, three sources) + full dashboard (`/details`: data path strip, panels 1–3) | Done; to refine after a dry run |
 | A5 Transport case | Physical | **Open: assembly, cable/power plan, photo docs** |
 | A6 ≥3 model families | LogReg, RF, MLP | Done |
 | A7 Side-by-side + trade-offs | Model cards, agreement, phase timeline, evaluation table (quality, latency, size, training time), explanation overlay | Done |
@@ -65,8 +65,8 @@ Status as of 24 Nov 2026. Scope: [assignment requirements](ASSIGNMENT.md)
    (−1.5 … +1.5 °C) and rises from about −1 °C to 0 °C while the sausage dries, in both runs. On series 2 all variants
    advance Umrötung → Phase 1 → (Phase 2) until early February 2024, then fall back with the jump in LSE01 moisture
    (≈ 7 → 22 %). Augmentation changes nothing (the swings of the difference are small).
-2. **Explain the February 2024 event in series 2** (probe re-inserted? batch moved?). If it is an artefact, cut or
-   flag it before the series-2 check; otherwise the check penalises every model that uses moisture.
+2. **February 2024 event in series 2:** no log; probes moved or re-inserted is plausible. The series-2 check only
+   scores the time before `PROGRESSION_UNTIL` (2024-02-01, `ml_core/training.py`); notebook 04 marks it in the plots.
 3. **Choose the default feature set.** Among the non-`original` sets the series-1 differences are within one standard
    deviation; `temperature_difference` keeps temperature in the demo without the seasonal level. Re-run 04 after the
    warm-up fix in the progression check (the first day of series 2 no longer counts; it made "backwards share" ≈ 0.7–1).

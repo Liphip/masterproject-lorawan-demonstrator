@@ -114,6 +114,9 @@ TIMING_STATS = {"count", "duration", "interval", "min_interval", "max_interval"}
 AUGMENTATION = {"offset": 10.0, "scale": [0.5, 2.0], "mirror": True, "copies": 2}
 # Smoothing of predicted phases before scoring their progression (one day of windows).
 PROGRESSION_SMOOTHING = "1D"
+# Series 2: from early February 2024 LSE01 moisture jumps from ~7 % to ~22 % and every model falls back to earlier
+# phases. Probably the probes were moved or re-inserted (no log exists). The check only scores the time before this.
+PROGRESSION_UNTIL = "2024-02-01"
 # Tiny settings for smoke tests (notebook QUICK flag, test suite).
 QUICK_PARAMS = {"rf": {"n_estimators": 20}, "mlp": {"max_iter": 30, "batch_size": 128}}
 QUICK_GRIDS = {"logreg": {"solver": ["lbfgs"], "l1_ratio": [0], "C": [0.1, 10], "max_iter": [300]},
@@ -363,16 +366,19 @@ def predict_progression(steps: Pipeline, unannotated: Windows, classes: list[str
     return out
 
 
-def progression_scores(progression: dict[str, pd.Series], classes: list[str]) -> dict:
+def progression_scores(progression: dict[str, pd.Series], classes: list[str], until: str | None = PROGRESSION_UNTIL) -> dict:
     """How plausible the predicted phases are on a run without labels.
 
     spearman:       rank correlation of time and predicted phase. +1 = phases only advance,
                     near 0 = no order, negative = phases run backwards (e.g. following a falling temperature).
     backward_share: share of time the smoothed phase is below a phase reached earlier.
     phase_share:    share of time predicted in each phase.
+    until:          only score the time before this date (see PROGRESSION_UNTIL); None = everything.
     """
     per = {}
     for g, s in progression.items():
+        if until is not None and len(s):
+            s = s[s.index < pd.Timestamp(until, tz=s.index.tz)]
         ranks = pd.Series(np.arange(len(s)), dtype=float)
         rho = ranks.corr(s.reset_index(drop=True), method="spearman") if s.nunique() > 1 else np.nan
         per[g] = {"spearman": None if np.isnan(rho) else float(rho),

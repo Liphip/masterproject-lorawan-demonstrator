@@ -31,7 +31,14 @@
 7. Check one uplink per sensor type in `data\recordings\raw_YYYYMMDD.jsonl` against the vendor app or manual
    (units, decimal scaling). If a value field is named differently, add `fields = { <column> = "<key>" }` to the device.
 
-## 3 · Demonstration (about 10 min)
+## 3 · Demonstration
+
+**Short version (presentation view, `http://localhost:8000/`, 2–3 min).** *Aufgezeichnete Wurst* → ▶: the phase
+advances, the three models move with it, the "Metzger" tag shows the butcher's annotation. *Virtuelle Wurst*: drag the
+day, then *trockener ↔ feuchter*. *Live-Sensoren*: set the room temperature, hold a probe. **Details →** leads to the
+full dashboard below for questions.
+
+**Full version (`/details`, about 10 min):**
 
 | Step | Action | What to say |
 |---|---|---|

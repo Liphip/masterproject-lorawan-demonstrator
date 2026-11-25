@@ -3,6 +3,13 @@
 // missing keys fall back to English. Placeholders: {name}. Keys ending in _html may contain markup.
 const I18N = {
   en: {
+    "s.details": "Details →", "s.mode.replay": "Recorded sausage", "s.mode.sim": "Virtual sausage", "s.mode.live": "Live sensors",
+    "s.butcher": "butcher", "s.core": "core temperature", "s.drier": "Drier ↔ moister", "s.reset": "Reset",
+    "s.air": "Room temperature", "s.gateway": "gateway: last uplink {ago}", "s.waiting": "Collecting uplinks …",
+    "s.press_play": "Press ▶ to replay a recorded sausage.", "s.no_live": "Waiting for the sensors in the case …",
+    "s.recorded": "RECORDED", "s.simulated": "SIMULATED",
+    "s.path": "Sensors → LoRa radio → gateway → Wi-Fi → laptop → 3 AI models (CPU, offline)",
+    "header.presentation": "← Presentation view",
     "header.sub": "LoRaWAN sensors → gateway → network → laptop → three CPU models, side by side",
     "path.sensors": "LoRaWAN sensors", "path.radio": "LoRa radio", "path.gateway": "gateway + network server",
     "path.router": "Router / Wi-Fi", "path.router_sub": "stands in for \"the Internet\"",
@@ -133,6 +140,13 @@ const I18N = {
   },
 
   de: {
+    "s.details": "Details →", "s.mode.replay": "Aufgezeichnete Wurst", "s.mode.sim": "Virtuelle Wurst", "s.mode.live": "Live-Sensoren",
+    "s.butcher": "Metzger", "s.core": "Kerntemperatur", "s.drier": "Trockener ↔ feuchter", "s.reset": "Zurücksetzen",
+    "s.air": "Raumtemperatur", "s.gateway": "Gateway: letzter Uplink {ago}", "s.waiting": "Sammle Uplinks …",
+    "s.press_play": "▶ drücken, um eine aufgezeichnete Wurst abzuspielen.", "s.no_live": "Warte auf die Sensoren im Koffer …",
+    "s.recorded": "AUFZEICHNUNG", "s.simulated": "SIMULIERT",
+    "s.path": "Sensoren → LoRa-Funk → Gateway → WLAN → Laptop → 3 KI-Modelle (CPU, offline)",
+    "header.presentation": "← Präsentationsansicht",
     "header.sub": "LoRaWAN-Sensoren → Gateway → Netzwerk → Laptop → drei KI-Modelle auf der CPU im direkten Vergleich",
     "path.sensors": "LoRaWAN-Sensoren", "path.radio": "LoRa-Funk", "path.gateway": "Gateway + Netzwerkserver",
     "path.router": "Router / WLAN", "path.router_sub": "steht für „das Internet“",

@@ -42,7 +42,9 @@ powershell -ExecutionPolicy Bypass -File scripts\start_demo.ps1  # opens http://
 
 Linux: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && git lfs pull`, then `scripts/start_demo.sh`.
 
-The dashboard needs trained models in `data/models/` (see below). The UG63 HTTP integration must point to
+Two views: `http://localhost:8000/` is the **presentation view** (one source at a time, consensus phase, three models,
+four measurements, hardly any text); `/details` is the full dashboard (devices, timeline, evaluation, explanations).
+Both need trained models in `data/models/` (see below). The UG63 HTTP integration must point to
 `http://<laptop-ip>:8000/ingest/uplink`; the start script prints the URL. Details: [docs/RUNBOOK.md](docs/RUNBOOK.md).
 
 ## Train the models

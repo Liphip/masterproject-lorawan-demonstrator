@@ -184,3 +184,16 @@ def test_air_temperature_setting_drives_live_differences(client):
     ex = client.get("/api/explain?source=live&slot=sausage_1").json()
     diff = next(f for f in ex["features"] if f["feature"] == "ltcfs_temperature_diff_mean")
     assert diff["value"] == pytest.approx(16.0 - 12.5)
+
+
+def test_presentation_and_detail_pages(client):
+    """'/' is the presentation view, '/details' the full dashboard; both load the shared helpers."""
+    for path, marker in (("/", "simple.js"), ("/details", "app.js")):
+        r = client.get(path)
+        assert r.status_code == 200 and marker in r.text and "common.js" in r.text
+    for f in ("simple.js", "common.js", "app.js"):
+        assert client.get(f"/static/{f}").status_code == 200
+    res = client.post("/api/simulate", json={"group": "series_1_sausage_1", "position": 0.5}).json()
+    v = res["values"]                     # the measurement tiles of the presentation view
+    assert {"lse01_moisture", "lse01_conductivity", "ltcfs_temperature", "ambient_temperature"} <= set(v)
+    assert 0 < v["lse01_moisture"] < 100 and -30 < v["ambient_temperature"] < 50

@@ -156,7 +156,13 @@ def create_app(cfg: Config) -> FastAPI:
         return JSONResponse({"ok": True, "models_ok": models.ok})
 
     @app.get("/")
-    def index():
+    def presentation():
+        """Presentation view: one prediction, three models, few words."""
+        return FileResponse(os.path.join(STATIC, "simple.html"))
+
+    @app.get("/details")
+    def details():
+        """Full dashboard: devices, data path, timeline, evaluation, explanations."""
         return FileResponse(os.path.join(STATIC, "index.html"))
 
     app.mount("/static", StaticFiles(directory=STATIC), name="static")

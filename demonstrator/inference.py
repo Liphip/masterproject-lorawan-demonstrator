@@ -27,6 +27,21 @@ def single_threaded(pipe):
     return pipe
 
 
+def latest_values(rows: pd.DataFrame) -> dict:
+    """Most recent reading per measurement in the window (for displays). Air = probe − (probe − air)."""
+    out = {}
+    for c in ("lse01_moisture", "lse01_conductivity", "lse01_temperature", "ltcfs_temperature"):
+        v = rows[c].dropna() if c in rows else []
+        if len(v):
+            out[c] = float(v.iloc[-1])
+    for probe in ("ltcfs", "lse01"):
+        both = rows[[f"{probe}_temperature", f"{probe}_temperature_diff"]].dropna() if f"{probe}_temperature_diff" in rows else []
+        if len(both):
+            out["ambient_temperature"] = float(both.iloc[-1, 0] - both.iloc[-1, 1])
+            break
+    return out
+
+
 class ModelRegistry:
     """Loads final and per-fold pipelines lazily from data/models/manifest.json."""
 
@@ -155,6 +170,7 @@ class ModelRegistry:
             out["any_model_saw_data"] |= seen
         labels = {m["label"] for m in out["models"].values()}
         out["agreement"] = "all" if len(labels) == 1 else ("none" if len(labels) == len(out["models"]) else "partial")
+        out["values"] = latest_values(rows)
         out["ood_fraction"] = self.ood_fraction(rows)
         out["compatible"] = out["ood_fraction"] <= OOD_THRESHOLD
         return out

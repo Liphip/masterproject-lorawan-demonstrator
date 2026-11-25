@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ahle Wurst meets KI</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<!-- Presentation view: big, few words. Everything else is in /details. -->
+<body class="simple">
+<header class="s-head">
+  <h1>Ahle Wurst meets KI</h1>
+  <div class="header-right">
+    <span class="s-status" id="s-status"></span>
+    <div class="lang" role="group" aria-label="Language"><button data-lang="de">DE</button><button data-lang="en">EN</button></div>
+    <a class="s-link" href="/details" data-i18n="s.details">Details →</a>
+  </div>
+</header>
+
+<nav class="s-modes" role="tablist">
+  <button data-mode="replay" class="active" data-i18n="s.mode.replay">Recorded sausage</button>
+  <button data-mode="sim" data-i18n="s.mode.sim">Virtual sausage</button>
+  <button data-mode="live" data-i18n="s.mode.live">Live sensors</button>
+</nav>
+
+<main class="s-main">
+  <div class="s-when" id="s-when"></div>
+  <ol class="s-steps" id="s-steps">
+    <li data-p="0"><span class="s-step-name"></span><span class="s-truth" data-i18n="s.butcher">butcher</span></li>
+    <li data-p="1"><span class="s-step-name"></span><span class="s-truth" data-i18n="s.butcher">butcher</span></li>
+    <li data-p="2"><span class="s-step-name"></span><span class="s-truth" data-i18n="s.butcher">butcher</span></li>
+  </ol>
+  <div class="s-models" id="s-models"></div>
+  <div class="s-values" id="s-values"></div>
+
+  <div class="s-controls" id="c-replay">
+    <button class="s-play primary" id="s-play">▶</button>
+    <div class="s-progress"><div id="s-bar"></div></div>
+    <select id="s-rec" aria-label="Recording"></select>
+    <select id="s-speed" aria-label="Speed">
+      <option value="3600" data-i18n="speed.3600">1 h / s</option>
+      <option value="10800" data-i18n="speed.10800">3 h / s</option>
+      <option value="43200" selected data-i18n="speed.43200">12 h / s</option>
+    </select>
+  </div>
+  <div class="s-controls s-sliders" id="c-sim" hidden>
+    <label><span data-i18n="sim.day">Day of curing</span><input type="range" id="s-pos" min="0" max="1000" value="100"><b id="s-pos-v"></b></label>
+    <label><span data-i18n="s.drier">Drier ↔ moister</span><input type="range" id="s-dm" min="-30" max="30" value="0"><b id="s-dm-v"></b></label>
+    <button id="s-reset" data-i18n="s.reset">Reset</button>
+  </div>
+  <div class="s-controls" id="c-live" hidden>
+    <label><span data-i18n="s.air">Room temperature</span> <input type="number" id="s-ambient" min="-30" max="50" step="0.5"> °C</label>
+  </div>
+</main>
+
+<footer class="s-path" data-i18n="s.path">Sensors → LoRa radio → gateway → Wi-Fi → laptop → 3 AI models (CPU, offline)</footer>
+
+<script src="/static/i18n.js"></script>
+<script src="/static/common.js"></script>
+<script src="/static/simple.js"></script>
+</body>
+</html>
