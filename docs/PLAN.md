@@ -1,6 +1,6 @@
 # Project plan
 
-Status as of 25 Nov 2026 (evening). Scope: [assignment requirements](ASSIGNMENT.md)
+Status as of 26 Nov 2026. Scope: [assignment requirements](ASSIGNMENT.md)
 (A1–A11). The principle: **demonstrate the whole chain reliably**. This is not a general IoT platform.
 
 ## Architecture decisions
@@ -28,9 +28,9 @@ Status as of 25 Nov 2026 (evening). Scope: [assignment requirements](ASSIGNMENT.
 | A1 LoRaWAN system | UG63 config ([RUNBOOK](RUNBOOK.md) §2), `/ingest/uplink` | **Code done; hardware setup open** |
 | A2 Readable measurements | Dashboard panel 1 (sensor, DevEUI, values with units, RSSI/SNR, age, uplink log) | Done |
 | A3 ML on laptop | `demonstrator/inference.py`, scikit-learn on CPU | Done |
-| A4 Visualisation | Presentation view (`/`: consensus phase, three models, four values, three sources) + full dashboard (`/details`: data path strip, panels 1–3) | Done; to refine after a dry run |
+| A4 Visualisation | Presentation view (`/`: consensus phase, the models, four values, three sources) + full dashboard (`/details`: data path strip, panels 1–3) | Done; to refine after a dry run |
 | A5 Transport case | Physical | **Open: assembly, cable/power plan, photo docs** |
-| A6 ≥3 model families | LogReg, RF, MLP | Done |
+| A6 ≥3 model families | LogReg, RF, MLP, gradient boosting | Done |
 | A7 Side-by-side + trade-offs | Model cards, agreement, phase timeline, evaluation table (quality, series-2 phase order, latency, size), explanation overlay; notebooks 03/04 for the full numbers | Done |
 | A8 CPU-only | Latency per prediction measured and shown; single-threaded inference | Done; **check on the demo laptop** |
 | A9 Replay, labeled | `demonstrator/replay.py`; live uplinks recorded in the same schema → replayable | Done |
@@ -112,27 +112,61 @@ Status as of 25 Nov 2026 (evening). Scope: [assignment requirements](ASSIGNMENT.
   the difference may also change as the sausage dries (less evaporative cooling); with one annotated run the two
   cannot be separated, and series 2 says the full context transfers worse. `+robust` makes gradient boosting
   unstable (worst sausage 0.34).
+- **Final models (26 Nov 2026, `temperature_difference_now`, 24 h + 7 d context, `calibration_large`, searched):**
 
-## Open items (in order)
+  | model | balanced acc. | series-2 ρ | Phase 1 recognised | ms / prediction |
+  |---|---|---|---|---|
+  | Logistic Regression (lbfgs, C = 10) | 0.80 ± 0.07 | 0.83 | 61 % | 17 |
+  | Random Forest (100 trees, depth 10) | 0.80 ± 0.11 | 0.88 | 68 % | 24 |
+  | MLP (64-32, tanh) | 0.72 ± 0.06 | 0.81 | 53 % | 16 |
+  | Gradient Boosting (31 leaves, lr 0.05) | 0.79 ± 0.14 | 0.86 | 67 % | 49 (single-thread fix since) |
 
-1. **Re-run 02–03** with the new default feature set (`temperature_difference_now`): search and export. Expected
-   balanced accuracy ≈ 0.75–0.80 with series-2 ρ ≈ 0.83–0.88 for all four models.
-2. **Presentation story:** the season trap is now the strongest result of the evaluation (absolute temperature
-   + history: series 2 backwards, ρ down to −0.61). Worth a slide: "a model can be 89 % right and still learn summer".
-3. **Sausage 1:** still the weakest (0.66–0.77 with context); look at its raw curves against the others (notebook 01).
-4. **Collect sensor data:** DevEUI/AppEUI/AppKey for every sensor; check that the sensors are not still joined to another
-   network server (TTN, company LNS).
-5. **UG63 setup** following RUNBOOK §2. Capture one real uplink JSON per sensor type (`data/recordings/raw_*.jsonl`) and
-   compare the decoded values with the device app/manual. Add a test with the captured payloads.
-6. **Dry run** on the demo laptop: startup time, latency, battery, offline behaviour, both views; set the room's air
-   temperature.
-7. Case assembly and packing list (A5). Document exact sensor and power-supply models.
-8. Optional: widen the Logistic Regression grid beyond C = 100 (or raise `max_iter`) if it stays relevant.
+  Umrötung is recognised 89–92 %, Phase 2 74–88 %; Phase 1 is mostly confused with Phase 2. RF and gradient boosting
+  agree on 89 % of the windows. ML work is considered **frozen** here; further experiments only if time is left.
 
-Done since the last plan: context features with filled history, window comparison (notebook 05), gradient boosting exported,
-calibration/robust augmentation, faster replay (up to 1 week/s) and whole-run view, readable
-recording names, persistent case recordings, model-count-independent UI, uplink-timing shortcut (the default feature set no longer contains `timestamp_*`; it only
-matters for `original`), slope bug re-search, parallel training, presentation view, unattended notebook runs.
+## Finishing plan
+
+The ML part is done; what is left is mostly hardware, the demo laptop and the presentation. The critical path is the
+gateway and the sensors (B): everything after depends on real uplinks.
+
+**A · Freeze the software (½ day)**
+1. Apply the last bundle, run notebook 03 once (the latency numbers now use one thread, like the demonstrator).
+2. Tag the state in GitLab (e.g. `models-v1`): code, `data/models/`, notebooks with outputs.
+3. Repo hygiene: `run.log` is now gitignored (per run, per machine). `config/demo.toml` stays in the repo: it is the
+   configuration of *this* case (DevEUIs are not secret; the AppKeys live on the gateway only).
+
+**B · Gateway and sensors (critical path, 1–2 days, A1)**
+1. Collect DevEUI/AppEUI/AppKey of LSE01, LTC-FS, WS202; make sure none is still joined to another network server.
+2. UG63 per RUNBOOK §2: embedded network server, devices, payload codecs, HTTP integration to the laptop; DHCP
+   reservation for the laptop on the demo router.
+3. Capture one real uplink per sensor type (`data/recordings/raw_*.jsonl`), compare the decoded values with the
+   device app/manual. LTC-FS has no built-in decoder: it must come with the gateway codec. Add the captured payloads
+   as tests.
+4. Enter the real DevEUIs in `config/demo.toml`.
+
+**C · Demo laptop (1 day, A8, A10)**
+1. `scripts/setup.ps1` on the Windows notebook, then everything **offline** (no internet): start, both views, replay,
+   whole run, explanation, virtual sausage, live uplinks.
+2. Measure start-up time, ms per prediction (target < 100 ms), battery for a 2 h demo.
+3. A second person sets up and runs the demo from the RUNBOOK alone; fix what they stumble over.
+
+**D · Case (1–2 days, A5)**
+1. Mounting of gateway, router, sensors (probes reachable for "hold a probe" in the live demo), power plan (one
+   socket, power strip, cable lengths), cable routing.
+2. Packing list and photo documentation; exact device and power-supply models in the RUNBOOK.
+
+**E · Presentation and documentation (2–3 days)**
+1. Rehearse the short (2–3 min, presentation view) and the long demo (10 min, details) from RUNBOOK §3.
+2. Slides: data path; the four models; *the season trap* (absolute temperature + history: 82–89 % on series 1, but
+   series 2 runs backwards, ρ down to −0.61) and how it was fixed (temperature relative to the air, no temperature
+   history, label-free check on series 2); limitations.
+3. Written part: architecture decisions and results from this plan (tables above), the requirement mapping, known
+   risks.
+
+**F · Only if time is left**
+1. Sausage 1 (still the weakest): raw curves against the others (notebook 01).
+2. MLP is the weakest model (0.72): keep it as the example of a model family that needs more data.
+3. A second annotated run (another season) would be the only real fix for the single-run limitation.
 
 ## Known risks
 

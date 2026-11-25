@@ -48,6 +48,7 @@ from sklearn.model_selection import HalvingGridSearchCV, LeaveOneGroupOut  # noq
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline
+from threadpoolctl import threadpool_limits
 from sklearn.preprocessing import StandardScaler
 
 from . import augmentation as aug
@@ -707,12 +708,13 @@ def _latency_ms(pipe: ModelPipeline, raw: pd.DataFrame, ws: int, repeats: int = 
     t_end = pd.to_datetime(raw["timestamp"]).iloc[len(raw) // 2]
     ts = pd.to_datetime(raw["timestamp"])
     sample = raw[(ts <= t_end) & (ts > t_end - wf.history)] if wf.history > pd.Timedelta(0) else raw.iloc[:ws]
-    rest.predict_proba(wf.transform_last(sample))  # warm-up
-    times = []
-    for _ in range(repeats):
-        t = time.perf_counter()
-        rest.predict_proba(wf.transform_last(sample))
-        times.append((time.perf_counter() - t) * 1000)
+    with threadpool_limits(1):                    # as in the demonstrator (one thread per prediction)
+        rest.predict_proba(wf.transform_last(sample))  # warm-up
+        times = []
+        for _ in range(repeats):
+            t = time.perf_counter()
+            rest.predict_proba(wf.transform_last(sample))
+            times.append((time.perf_counter() - t) * 1000)
     return float(np.median(times))
 
 

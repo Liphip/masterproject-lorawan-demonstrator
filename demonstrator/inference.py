@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 from sklearn.pipeline import Pipeline
+from threadpoolctl import threadpool_limits
 
 from ml_core import ModelPipeline, WindowFeatures
 from ml_core.windowing import fill_history
@@ -197,6 +198,12 @@ class ModelRegistry:
         return outside / checked if checked else 1.0
 
     def predict(self, rows: pd.DataFrame, group: str | None = None) -> dict:
+        """See _predict. Runs with one BLAS/OpenMP thread: one window per call, so starting threads costs more than
+        it saves (most visible for gradient boosting on a many-core laptop)."""
+        with threadpool_limits(1):
+            return self._predict(rows, group)
+
+    def _predict(self, rows: pd.DataFrame, group: str | None = None) -> dict:
         """Predict on the most recent window of raw rows (FEATURE_ORDER columns; with context models, pass the
         history too: rows of the last `history` before the window, see history_rows).
 

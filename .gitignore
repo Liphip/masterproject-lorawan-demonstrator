@@ -11,3 +11,6 @@ __pycache__/
 
 # demonstrator: live recordings stay local (copy selected ones to the repo by hand)
 data/recordings/
+
+# output of scripts/run_notebooks.py (redirected by hand), per machine and run
+run.log
