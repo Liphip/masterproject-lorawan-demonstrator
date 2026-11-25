@@ -386,3 +386,13 @@ def test_fill_history_covers_the_horizon_with_the_earliest_stretch(synthetic_dir
     assert set(filled["lse01_moisture"].dropna()) <= set(part["lse01_moisture"].dropna())              # only copies
     full, real_full = fill_history(df, pd.Timedelta("1D"), 10)
     assert real_full == 1.0 and len(full) == len(df)
+
+
+def test_now_signals_keep_the_window_but_drop_the_context(synthetic_dir):
+    """temperature_difference_now: temperature difference only from the window, moisture/conductivity with context."""
+    from ml_core.training import set_signals
+    w = load_windows(str(synthetic_dir / "converted"), context=("6h",), n_jobs=1, log=_quiet)
+    cols = w.select("temperature_difference_now").columns
+    assert "ltcfs_temperature_diff_mean" in cols and "lse01_moisture_ctxtrend_6h" in cols
+    assert not any(c.startswith(("ltcfs_temperature_diff_ctx", "lse01_temperature_diff_ctx")) for c in cols)
+    assert set(set_signals("temperature_difference_now")) == set(FEATURE_SETS["temperature_difference"])

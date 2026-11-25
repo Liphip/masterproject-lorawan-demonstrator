@@ -95,15 +95,24 @@ Status as of 25 Nov 2026 (evening). Scope: [assignment requirements](ASSIGNMENT.
   history. Series-2 order holds for gradient boosting (0.85) and the random forest (0.82) but drops for the MLP (0.59,
   backwards share 0.36) and logistic regression (0.76). Possible reason: the drying *rate* depends on temperature, so
   a 7-day trend carries some season again. Adopted: `DEFAULT_CONTEXT = ("24h", "7d")`, gradient boosting exported as
-  the fourth model (best on series 1, stable on series 2). Hyperparameters were searched without context; the
-  re-search with context is in the next run.
+  the fourth model (best on series 1, stable on series 2).
+- **Run with context defaults (02–05):** search with context: LogReg now `lbfgs`, C = 1 (converges; 1 min instead of
+  16), RF depth 10, MLP one layer of 32, gradient boosting 63 leaves. Exported models (03): balanced accuracy LogReg
+  0.83, RF 0.88, MLP 0.84, GB 0.87; series-2 ρ 0.76 / 0.83 / 0.61 / 0.85; 12–18 ms per prediction incl. the 7-day
+  context. Phase 2 is now recognised 90–98 % of the time; the remaining confusion is Phase 1 → Phase 2 (22–32 %).
+- **Season through the context (04 with context):** `original` (absolute temperature) now runs *backwards* on
+  series 2 (ρ −0.61 … +0.14), clearer than ever. `no_temperature` keeps the best order (ρ 0.80–0.89) but loses
+  accuracy (0.74–0.78); `temperature_difference` sits between (0.80–0.86 / ρ 0.63–0.83). Likely reason: the 7-day
+  spread of the temperature difference is the day/night swing, larger in summer. New feature set
+  `temperature_difference_now`: temperature difference only from the current window, no context for it.
+  `calibration_xl` hurts gradient boosting (0.81, worst sausage 0.51): `calibration_large` stays.
 
 ## Open items (in order)
 
-1. **Re-run 02–04 with the new defaults** (7-day context, four models): the search with context, the export, and the
-   feature-set check with context (does `original` still learn the season? does `temperature_difference` stay best?).
-2. **Season in the trend?** If the MLP/LogReg drop on series 2 persists, compare trend features of moisture only vs.
-   all signals, or normalise trends by the moisture level, in notebook 05.
+1. **Run notebook 04 only** (≈ 15 min): does `temperature_difference_now` keep the series-2 order of `no_temperature`
+   with the accuracy of `temperature_difference`? Then set `DEFAULT_FEATURE_SET` and re-run 02–03.
+2. **MLP on series 2** (ρ ≈ 0.6 with context in every feature set except `no_temperature`): check again after item 1.
+   If it stays, keep it in the demo as the example of a model that fits the training run but transfers worse.
 3. **Sausage 1:** still the weakest (0.66–0.77 with context); look at its raw curves against the others (notebook 01).
 4. **Collect sensor data:** DevEUI/AppEUI/AppKey for every sensor; check that the sensors are not still joined to another
    network server (TTN, company LNS).

@@ -121,6 +121,12 @@ FEATURE_SETS = {
     "no_temperature": ["lse01_conductivity", "lse01_moisture", "timestamp"],
     "moisture_conductivity": ["lse01_conductivity", "lse01_moisture"],
     "temperature_difference": ["lse01_conductivity", "lse01_moisture", "lse01_temperature_diff", "ltcfs_temperature_diff"],
+    # As temperature_difference, but the temperature difference only from the current window, without its 24 h /
+    # 7 d context. Run of 25 Nov 2026: with context, temperature_difference reached a lower series-2 phase order
+    # than no_temperature (e.g. MLP 0.63 vs 0.81). The 7-day spread of the difference is the day/night swing,
+    # which is larger in summer: the season again. ":now" = window statistics only.
+    "temperature_difference_now": ["lse01_conductivity", "lse01_moisture",
+                                   "lse01_temperature_diff:now", "ltcfs_temperature_diff:now"],
 }
 DEFAULT_FEATURE_SET = "temperature_difference"
 # Statistics WindowFeatures computes per signal (used to select feature columns exactly).
@@ -187,8 +193,7 @@ class Windows:
 
     def select(self, feature_set: str) -> "Windows":
         """Same windows restricted to the signals of a feature set (see FEATURE_SETS)."""
-        signals = FEATURE_SETS[feature_set]
-        cols = [c for c in self.columns if feature_signal(c) in signals]
+        cols = [c for c in self.columns if in_feature_set(c, feature_set)]
         return replace(self, X={g: x[cols] for g, x in self.X.items()}, columns=cols, feature_set=feature_set,
                        augmented={g: [(x[cols], y) for x, y in copies] for g, copies in self.augmented.items()})
 
@@ -236,6 +241,21 @@ class Windows:
         return pd.DataFrame([{"recording": g, "rows": len(self.raw[g]), "windows": len(self.X[g]),
                               "from": self.times[g][0], "to": self.times[g][-1],
                               **{c: int((self.y[g] == c).sum()) for c in self.classes}} for g in self.recordings])
+
+
+def set_signals(feature_set: str) -> list[str]:
+    """The sensor signals of a feature set, without the ":now" marker (for manifests and the UI)."""
+    return [e.partition(":")[0] for e in FEATURE_SETS[feature_set]]
+
+
+def in_feature_set(column: str, feature_set: str) -> bool:
+    """Is this feature column part of the feature set? "signal:now" entries exclude the signal's context features."""
+    sig = feature_signal(column)
+    for entry in FEATURE_SETS[feature_set]:
+        name, _, mode = entry.partition(":")
+        if sig == name:
+            return not (mode == "now" and "_ctx" in column)
+    return False
 
 
 def feature_signal(column: str) -> str | None:
@@ -778,14 +798,14 @@ def train_and_evaluate(windows: Windows, out_dir: str = MODELS_DIR, feature_set:
     now = dt.datetime.now(dt.timezone.utc).isoformat()
     manifest = {"created_at": now, "window_size": windows.window_size, "stride": windows.stride,
                 "context": list(windows.context),
-                "feature_set": feature_set, "signals": FEATURE_SETS[feature_set], "augmentation": aug.settings(augmentation),
+                "feature_set": feature_set, "signals": set_signals(feature_set), "augmentation": aug.settings(augmentation),
                 "feature_order": FEATURE_ORDER, "output_columns": windows.columns, "classes": classes,
                 "labeled_groups": recs, "models": manifest_models, "feature_ranges": ranges,
                 "quick": quick, "hyperparameters": params_source, "size_limited": limit_size,
                 "versions": {"python": sys.version.split()[0], "scikit-learn": sklearn.__version__,
                              "numpy": np.__version__, "pandas": pd.__version__}}
     result = {"created_at": now, "classes": classes, "models": metrics, "agreement_on_held_out": agreement,
-              "quick": quick, "feature_set": feature_set, "signals": FEATURE_SETS[feature_set],
+              "quick": quick, "feature_set": feature_set, "signals": set_signals(feature_set),
               "augmentation": aug.settings(augmentation),
               "unannotated_recordings": unannotated.recordings if unannotated is not None else [],
               "dataset": {"labeled_groups": recs, "n_windows": int(len(y_all)),
