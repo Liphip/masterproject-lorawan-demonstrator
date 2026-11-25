@@ -1,0 +1,15 @@
+{
+  "name": "hgb_without_series_1_sausage_1",
+  "model_type": "Gradient Boosting",
+  "feature_order": [
+    "timestamp",
+    "sensor",
+    "lse01_conductivity",
+    "lse01_moisture",
+    "lse01_temperature",
+    "ltcfs_temperature",
+    "lse01_temperature_diff",
+    "ltcfs_temperature_diff"
+  ],
+  "created_at": "2026-11-25T18:34:06.049028"
+}

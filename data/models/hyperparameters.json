@@ -1,20 +1,23 @@
 {
-  "created_at": "2026-11-25T15:02:41.686683+00:00",
+  "created_at": "2026-11-25T17:31:01.127492+00:00",
   "scoring": "balanced_accuracy",
   "feature_set": "temperature_difference",
   "window_size": 10,
   "stride": 2,
-  "context": [],
+  "context": [
+    "24h",
+    "7d"
+  ],
   "models": {
     "logreg": {
       "params": {
-        "C": 100,
+        "C": 1,
         "class_weight": "balanced",
         "l1_ratio": 0,
         "max_iter": 1000,
-        "solver": "liblinear"
+        "solver": "lbfgs"
       },
-      "score": 0.7126529557542773
+      "score": 0.8178047508705559
     },
     "rf": {
       "params": {
@@ -23,40 +26,39 @@
         "criterion": "gini",
         "max_depth": 10,
         "max_features": "sqrt",
-        "min_samples_leaf": 4,
+        "min_samples_leaf": 1,
         "min_samples_split": 2,
-        "n_estimators": 200
+        "n_estimators": 500
       },
-      "score": 0.7374328476190192
+      "score": 0.8482929827333351
     },
     "mlp": {
       "params": {
-        "activation": "tanh",
-        "alpha": 0.001,
+        "activation": "relu",
+        "alpha": 0.0001,
         "batch_size": 32,
         "early_stopping": true,
         "hidden_layer_sizes": [
-          64,
           32
         ],
-        "learning_rate_init": 0.0003,
+        "learning_rate_init": 0.001,
         "max_iter": 500,
         "validation_fraction": 0.15
       },
-      "score": 0.7350350005627193
+      "score": 0.8491629055886326
     },
     "hgb": {
       "params": {
         "class_weight": "balanced",
         "early_stopping": true,
-        "l2_regularization": 1.0,
-        "learning_rate": 0.05,
+        "l2_regularization": 0.0,
+        "learning_rate": 0.1,
         "max_iter": 300,
-        "max_leaf_nodes": 15,
-        "min_samples_leaf": 200,
+        "max_leaf_nodes": 63,
+        "min_samples_leaf": 20,
         "validation_fraction": 0.1
       },
-      "score": 0.7239359766960816
+      "score": 0.8526766992022804
     }
   }
 }

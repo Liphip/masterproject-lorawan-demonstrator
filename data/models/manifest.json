@@ -1,8 +1,11 @@
 {
-  "created_at": "2026-11-25T15:11:37.578402+00:00",
+  "created_at": "2026-11-25T17:34:14.015136+00:00",
   "window_size": 10,
   "stride": 2,
-  "context": [],
+  "context": [
+    "24h",
+    "7d"
+  ],
   "feature_set": "temperature_difference",
   "signals": [
     "lse01_conductivity",
@@ -33,24 +36,48 @@
     "ltcfs_temperature_diff"
   ],
   "output_columns": [
+    "lse01_conductivity_ctxmean_24h",
+    "lse01_conductivity_ctxmean_7d",
+    "lse01_conductivity_ctxstd_24h",
+    "lse01_conductivity_ctxstd_7d",
+    "lse01_conductivity_ctxtrend_24h",
+    "lse01_conductivity_ctxtrend_7d",
     "lse01_conductivity_max",
     "lse01_conductivity_mean",
     "lse01_conductivity_min",
     "lse01_conductivity_skew",
     "lse01_conductivity_slope",
     "lse01_conductivity_std",
+    "lse01_moisture_ctxmean_24h",
+    "lse01_moisture_ctxmean_7d",
+    "lse01_moisture_ctxstd_24h",
+    "lse01_moisture_ctxstd_7d",
+    "lse01_moisture_ctxtrend_24h",
+    "lse01_moisture_ctxtrend_7d",
     "lse01_moisture_max",
     "lse01_moisture_mean",
     "lse01_moisture_min",
     "lse01_moisture_skew",
     "lse01_moisture_slope",
     "lse01_moisture_std",
+    "lse01_temperature_diff_ctxmean_24h",
+    "lse01_temperature_diff_ctxmean_7d",
+    "lse01_temperature_diff_ctxstd_24h",
+    "lse01_temperature_diff_ctxstd_7d",
+    "lse01_temperature_diff_ctxtrend_24h",
+    "lse01_temperature_diff_ctxtrend_7d",
     "lse01_temperature_diff_max",
     "lse01_temperature_diff_mean",
     "lse01_temperature_diff_min",
     "lse01_temperature_diff_skew",
     "lse01_temperature_diff_slope",
     "lse01_temperature_diff_std",
+    "ltcfs_temperature_diff_ctxmean_24h",
+    "ltcfs_temperature_diff_ctxmean_7d",
+    "ltcfs_temperature_diff_ctxstd_24h",
+    "ltcfs_temperature_diff_ctxstd_7d",
+    "ltcfs_temperature_diff_ctxtrend_24h",
+    "ltcfs_temperature_diff_ctxtrend_7d",
     "ltcfs_temperature_diff_max",
     "ltcfs_temperature_diff_mean",
     "ltcfs_temperature_diff_min",
@@ -160,67 +187,169 @@
           "name": "mlp_without_series_1_sausage_5"
         }
       }
+    },
+    {
+      "key": "hgb",
+      "name": "Gradient Boosting",
+      "final": {
+        "dir": "final",
+        "name": "hgb_final"
+      },
+      "folds": {
+        "series_1_sausage_1": {
+          "dir": "folds\\series_1_sausage_1",
+          "name": "hgb_without_series_1_sausage_1"
+        },
+        "series_1_sausage_2": {
+          "dir": "folds\\series_1_sausage_2",
+          "name": "hgb_without_series_1_sausage_2"
+        },
+        "series_1_sausage_3": {
+          "dir": "folds\\series_1_sausage_3",
+          "name": "hgb_without_series_1_sausage_3"
+        },
+        "series_1_sausage_4": {
+          "dir": "folds\\series_1_sausage_4",
+          "name": "hgb_without_series_1_sausage_4"
+        },
+        "series_1_sausage_5": {
+          "dir": "folds\\series_1_sausage_5",
+          "name": "hgb_without_series_1_sausage_5"
+        }
+      }
     }
   ],
   "feature_ranges": {
+    "lse01_conductivity_ctxmean_24h": [
+      8.561643835616438,
+      6050.753424657534
+    ],
+    "lse01_conductivity_ctxmean_7d": [
+      8.916500994035784,
+      6156.546534653466
+    ],
+    "lse01_conductivity_ctxstd_24h": [
+      0.11785113019779718,
+      247.70380550719238
+    ],
+    "lse01_conductivity_ctxstd_7d": [
+      0.6212337912668062,
+      627.6344539785989
+    ],
+    "lse01_conductivity_ctxtrend_24h": [
+      -626.0620154553305,
+      99.01798482743136
+    ],
+    "lse01_conductivity_ctxtrend_7d": [
+      -298.2991804167229,
+      62.68355425114469
+    ],
     "lse01_conductivity_max": [
-      9.0,
-      6212.0
+      8.0,
+      6006.0
     ],
     "lse01_conductivity_mean": [
-      8.333333015441895,
-      6209.0
+      8.0,
+      5998.816577148436
     ],
     "lse01_conductivity_min": [
       8.0,
-      6203.0
+      5998.449999999997
     ],
     "lse01_conductivity_skew": [
       -0.38518208265304565,
       0.38518208265304565
     ],
     "lse01_conductivity_slope": [
-      -5.5,
-      4.5
+      -5.0,
+      3.2857142857142856
     ],
     "lse01_conductivity_std": [
       0.0,
-      15.55634880065918
+      14.142135620117188
+    ],
+    "lse01_moisture_ctxmean_24h": [
+      0.0,
+      16.832465753424657
+    ],
+    "lse01_moisture_ctxmean_7d": [
+      0.02377733598409543,
+      16.282279957567184
+    ],
+    "lse01_moisture_ctxstd_24h": [
+      0.0,
+      2.907695086382498
+    ],
+    "lse01_moisture_ctxstd_7d": [
+      0.027663293893336008,
+      4.90514235035953
+    ],
+    "lse01_moisture_ctxtrend_24h": [
+      -4.006528173653631,
+      5.196701336638782
+    ],
+    "lse01_moisture_ctxtrend_7d": [
+      -1.7822687695194244,
+      1.9153289257226132
     ],
     "lse01_moisture_max": [
       0.0,
-      16.809999465942383
+      16.81999969482422
     ],
     "lse01_moisture_mean": [
       0.0,
-      16.809999465942383
+      16.81999969482422
     ],
     "lse01_moisture_min": [
       0.0,
-      16.799999237060547
+      16.81999969482422
     ],
     "lse01_moisture_skew": [
       -0.5443309545516968,
       0.5443309545516968
     ],
     "lse01_moisture_slope": [
-      -0.030000005449567522,
-      0.03199997186660767
+      -0.029999971389770508,
+      0.03000020980834961
     ],
     "lse01_moisture_std": [
       0.0,
-      0.12503333389759064
+      0.12177575543522898
+    ],
+    "lse01_temperature_diff_ctxmean_24h": [
+      -0.7377315068493151,
+      0.384246575342466
+    ],
+    "lse01_temperature_diff_ctxmean_7d": [
+      -0.6513717693836978,
+      0.25839682539682557
+    ],
+    "lse01_temperature_diff_ctxstd_24h": [
+      0.0419161480854293,
+      2.1136284778706393
+    ],
+    "lse01_temperature_diff_ctxstd_7d": [
+      0.05449966008945753,
+      0.8470973648087776
+    ],
+    "lse01_temperature_diff_ctxtrend_24h": [
+      -0.7222885757936321,
+      0.8909523581367936
+    ],
+    "lse01_temperature_diff_ctxtrend_7d": [
+      -0.05060937243389506,
+      0.0810100323374724
     ],
     "lse01_temperature_diff_max": [
-      -1.0,
+      -0.8999999761581421,
       0.49000000953674316
     ],
     "lse01_temperature_diff_mean": [
-      -1.0833333361148834,
-      0.4566666781902313
+      -0.960000006556511,
+      0.4633333683013916
     ],
     "lse01_temperature_diff_min": [
-      -1.1399999856948853,
+      -1.0199999809265137,
       0.4399999976158142
     ],
     "lse01_temperature_diff_skew": [
@@ -229,23 +358,47 @@
     ],
     "lse01_temperature_diff_slope": [
       -0.06499999761581421,
-      0.06200000047683716
+      0.06000000238418579
     ],
     "lse01_temperature_diff_std": [
       0.0,
-      0.16263456642627716
+      0.16263455152511597
+    ],
+    "ltcfs_temperature_diff_ctxmean_24h": [
+      -0.9160027777777778,
+      0.21263888888888893
+    ],
+    "ltcfs_temperature_diff_ctxmean_7d": [
+      -0.8618452380952379,
+      0.04374636976845109
+    ],
+    "ltcfs_temperature_diff_ctxstd_24h": [
+      0.0416408370644025,
+      0.3332648622157213
+    ],
+    "ltcfs_temperature_diff_ctxstd_7d": [
+      0.05314316600732005,
+      0.3031972079458975
+    ],
+    "ltcfs_temperature_diff_ctxtrend_24h": [
+      -0.6238819216668848,
+      0.7501079674682296
+    ],
+    "ltcfs_temperature_diff_ctxtrend_7d": [
+      -0.045074850975619085,
+      0.07610022553638185
     ],
     "ltcfs_temperature_diff_max": [
-      -1.2300000190734863,
+      -1.0700000524520874,
       0.3100000023841858
     ],
     "ltcfs_temperature_diff_mean": [
-      -1.274999976158142,
-      0.2850000262260437
+      -1.106666641831398,
+      0.28999999165534973
     ],
     "ltcfs_temperature_diff_min": [
-      -1.3300000429153442,
-      0.25999999046325684
+      -1.159999966621399,
+      0.27000001072883606
     ],
     "ltcfs_temperature_diff_skew": [
       -0.3849019408226013,
@@ -253,11 +406,11 @@
     ],
     "ltcfs_temperature_diff_slope": [
       -0.06499999761581421,
-      0.06499999761581421
+      0.06000000238418579
     ],
     "ltcfs_temperature_diff_std": [
       0.0,
-      0.1594783067703247
+      0.15556348860263824
     ]
   },
   "quick": false,
