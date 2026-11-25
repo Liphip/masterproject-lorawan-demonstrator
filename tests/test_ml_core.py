@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 
 import numpy as np
 import pandas as pd
@@ -201,3 +202,23 @@ def test_parallel_folds_match_sequential(synthetic_dir):
     assert [f["held_out"] for f in seq["folds"]] == [f["held_out"] for f in par["folds"]]
     for g in w.recordings:
         assert (seq["held_out_pred"][g] == par["held_out_pred"][g]).all()
+
+
+def test_run_notebooks_script(tmp_path):
+    """scripts/run_notebooks.py: sequential run with overrides; stops with exit code 1 at the first failing cell."""
+    pytest.importorskip("nbclient")
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import run_notebooks
+    raw, conv, models, out = tmp_path / "raw", tmp_path / "converted", tmp_path / "models", tmp_path / "out"
+    make_raw_workbooks(str(raw), n_sausages=2, rows_per_device=60)
+    common = [f"RAW_DIR = {str(raw)!r}", f"CONVERTED_DIR = {str(conv)!r}", f"MODELS_DIR = {str(models)!r}",
+              "QUICK = True", "N_JOBS = 1"]
+    args = sum((["--set", o] for o in common), []) + ["--out", str(out)]
+    assert run_notebooks.main(["01", "02", "03"] + args) == 0
+    assert (models / "manifest.json").exists() and len(list(out.glob("*.ipynb"))) == 3
+    nb = json.load(open(out / "03_train_and_evaluate.ipynb"))
+    assert any("injected-parameters" in c["metadata"].get("tags", []) for c in nb["cells"])
+    # a broken setting: notebook 03 fails, 04 is not started
+    assert run_notebooks.main(["03", "04", "--set", "FEATURE_SET = 'nope'"] + args) == 1
+    nb = json.load(open(out / "03_train_and_evaluate.ipynb"))
+    assert any(o.get("output_type") == "error" for c in nb["cells"] for o in c.get("outputs", []))

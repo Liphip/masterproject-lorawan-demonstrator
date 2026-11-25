@@ -65,6 +65,15 @@ Both need trained models in `data/models/` (see below). The UG63 HTTP integratio
    feature set therefore uses the probe temperatures *relative to the air* (plus moisture and conductivity); optional
    augmentation randomises temperature level and swings in the training data (`ml_core/training.py`).
 
+Unattended (e.g. overnight), all notebooks one after another, outputs saved in the notebooks as in Jupyter:
+
+```powershell
+.\.venv\Scripts\python scripts\run_notebooks.py > run.log 2>&1        # 01 → 04; stops at the first error
+.\.venv\Scripts\python scripts\run_notebooks.py --from 02 --set N_JOBS=4  # skip conversion, override a setting
+```
+
+The notebook files are saved after every cell, so an open notebook shows how far the run is.
+
 Windowing, cross-validation folds and the feature-set comparison run in parallel worker processes (`N_JOBS` in the
 notebooks, default all cores; environment variable `ML_N_JOBS` for the command line). Each worker holds its own copy of
 the training windows, so lower `N_JOBS` if RAM runs short.
