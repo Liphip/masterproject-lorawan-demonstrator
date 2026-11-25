@@ -1,19 +1,19 @@
 Running: 01_convert_raw_data.ipynb, 02_search_hyperparameters.ipynb, 03_train_and_evaluate.ipynb, 04_check_seasonal_confound.ipynb
 
-[03:03:44] 01_convert_raw_data.ipynb
+[10:59:05] 01_convert_raw_data.ipynb
 [IPKernelApp] WARNING | Kernel is running over TCP without encryption. All communication (including code and outputs) is sent in plain text and is susceptible to eavesdropping. Use IPC transport or launch with kernel manager-provisioned CurveZMQ keys to enable transport encryption.
-  01_convert_raw_data.ipynb: cell 1/4 done in 0:00:04 (total 0:00:04)
-  01_convert_raw_data.ipynb: cell 2/4 done in 0:00:00 (total 0:00:04)
-  01_convert_raw_data.ipynb: cell 3/4 done in 0:00:46 (total 0:00:50)
-  01_convert_raw_data.ipynb: cell 4/4 done in 0:00:01 (total 0:00:52)
-  finished in 0:00:52
+  01_convert_raw_data.ipynb: cell 1/4 done in 0:00:09 (total 0:00:09)
+  01_convert_raw_data.ipynb: cell 2/4 done in 0:00:00 (total 0:00:09)
+  01_convert_raw_data.ipynb: cell 3/4 done in 0:00:48 (total 0:00:57)
+  01_convert_raw_data.ipynb: cell 4/4 done in 0:00:01 (total 0:00:59)
+  finished in 0:00:59
 
-[03:04:37] 02_search_hyperparameters.ipynb
+[11:00:04] 02_search_hyperparameters.ipynb
 [IPKernelApp] WARNING | Kernel is running over TCP without encryption. All communication (including code and outputs) is sent in plain text and is susceptible to eavesdropping. Use IPC transport or launch with kernel manager-provisioned CurveZMQ keys to enable transport encryption.
   02_search_hyperparameters.ipynb: cell 1/7 done in 0:00:01 (total 0:00:01)
-  02_search_hyperparameters.ipynb: cell 2/7 done in 0:00:02 (total 0:00:03)
-  02_search_hyperparameters.ipynb: cell 3/7 done in 0:00:00 (total 0:00:03)
-  02_search_hyperparameters.ipynb: cell 4/7 done in 0:00:07 (total 0:00:10)
+  02_search_hyperparameters.ipynb: cell 2/7 done in 0:00:03 (total 0:00:04)
+  02_search_hyperparameters.ipynb: cell 3/7 done in 0:00:00 (total 0:00:04)
+  02_search_hyperparameters.ipynb: cell 4/7 done in 0:00:06 (total 0:00:11)
 F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
   warnings.warn(
 F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
@@ -226,137 +226,187 @@ F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packag
   warnings.warn(
 F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\svm\_base.py:1295: ConvergenceWarning: Liblinear failed to converge, increase the number of iterations.
   warnings.warn(
-  02_search_hyperparameters.ipynb: cell 5/7 done in 0:20:14 (total 0:20:24)
-  02_search_hyperparameters.ipynb: cell 6/7 done in 0:00:00 (total 0:20:24)
-  02_search_hyperparameters.ipynb: cell 7/7 done in 0:00:00 (total 0:20:24)
+  02_search_hyperparameters.ipynb: cell 5/7 done in 0:22:10 (total 0:22:21)
+  02_search_hyperparameters.ipynb: cell 6/7 done in 0:00:00 (total 0:22:21)
+  02_search_hyperparameters.ipynb: cell 7/7 done in 0:00:00 (total 0:22:21)
 Traceback (most recent call last):
   File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
     del cache[rtype][name]
         ~~~~~~~~~~~~^^^^^^
-KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_44472_9b6390410c4f45a289ff0b2bccda4048_14c3785ea9524e1a90b31272ed85fae7'
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_47308_079ca10f3e214bfda1cdd498e208edeb_dce1eb1fa8734a99bcaaa4df6ab9f37f'
 Traceback (most recent call last):
   File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
     del cache[rtype][name]
         ~~~~~~~~~~~~^^^^^^
-KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_44472_ba3f23ac2e1d4a4e9456818ef6642f97_59875164556e421bb1cc1d5587e8e6d7'
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_47308_d8b2461cd825432ba21afc1e4da78a2f_2170f34845d0419685ddc448bede2b8e'
 Traceback (most recent call last):
   File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
     del cache[rtype][name]
         ~~~~~~~~~~~~^^^^^^
-KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_44472_fe51ea9355c4410b8c365c3cbc223acf_5b6dfd90620d4f3786a34761b73f56b8'
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_47308_05056bbedded48a39140abd4774b9b46_6ad43646338f40689267fdcf4f67b08f'
 Traceback (most recent call last):
   File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
     del cache[rtype][name]
         ~~~~~~~~~~~~^^^^^^
-KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_44472_ba3f23ac2e1d4a4e9456818ef6642f97_d017f1ceb3dc4d3db0fc0777e24602cb'
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_47308_d8b2461cd825432ba21afc1e4da78a2f_e092df61e0ed4bf48bf95434a23d265f'
 Traceback (most recent call last):
   File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
     del cache[rtype][name]
         ~~~~~~~~~~~~^^^^^^
-KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_44472_ba3f23ac2e1d4a4e9456818ef6642f97_4ccce7539bbc4dd5896fbef0cc786a6c'
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_47308_d8b2461cd825432ba21afc1e4da78a2f_e1efbf7d7ae444619d43e91a4ee7c847'
 Traceback (most recent call last):
   File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
     del cache[rtype][name]
         ~~~~~~~~~~~~^^^^^^
-KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_44472_e274010ba2b540ec90759bc508d343de_bd0930a7b09b4d91bc27e988d8c979fd'
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_47308_18ce705e15404e37841b25f474cd0e35_c67f963b62994978940a468ab8b919a8'
 Traceback (most recent call last):
   File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
     del cache[rtype][name]
         ~~~~~~~~~~~~^^^^^^
-KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_44472_e274010ba2b540ec90759bc508d343de_1e91ca71319e45fea34dd0349dea8460'
-  finished in 0:20:25
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_47308_18ce705e15404e37841b25f474cd0e35_8ebea1a05cf14590b2f79e242d19ef91'
+  finished in 0:22:22
 
-[03:25:01] 03_train_and_evaluate.ipynb
+[11:22:25] 03_train_and_evaluate.ipynb
 [IPKernelApp] WARNING | Kernel is running over TCP without encryption. All communication (including code and outputs) is sent in plain text and is susceptible to eavesdropping. Use IPC transport or launch with kernel manager-provisioned CurveZMQ keys to enable transport encryption.
   03_train_and_evaluate.ipynb: cell 1/9 done in 0:00:04 (total 0:00:04)
   03_train_and_evaluate.ipynb: cell 2/9 done in 0:00:00 (total 0:00:04)
-  03_train_and_evaluate.ipynb: cell 3/9 done in 0:00:07 (total 0:00:10)
-  03_train_and_evaluate.ipynb: cell 4/9 done in 0:02:58 (total 0:03:09)
-  03_train_and_evaluate.ipynb: cell 5/9 done in 0:00:00 (total 0:03:09)
-  03_train_and_evaluate.ipynb: cell 6/9 done in 0:00:00 (total 0:03:09)
-  03_train_and_evaluate.ipynb: cell 7/9 done in 0:00:00 (total 0:03:09)
-  03_train_and_evaluate.ipynb: cell 8/9 done in 0:00:00 (total 0:03:09)
-  03_train_and_evaluate.ipynb: cell 9/9 done in 0:02:01 (total 0:05:10)
+  03_train_and_evaluate.ipynb: cell 3/9 done in 0:00:07 (total 0:00:11)
+  03_train_and_evaluate.ipynb: cell 4/9 done in 0:03:19 (total 0:03:30)
+  03_train_and_evaluate.ipynb: cell 5/9 done in 0:00:00 (total 0:03:30)
+  03_train_and_evaluate.ipynb: cell 6/9 done in 0:00:00 (total 0:03:30)
+  03_train_and_evaluate.ipynb: cell 7/9 done in 0:00:00 (total 0:03:30)
+  03_train_and_evaluate.ipynb: cell 8/9 done in 0:00:00 (total 0:03:30)
+  03_train_and_evaluate.ipynb: cell 9/9 done in 0:00:04 (total 0:03:34)
 Traceback (most recent call last):
   File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
     del cache[rtype][name]
         ~~~~~~~~~~~~^^^^^^
-KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_52544_e0803025909d462ba35b903df6754320_0d2c6d96cad7402eae297f9dce03310e'
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_44344_7d491adf99a3413997946bbd792016c8_0168a7ecdc984e5aab7764f71ed4b1f8'
 Traceback (most recent call last):
   File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
     del cache[rtype][name]
         ~~~~~~~~~~~~^^^^^^
-KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_52544_5203b13cce6b4fc28a898c2c18372e04_df34fe1cac014b3bbde2fd5cd28213b3'
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_44344_9b099c56144e4b8aac2cd73a18588154_ea88b3838c694d04beba39e8c607d855'
 Traceback (most recent call last):
   File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
     del cache[rtype][name]
         ~~~~~~~~~~~~^^^^^^
-KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_52544_347b72d2f3d44a66b9042c12fc053be7_f9e98a2e501e4507975b21784538c9fb'
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_44344_8b1d1bbd49c84a99b21d1f454e5b4c80_4c84ed01678b4f63964a3faa08b6493c'
 Traceback (most recent call last):
   File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
     del cache[rtype][name]
         ~~~~~~~~~~~~^^^^^^
-KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_52544_5203b13cce6b4fc28a898c2c18372e04_a6443352976d4ccfad71945c2c94dabe'
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_44344_9b099c56144e4b8aac2cd73a18588154_557d5028db074aa2833e3eda7b7cad8c'
 Traceback (most recent call last):
   File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
     del cache[rtype][name]
         ~~~~~~~~~~~~^^^^^^
-KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_52544_5203b13cce6b4fc28a898c2c18372e04_e79a918b0d234df7983eaec0ab4442df'
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_44344_9b099c56144e4b8aac2cd73a18588154_bb3ed57e60ec479a953ccb29ab00c015'
 Traceback (most recent call last):
   File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
     del cache[rtype][name]
         ~~~~~~~~~~~~^^^^^^
-KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_52544_7a3b2cb5ef6c4988af6fede3e886521e_3d0aacf5a96e4ca6a08b175346dfcb25'
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_44344_a6197b9a663444418409ca1e7226931d_4dfeaa0e7e38486bb5722cb2156419f4'
 Traceback (most recent call last):
   File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
     del cache[rtype][name]
         ~~~~~~~~~~~~^^^^^^
-KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_52544_bb83d7190b4d45a1bf5241ac88cf6786_426f0d71d2ac419cb54a17d13c712192'
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_44344_06f78306bf1947389c409b1f79d722f8_e07fbe0b99974b51a9a09008ddf3dabf'
 Traceback (most recent call last):
   File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
     del cache[rtype][name]
         ~~~~~~~~~~~~^^^^^^
-KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_52544_7a3b2cb5ef6c4988af6fede3e886521e_cc1a3de0ee3d42a58b4ee0870794840a'
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_44344_a6197b9a663444418409ca1e7226931d_c86310477c8245a3840f54988152074f'
 Traceback (most recent call last):
   File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
     del cache[rtype][name]
         ~~~~~~~~~~~~^^^^^^
-KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_52544_7a3b2cb5ef6c4988af6fede3e886521e_6d4568b7d6ee4fb4be5947efb4706622'
-  finished in 0:05:10
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_44344_a6197b9a663444418409ca1e7226931d_98c9613b00124170a6bc5051ec6d8c97'
+  finished in 0:03:35
 
-[03:30:12] 04_check_seasonal_confound.ipynb
+[11:26:00] 04_check_seasonal_confound.ipynb
 [IPKernelApp] WARNING | Kernel is running over TCP without encryption. All communication (including code and outputs) is sent in plain text and is susceptible to eavesdropping. Use IPC transport or launch with kernel manager-provisioned CurveZMQ keys to enable transport encryption.
   04_check_seasonal_confound.ipynb: cell 1/6 done in 0:00:04 (total 0:00:04)
   04_check_seasonal_confound.ipynb: cell 2/6 done in 0:00:00 (total 0:00:04)
-  04_check_seasonal_confound.ipynb: cell 3/6 done in 0:00:07 (total 0:00:10)
-  04_check_seasonal_confound.ipynb: cell 4/6 done in 0:00:02 (total 0:00:12)
-  04_check_seasonal_confound.ipynb: cell 5/6 done in 0:12:28 (total 0:12:40)
-  04_check_seasonal_confound.ipynb: cell 6/6 done in 0:00:17 (total 0:12:57)
+  04_check_seasonal_confound.ipynb: cell 3/6 done in 0:00:07 (total 0:00:11)
+  04_check_seasonal_confound.ipynb: cell 4/6 done in 0:00:02 (total 0:00:13)
+  04_check_seasonal_confound.ipynb: cell 5/6 done in 0:30:45 (total 0:30:57)
+  04_check_seasonal_confound.ipynb: cell 6/6 done in 0:00:33 (total 0:31:30)
 Traceback (most recent call last):
   File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
     del cache[rtype][name]
         ~~~~~~~~~~~~^^^^^^
-KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_31852_e5cf83546f5c4db088f7601d9ecab004_7c4ef01d541a4031972261cb5e22afdd'
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_55156_ee55a12ebcfe49b3b72bfa4742b546c3_26a30989a11f4df6ab7e136ccf63a7d8'
 Traceback (most recent call last):
   File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
     del cache[rtype][name]
         ~~~~~~~~~~~~^^^^^^
-KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_31852_7c12cb1d95ed468e82ebba48c7857347_aa80011b0f864b4b94259754e2481615'
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_55156_8d3365e1e8514eefa23314ca90a6c313_43e0001430354c7eac5c2095c13e0f29'
 Traceback (most recent call last):
   File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
     del cache[rtype][name]
         ~~~~~~~~~~~~^^^^^^
-KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_31852_0cf63a449bb54e51a3b6a1ebe7c2429f_71a69470e0514cce97a2c5003b72782a'
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_55156_a853a51ec00f43d4b0650704effafa75_ad74f2aaa88a43809545b6389672b6dc'
 Traceback (most recent call last):
   File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
     del cache[rtype][name]
         ~~~~~~~~~~~~^^^^^^
-KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_31852_7c12cb1d95ed468e82ebba48c7857347_21ec5e0bc90b4bc2bbad6f84876becd2'
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_55156_8d3365e1e8514eefa23314ca90a6c313_ef51d98b36b04b7381b809626a20279f'
 Traceback (most recent call last):
   File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
     del cache[rtype][name]
         ~~~~~~~~~~~~^^^^^^
-KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_31852_7c12cb1d95ed468e82ebba48c7857347_47babd175ee54dd783b945f9bb99d852'
-  finished in 0:12:59
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_55156_383b9ab87cda44499af4c56317ca80c1_ce14e3ea79ed43fba12fa3661a0bd67b'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_55156_8d3365e1e8514eefa23314ca90a6c313_5818fadf9e574e72aed0ccffd728e685'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_55156_e6e932893c434ad989fd39886728e963_dafe3953771c456eac78318281fc335f'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_55156_8d3365e1e8514eefa23314ca90a6c313_ee8663863ab8471a9f2d856496371fd2'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_55156_a35acf6ac1f8480c9236c3078245b9fd_3e023e00a7dc400e82eed7b13bf70ebe'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_55156_8d3365e1e8514eefa23314ca90a6c313_bccb4a29d20f47c399636fdf5c46a0f0'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_55156_8d3365e1e8514eefa23314ca90a6c313_88a1d045502342a78c5bfc91ae695f78'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_55156_afb4b225442443348334e61566800e65_3823f08560f348af92d28e307024b2df'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_55156_ccea2227bf6546b9a6faecd30bfd431c_7e31ca4c66c842ecac92d69f86d09ed6'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_55156_afb4b225442443348334e61566800e65_29722457126947a8ade152c1c59de5fe'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_55156_afb4b225442443348334e61566800e65_e0a381f3612044e9992692a49f5ca5d0'
+  finished in 0:31:32
 
-Total 0:39:26. All notebooks ran.
+Total 0:58:27. All notebooks ran.

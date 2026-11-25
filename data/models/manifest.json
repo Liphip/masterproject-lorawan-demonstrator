@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-11-25T02:28:10.355000+00:00",
+  "created_at": "2026-11-25T10:25:55.687940+00:00",
   "window_size": 10,
   "stride": 2,
   "feature_set": "temperature_difference",
@@ -9,7 +9,7 @@
     "lse01_temperature_diff",
     "ltcfs_temperature_diff"
   ],
-  "augmentation": null,
+  "augmentation": {},
   "feature_order": [
     "timestamp",
     "sensor",
