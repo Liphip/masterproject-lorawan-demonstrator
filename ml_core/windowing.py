@@ -23,8 +23,8 @@ class WindowFeatures(BaseEstimator, TransformerMixin):
       the last 24 h / 7 d before the window's last uplink, ``<col>_ctxmean_<h>``, ``<col>_ctxstd_<h>`` and
       ``<col>_ctxtrend_<h>`` (least-squares slope per day). A window of 10 uplinks spans minutes, so without
       context the models only see the current level; the trend shows how the sausage has been changing.
-      Only the past of the same recording is used. At the start of a run (and in the case after a restart)
-      less history exists; the statistics then use what is there.
+      Only the past of the same recording is used. Training leaves out windows without the full horizon of
+      history (training._full_history); the demonstrator fills missing history (fill_history below).
 
     Stateless: ``fit`` does nothing, so windows can be computed once and reused.
     """
@@ -185,3 +185,42 @@ class WindowFeatures(BaseEstimator, TransformerMixin):
                 features[f"{col}_slope"] = np.where(valid.sum(axis=1) >= 2, slope, np.nan)
 
         return pd.DataFrame({**features, **timing}, copy=False)
+
+
+def fill_history(rows: pd.DataFrame, history: pd.Timedelta, window_size: int = 10) -> tuple[pd.DataFrame, float]:
+    """Make sure `rows` cover `history` before their last uplink, by repeating the earliest stretch backwards.
+
+    For predictions with context features when less history exists: at the start of a recording, live in the case
+    (there is no sausage, and the history starts when the demonstrator starts) and after a restart. The earliest
+    available stretch (its first day at most, at least one window) is copied backwards, end to end, until the
+    horizon is covered: "as if the sausage had looked like this all along". Means and spreads stay realistic,
+    trends become ~0. The models never saw filled history in training (windows without full history are left out
+    there), so predictions with a large filled share are marked in the UI.
+
+    Returns (rows, share of the horizon covered by real rows, 0..1).
+    """
+    if history <= pd.Timedelta(0) or len(rows) < 2:
+        return rows, 1.0
+    ts = pd.to_datetime(rows["timestamp"], utc=True)
+    t_end, t_first = ts.iloc[-1], ts.iloc[0]
+    need = t_end - history
+    real = min(1.0, (t_end - t_first) / history)
+    if t_first <= need:
+        return rows, 1.0
+    template = rows[(ts <= t_first + pd.Timedelta("1D")).to_numpy()]   # earliest stretch: one day at most
+    tt = ts[(ts <= t_first + pd.Timedelta("1D")).to_numpy()]
+    step = ts.diff().median()
+    step = step if pd.notna(step) and step > pd.Timedelta(0) else pd.Timedelta("1min")
+    # length of one copy, gap included; at most ~400 copies (uplinks seconds apart, e.g. in tests, would otherwise
+    # need hundreds of thousands)
+    period = max((tt.iloc[-1] - tt.iloc[0]) + step, history / 400)
+    copies, shift = [], period
+    while t_first - shift + (tt.iloc[-1] - tt.iloc[0]) > need:         # until the oldest copy reaches the horizon
+        c = template.copy()
+        c["timestamp"] = (tt - shift).to_numpy()
+        copies.append(c)
+        shift += period
+    if not copies:
+        return rows, real
+    filled = pd.concat(copies[::-1] + [rows], ignore_index=True)
+    return filled[(pd.to_datetime(filled["timestamp"], utc=True) > need).to_numpy()].reset_index(drop=True), real

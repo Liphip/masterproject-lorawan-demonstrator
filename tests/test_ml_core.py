@@ -333,6 +333,12 @@ def test_models_with_context_run_in_the_demonstrator(synthetic_dir, tmp_path):
     conv = str(synthetic_dir / "converted")
     w = load_windows(conv, context=("6h",), n_jobs=1, log=_quiet)
     assert any("_ctxtrend_6h" in c for c in w.columns)
+    # windows without 6 h of history are left out of training and evaluation
+    plain = load_windows(conv, n_jobs=1, log=_quiet)
+    for g in w.recordings:
+        start = pd.to_datetime(plain.raw[g]["timestamp"]).iloc[0]
+        assert pd.to_datetime(w.times[g][0]) >= start + pd.Timedelta("6h") and len(w.X[g]) < len(plain.X[g])
+        assert len(w.X[g]) == len(w.y[g]) == len(w.times[g])
     train_and_evaluate(w, str(tmp_path / "models"), keys=("logreg", "rf"), quick=True, n_jobs=1, log=_quiet)
     manifest = json.load(open(tmp_path / "models" / "manifest.json"))
     assert manifest["context"] == ["6h"] and any("ctx" in c for c in manifest["output_columns"])
@@ -342,7 +348,8 @@ def test_models_with_context_run_in_the_demonstrator(synthetic_dir, tmp_path):
         for i in range(12):
             c.post("/ingest/uplink", json={"devEUI": "A840410000000001",
                                            "object": {"water_SOIL": 40 - i, "temp_SOIL": 15, "conduct_SOIL": 4000}})
-        assert c.get("/api/state").json()["live"]["predictions"]["sausage_1"]["ready"]
+        live = c.get("/api/state").json()["live"]["predictions"]["sausage_1"]
+        assert live["ready"] and 0 <= live["history_real"] < 0.01          # seconds of real history, rest filled
         c.post("/api/replay/start", json={"group": "series_1_sausage_2", "speed": 200000, "start_fraction": 0.5})
         for _ in range(50):
             if c.get("/api/state").json()["replay"]["latest"]:
@@ -361,3 +368,18 @@ def test_models_with_context_run_in_the_demonstrator(synthetic_dir, tmp_path):
         sim = c.post("/api/simulate", json={"group": "series_1_sausage_1", "position": 0.7,
                                             "adjust": {"moisture_delta": -10}}).json()
         assert sim["ready"] and sim["simulated_means"]["lse01_moisture"] < sim["recorded_means"]["lse01_moisture"]
+
+
+def test_fill_history_covers_the_horizon_with_the_earliest_stretch(synthetic_dir):
+    from ml_core.windowing import fill_history
+    df = load_recording(str(synthetic_dir / "converted" / "series_1_sausage_1.csv"))[FEATURE_ORDER]
+    part = df.iloc[:40]
+    filled, real = fill_history(part, pd.Timedelta("1D"), 10)
+    ts = pd.to_datetime(filled["timestamp"], utc=True)
+    span = pd.to_datetime(part["timestamp"], utc=True)
+    assert ts.is_monotonic_increasing and ts.iloc[-1] - ts.iloc[0] > pd.Timedelta("23h")
+    assert real == pytest.approx((span.iloc[-1] - span.iloc[0]) / pd.Timedelta("1D"))
+    pd.testing.assert_frame_equal(filled.tail(40).reset_index(drop=True), part.reset_index(drop=True))  # real rows last
+    assert set(filled["lse01_moisture"].dropna()) <= set(part["lse01_moisture"].dropna())              # only copies
+    full, real_full = fill_history(df, pd.Timedelta("1D"), 10)
+    assert real_full == 1.0 and len(full) == len(df)

@@ -225,3 +225,5 @@ body.simple { font-size: 18px; min-height: 100vh; display: flex; flex-direction:
 
 /* gradient boosting detail in the explanation overlay */
 svg.boost { width: 100%; max-width: 320px; display: block; }
+.banner.hist { background: #eef3f8; color: #2c4a66; font-size: .85rem; }
+.s-hist { color: #2c4a66; }

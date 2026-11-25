@@ -262,7 +262,7 @@ def check_air_temperature(windows: Windows, log=print) -> None:
         log(f"WARNING: only {coverage:.0%} of the windows have an air temperature.")
 
 
-def _window_recording(path: str, window_size: int, stride: int, annotated: bool, context=()):
+def _window_recording(path: str, window_size: int, stride: int, annotated: bool, context=(), skip_start=None):
     """Load one converted CSV and compute its window features (runs in a worker process)."""
     g = recording_name(path)
     df = load_recording(path)
@@ -271,11 +271,26 @@ def _window_recording(path: str, window_size: int, stride: int, annotated: bool,
             raise ValueError(f"{path} has no labels")
         df = df.dropna(subset=["label"]).reset_index(drop=True)
     raw = df[FEATURE_ORDER]
-    X = WindowFeatures(window_size=window_size, stride=stride, context=context).transform(raw)
+    wf = WindowFeatures(window_size=window_size, stride=stride, context=context)
+    X = wf.transform(raw)
     y = window_labels(df["label"], window_size, stride) if annotated else np.array([], dtype=object)
     times = df["timestamp"].to_numpy()[np.arange(len(X)) * stride + window_size - 1]
     labels = df["label"].to_numpy() if annotated else np.array([], dtype=object)
-    return g, raw, X, y, times, labels
+    keep = _full_history(df["timestamp"], times, max(wf.history, pd.Timedelta(skip_start or 0)))
+    return g, raw, X[keep].reset_index(drop=True), y[keep] if annotated else y, times[keep], labels
+
+
+def _full_history(timestamps: pd.Series, window_ends, history: pd.Timedelta) -> np.ndarray:
+    """Windows whose context horizon lies completely inside the recording (all windows if there is no context).
+
+    With context features, the first `history` of a run has less history than later windows. A model could learn
+    that difference as "early phase" (the schedule again), so these windows are left out of training and
+    evaluation. The demonstrator fills missing history instead (windowing.fill_history) and marks it.
+    """
+    ends = pd.to_datetime(pd.Series(window_ends), utc=True)
+    if history <= pd.Timedelta(0) or not len(ends):
+        return np.ones(len(ends), dtype=bool)
+    return (ends >= pd.to_datetime(timestamps, utc=True).iloc[0] + history).to_numpy()
 
 
 def _augment_recording(raw: pd.DataFrame, labels: np.ndarray, index: int, copy: int, names, window_size: int,
@@ -283,16 +298,23 @@ def _augment_recording(raw: pd.DataFrame, labels: np.ndarray, index: int, copy: 
     """One augmented copy of one recording, windowed like the original (runs in a worker process)."""
     df = raw.assign(label=labels)
     df = aug.augment_rows(df, names, aug.copy_rng(index, copy))
-    X = WindowFeatures(window_size=window_size, stride=stride, context=context).transform(df[FEATURE_ORDER])
-    return X, window_labels(df["label"], window_size, stride)
+    wf = WindowFeatures(window_size=window_size, stride=stride, context=context)
+    X = wf.transform(df[FEATURE_ORDER])
+    y = window_labels(df["label"], window_size, stride)
+    keep = _full_history(df["timestamp"], df["timestamp"].to_numpy()[np.arange(len(X)) * stride + window_size - 1],
+                         wf.history)
+    return X[keep].reset_index(drop=True), y[keep]
 
 
 def load_windows(data_dir: str = CONVERTED_DIR, pattern: str = "series_1_*.csv", window_size: int = 10,
-                 stride: int = 2, annotated: bool = True, classes=None, context=(), n_jobs: int = N_JOBS,
-                 log=print) -> Windows:
+                 stride: int = 2, annotated: bool = True, classes=None, context=(), skip_start=None,
+                 n_jobs: int = N_JOBS, log=print) -> Windows:
     """Window features of all recordings matching pattern. annotated=False for series 2.
 
     context: horizons of the long-term context features, e.g. ("24h", "7d") (see WindowFeatures); () = none.
+    With context, windows in the first `horizon` of each recording are left out (see _full_history).
+    skip_start (e.g. "7d"): leave out the first part of every recording regardless of context, so that configurations
+    with and without context are scored on the same windows (notebook 05). Augmented copies are not trimmed by it.
     """
     context = parse_context(context)
     paths = sorted(glob.glob(os.path.join(data_dir, pattern)))
@@ -300,7 +322,7 @@ def load_windows(data_dir: str = CONVERTED_DIR, pattern: str = "series_1_*.csv",
         raise FileNotFoundError(f"No files match {pattern} in {data_dir}")
     X, y, times, raw, labels = {}, {}, {}, {}, {}
     jobs = Parallel(n_jobs=min(effective_n_jobs(n_jobs), len(paths)), return_as="generator", **NO_MEMMAP)(
-        delayed(_window_recording)(p, window_size, stride, annotated, context) for p in paths)
+        delayed(_window_recording)(p, window_size, stride, annotated, context, skip_start) for p in paths)
     for g, raw[g], X[g], y[g], times[g], labels[g] in jobs:
         log(f"{g}: {len(raw[g]):,} rows → {len(X[g]):,} windows")
     # one fixed feature schema for all recordings (timing features last)

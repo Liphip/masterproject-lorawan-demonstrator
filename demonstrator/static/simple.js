@@ -19,7 +19,8 @@ function consensus(pred) {
 
 // Phase steps, model lines and measurement tiles for one prediction (or a waiting message).
 function renderPrediction(pred, truth, when) {
-  $("#s-when").innerHTML = when || "";
+  const hist = histNote(pred) ? t("s.hist", {p: fmtNum(pred.history_real * 100)}) : "";
+  $("#s-when").innerHTML = (when || "") + (hist ? ` · <span class="s-hist" title="${esc(histNote(pred))}">${esc(hist)}</span>` : "");
   const steps = document.querySelectorAll("#s-steps li");
   const ok = pred && pred.ready;
   const c = ok ? consensus(pred) : null;

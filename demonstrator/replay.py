@@ -207,6 +207,18 @@ class ReplayEngine:
                 pipe, _ = self.models.model_for(key, group)
                 proba = pipe.predict_proba(feats)                      # one row per window, same windows as replay
                 preds[key] = np.asarray(pipe.classes_, dtype=object)[proba.argmax(axis=1)]
+            # With context features, the first `history` of the run has incomplete history. The animated replay fills
+            # it (fill_history); do the same here so both views agree. ~150 predictions are enough for the timeline.
+            history = self.models.history
+            if history > pd.Timedelta(0):
+                ts_ns = pd.to_datetime(df["timestamp"], utc=True).astype("int64").to_numpy()
+                early = np.flatnonzero(ts_ns[ends] < ts_ns[0] + history.value)
+                step = max(1, len(early) // 150)
+                for i, w in enumerate(early):
+                    if i % step == 0:
+                        res = self.models.predict(window_with_history(feats, ts_ns, int(ends[w]), ws, history), group)
+                    for key in preds:
+                        preds[key][w] = res["models"][key]["label"]
             with self.lock:
                 for k in range(len(df)):
                     r = df.iloc[k] if k % 4 == 0 else None             # thinning: every 4th row is plenty here

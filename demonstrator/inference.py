@@ -13,6 +13,7 @@ import pandas as pd
 from sklearn.pipeline import Pipeline
 
 from ml_core import ModelPipeline, WindowFeatures
+from ml_core.windowing import fill_history
 from ml_core.data import FEATURE_ORDER
 
 log = logging.getLogger(__name__)
@@ -104,14 +105,21 @@ class ModelRegistry:
         return self._wf.history if self.manifest else pd.Timedelta(0)
 
     def history_rows(self, rows: pd.DataFrame) -> pd.DataFrame:
-        """The rows a prediction needs: the last window plus the context history before it (FEATURE_ORDER columns)."""
+        """The rows a prediction needs: the last window plus the context history before it (FEATURE_ORDER columns).
+        Missing history (start of a run, live, after a restart) is filled, see fill_history."""
+        return self._history(rows)[0]
+
+    def _history(self, rows: pd.DataFrame) -> tuple[pd.DataFrame, float]:
+        """(history_rows, share of the context horizon covered by real rows)."""
         rows = rows[FEATURE_ORDER]
         if self.history <= pd.Timedelta(0) or not len(rows):
-            return rows.tail(self.window_size).reset_index(drop=True)
+            return rows.tail(self.window_size).reset_index(drop=True), 1.0
         ts = pd.to_datetime(rows["timestamp"], utc=True)
         keep = (ts > ts.iloc[-1] - self.history).to_numpy().copy()
         keep[-self.window_size:] = True
-        return rows[keep].reset_index(drop=True)
+        if len(rows) < self.window_size:
+            return rows[keep].reset_index(drop=True), 0.0
+        return fill_history(rows[keep].reset_index(drop=True), self.history, self.window_size)
 
     def features(self, rows: pd.DataFrame) -> pd.DataFrame:
         """Window features of the last window of `rows` (one row, the models' input before imputing)."""
@@ -137,6 +145,7 @@ class ModelRegistry:
                             "has_fold_models": bool(m.get("folds"))} for m in self.manifest["models"]],
                 "classes": self.manifest["classes"],
                 "window_size": self.window_size, "stride": self.stride,
+                "context": list(self.manifest.get("context", [])),
                 "feature_set": self.manifest.get("feature_set", "all"), "signals": self.manifest.get("signals"),
                 "created_at": self.manifest.get("created_at"), "quick": self.manifest.get("quick")}
 
@@ -195,14 +204,16 @@ class ModelRegistry:
         its own time, i.e. what one prediction costs on its own.
         """
         ws = self.window_size
-        hist = self.history_rows(rows)
+        hist, real = self._history(rows)
         if len(hist) < ws:
             return {"ready": False, "reason": f"need {ws} uplinks, have {len(hist)}"}
         t = time.perf_counter()
         feats = self._wf.transform_last(hist)
         feat_ms = (time.perf_counter() - t) * 1000
         rows = hist.tail(ws).reset_index(drop=True)
-        out = {"ready": True, "models": {}, "any_model_saw_data": False}
+        out = {"ready": True, "models": {}, "any_model_saw_data": False,
+               # context models: share of the horizon covered by real uplinks (the rest filled, see fill_history)
+               "history_real": round(real, 3) if self.history > pd.Timedelta(0) else None}
         for key in self.keys:
             pipe, seen = self.model_for(key, group)
             t = time.perf_counter()

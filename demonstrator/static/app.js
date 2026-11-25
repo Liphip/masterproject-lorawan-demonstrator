@@ -82,6 +82,8 @@ function modelCards(pred, models, opts = {}) {
   if (pred.compatible === false) warn += `<div class="banner warn">${t("warn.ood", {pct: fmtNum(pred.ood_fraction * 100)})}</div>`;
   if (pred.any_model_saw_data && !opts.simulated) warn += `<div class="banner warn">${t("warn.seen")}</div>`;
   const btn = opts.explain ? `<div class="explain-row"><button class="explain-btn" data-src="${opts.explain}">${t("btn.explain")}</button></div>` : "";
+  const hist = histNote(pred);
+  if (hist) warn += `<div class="banner hist">${esc(hist)}</div>`;
   return `<div class="agree">${agreeText(pred)}</div>${warn}<div class="models">${cards.join("")}</div>${btn}`;
 }
 

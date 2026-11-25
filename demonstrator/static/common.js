@@ -131,3 +131,8 @@ function recOptions(list, only) {
 function agreeText(pred) {
   return t("agree." + pred.agreement, {k: pred.agreement_count, n: Object.keys(pred.models).length});
 }
+// Note when a context model's history was partly filled (start of a run, live, after a restart); "" otherwise.
+function histNote(pred) {
+  if (pred == null || pred.history_real == null || pred.history_real >= 0.999) return "";
+  return t("hist.filled", {p: fmtNum(pred.history_real * 100)});
+}
