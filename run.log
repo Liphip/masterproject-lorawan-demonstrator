@@ -1,0 +1,362 @@
+Running: 01_convert_raw_data.ipynb, 02_search_hyperparameters.ipynb, 03_train_and_evaluate.ipynb, 04_check_seasonal_confound.ipynb
+
+[03:03:44] 01_convert_raw_data.ipynb
+[IPKernelApp] WARNING | Kernel is running over TCP without encryption. All communication (including code and outputs) is sent in plain text and is susceptible to eavesdropping. Use IPC transport or launch with kernel manager-provisioned CurveZMQ keys to enable transport encryption.
+  01_convert_raw_data.ipynb: cell 1/4 done in 0:00:04 (total 0:00:04)
+  01_convert_raw_data.ipynb: cell 2/4 done in 0:00:00 (total 0:00:04)
+  01_convert_raw_data.ipynb: cell 3/4 done in 0:00:46 (total 0:00:50)
+  01_convert_raw_data.ipynb: cell 4/4 done in 0:00:01 (total 0:00:52)
+  finished in 0:00:52
+
+[03:04:37] 02_search_hyperparameters.ipynb
+[IPKernelApp] WARNING | Kernel is running over TCP without encryption. All communication (including code and outputs) is sent in plain text and is susceptible to eavesdropping. Use IPC transport or launch with kernel manager-provisioned CurveZMQ keys to enable transport encryption.
+  02_search_hyperparameters.ipynb: cell 1/7 done in 0:00:01 (total 0:00:01)
+  02_search_hyperparameters.ipynb: cell 2/7 done in 0:00:02 (total 0:00:03)
+  02_search_hyperparameters.ipynb: cell 3/7 done in 0:00:00 (total 0:00:03)
+  02_search_hyperparameters.ipynb: cell 4/7 done in 0:00:07 (total 0:00:10)
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\svm\_base.py:1295: ConvergenceWarning: Liblinear failed to converge, increase the number of iterations.
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\svm\_base.py:1295: ConvergenceWarning: Liblinear failed to converge, increase the number of iterations.
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\svm\_base.py:1295: ConvergenceWarning: Liblinear failed to converge, increase the number of iterations.
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\svm\_base.py:1295: ConvergenceWarning: Liblinear failed to converge, increase the number of iterations.
+  warnings.warn(
+F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\svm\_base.py:1295: ConvergenceWarning: Liblinear failed to converge, increase the number of iterations.
+  warnings.warn(
+  02_search_hyperparameters.ipynb: cell 5/7 done in 0:20:14 (total 0:20:24)
+  02_search_hyperparameters.ipynb: cell 6/7 done in 0:00:00 (total 0:20:24)
+  02_search_hyperparameters.ipynb: cell 7/7 done in 0:00:00 (total 0:20:24)
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_44472_9b6390410c4f45a289ff0b2bccda4048_14c3785ea9524e1a90b31272ed85fae7'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_44472_ba3f23ac2e1d4a4e9456818ef6642f97_59875164556e421bb1cc1d5587e8e6d7'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_44472_fe51ea9355c4410b8c365c3cbc223acf_5b6dfd90620d4f3786a34761b73f56b8'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_44472_ba3f23ac2e1d4a4e9456818ef6642f97_d017f1ceb3dc4d3db0fc0777e24602cb'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_44472_ba3f23ac2e1d4a4e9456818ef6642f97_4ccce7539bbc4dd5896fbef0cc786a6c'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_44472_e274010ba2b540ec90759bc508d343de_bd0930a7b09b4d91bc27e988d8c979fd'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_44472_e274010ba2b540ec90759bc508d343de_1e91ca71319e45fea34dd0349dea8460'
+  finished in 0:20:25
+
+[03:25:01] 03_train_and_evaluate.ipynb
+[IPKernelApp] WARNING | Kernel is running over TCP without encryption. All communication (including code and outputs) is sent in plain text and is susceptible to eavesdropping. Use IPC transport or launch with kernel manager-provisioned CurveZMQ keys to enable transport encryption.
+  03_train_and_evaluate.ipynb: cell 1/9 done in 0:00:04 (total 0:00:04)
+  03_train_and_evaluate.ipynb: cell 2/9 done in 0:00:00 (total 0:00:04)
+  03_train_and_evaluate.ipynb: cell 3/9 done in 0:00:07 (total 0:00:10)
+  03_train_and_evaluate.ipynb: cell 4/9 done in 0:02:58 (total 0:03:09)
+  03_train_and_evaluate.ipynb: cell 5/9 done in 0:00:00 (total 0:03:09)
+  03_train_and_evaluate.ipynb: cell 6/9 done in 0:00:00 (total 0:03:09)
+  03_train_and_evaluate.ipynb: cell 7/9 done in 0:00:00 (total 0:03:09)
+  03_train_and_evaluate.ipynb: cell 8/9 done in 0:00:00 (total 0:03:09)
+  03_train_and_evaluate.ipynb: cell 9/9 done in 0:02:01 (total 0:05:10)
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_52544_e0803025909d462ba35b903df6754320_0d2c6d96cad7402eae297f9dce03310e'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_52544_5203b13cce6b4fc28a898c2c18372e04_df34fe1cac014b3bbde2fd5cd28213b3'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_52544_347b72d2f3d44a66b9042c12fc053be7_f9e98a2e501e4507975b21784538c9fb'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_52544_5203b13cce6b4fc28a898c2c18372e04_a6443352976d4ccfad71945c2c94dabe'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_52544_5203b13cce6b4fc28a898c2c18372e04_e79a918b0d234df7983eaec0ab4442df'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_52544_7a3b2cb5ef6c4988af6fede3e886521e_3d0aacf5a96e4ca6a08b175346dfcb25'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_52544_bb83d7190b4d45a1bf5241ac88cf6786_426f0d71d2ac419cb54a17d13c712192'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_52544_7a3b2cb5ef6c4988af6fede3e886521e_cc1a3de0ee3d42a58b4ee0870794840a'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_52544_7a3b2cb5ef6c4988af6fede3e886521e_6d4568b7d6ee4fb4be5947efb4706622'
+  finished in 0:05:10
+
+[03:30:12] 04_check_seasonal_confound.ipynb
+[IPKernelApp] WARNING | Kernel is running over TCP without encryption. All communication (including code and outputs) is sent in plain text and is susceptible to eavesdropping. Use IPC transport or launch with kernel manager-provisioned CurveZMQ keys to enable transport encryption.
+  04_check_seasonal_confound.ipynb: cell 1/6 done in 0:00:04 (total 0:00:04)
+  04_check_seasonal_confound.ipynb: cell 2/6 done in 0:00:00 (total 0:00:04)
+  04_check_seasonal_confound.ipynb: cell 3/6 done in 0:00:07 (total 0:00:10)
+  04_check_seasonal_confound.ipynb: cell 4/6 done in 0:00:02 (total 0:00:12)
+  04_check_seasonal_confound.ipynb: cell 5/6 done in 0:12:28 (total 0:12:40)
+  04_check_seasonal_confound.ipynb: cell 6/6 done in 0:00:17 (total 0:12:57)
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_31852_e5cf83546f5c4db088f7601d9ecab004_7c4ef01d541a4031972261cb5e22afdd'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_31852_7c12cb1d95ed468e82ebba48c7857347_aa80011b0f864b4b94259754e2481615'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_31852_0cf63a449bb54e51a3b6a1ebe7c2429f_71a69470e0514cce97a2c5003b72782a'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_31852_7c12cb1d95ed468e82ebba48c7857347_21ec5e0bc90b4bc2bbad6f84876becd2'
+Traceback (most recent call last):
+  File "F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\joblib\externals\loky\backend\resource_tracker.py", line 386, in main
+    del cache[rtype][name]
+        ~~~~~~~~~~~~^^^^^^
+KeyError: 'C:\\Users\\lordp\\AppData\\Local\\Temp\\joblib_memmapping_folder_31852_7c12cb1d95ed468e82ebba48c7857347_47babd175ee54dd783b945f9bb99d852'
+  finished in 0:12:59
+
+Total 0:39:26. All notebooks ran.
