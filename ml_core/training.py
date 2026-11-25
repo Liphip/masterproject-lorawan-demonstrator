@@ -31,9 +31,10 @@ import os
 import sys
 import time
 import warnings
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import numpy as np
+from joblib import Parallel, delayed, effective_n_jobs
 import pandas as pd
 import sklearn
 from sklearn.ensemble import RandomForestClassifier
@@ -57,6 +58,9 @@ from .windowing import WindowFeatures
 warnings.filterwarnings("ignore", message="Skipping features without any observed values")
 
 RANDOM_STATE = 42
+# Parallel worker processes for windowing, cross-validation folds and feature-set comparison (-1 = all cores).
+# Each worker fits single-threaded, so there is no oversubscription. Set ML_N_JOBS to override (e.g. 4 if RAM is short).
+N_JOBS = int(os.environ.get("ML_N_JOBS", "-1"))
 MODEL_NAMES = {"logreg": "Logistic Regression", "rf": "Random Forest", "mlp": "MLP (neural net)"}
 HYPERPARAMETERS_FILE = "hyperparameters.json"
 
@@ -144,6 +148,10 @@ class Windows:
         return Windows({g: x[cols] for g, x in self.X.items()}, self.y, self.times, self.raw, cols,
                        self.classes, self.window_size, self.stride, feature_set)
 
+    def without_raw(self) -> "Windows":
+        """Copy without the raw rows: what worker processes need (less to transfer)."""
+        return replace(self, raw={})
+
     def stack(self, exclude=None):
         names = [g for g in self.recordings if g != exclude]
         X = pd.concat([self.X[g] for g in names], ignore_index=True)
@@ -211,26 +219,31 @@ def augment_temperature(X: pd.DataFrame, y: np.ndarray, settings: dict | None = 
     return pd.concat(parts, ignore_index=True), np.tile(y, len(parts))
 
 
+def _window_recording(path: str, window_size: int, stride: int, annotated: bool):
+    g = recording_name(path)
+    df = load_recording(path)
+    if annotated:
+        if "label" not in df.columns or df["label"].isna().all():
+            raise ValueError(f"{path} has no labels")
+        df = df.dropna(subset=["label"]).reset_index(drop=True)
+    raw = df[FEATURE_ORDER]
+    X = WindowFeatures(window_size=window_size, stride=stride).transform(raw)
+    y = window_labels(df["label"], window_size, stride) if annotated else np.array([], dtype=object)
+    times = df["timestamp"].to_numpy()[np.arange(len(X)) * stride + window_size - 1]
+    return g, raw, X, y, times
+
+
 def load_windows(data_dir: str = CONVERTED_DIR, pattern: str = "series_1_*.csv", window_size: int = 10,
-                 stride: int = 2, annotated: bool = True, classes=None, log=print) -> Windows:
+                 stride: int = 2, annotated: bool = True, classes=None, n_jobs: int = N_JOBS, log=print) -> Windows:
     """Window features of all recordings matching pattern. annotated=False for series 2."""
     paths = sorted(glob.glob(os.path.join(data_dir, pattern)))
     if not paths:
         raise FileNotFoundError(f"No files match {pattern} in {data_dir}")
-    wf = WindowFeatures(window_size=window_size, stride=stride)
     X, y, times, raw = {}, {}, {}, {}
-    for p in paths:
-        g = recording_name(p)
-        df = load_recording(p)
-        if annotated:
-            if "label" not in df.columns or df["label"].isna().all():
-                raise ValueError(f"{p} has no labels")
-            df = df.dropna(subset=["label"]).reset_index(drop=True)
-        raw[g] = df[FEATURE_ORDER]
-        X[g] = wf.transform(raw[g])
-        y[g] = window_labels(df["label"], window_size, stride) if annotated else np.array([], dtype=object)
-        times[g] = df["timestamp"].to_numpy()[np.arange(len(X[g])) * stride + window_size - 1]
-        log(f"{g}: {len(df):,} rows → {len(X[g]):,} windows")
+    jobs = Parallel(n_jobs=min(effective_n_jobs(n_jobs), len(paths)), return_as="generator")(
+        delayed(_window_recording)(p, window_size, stride, annotated) for p in paths)
+    for g, raw[g], X[g], y[g], times[g] in jobs:
+        log(f"{g}: {len(raw[g]):,} rows → {len(X[g]):,} windows")
     # one fixed feature schema for all recordings (timing features last)
     columns = sorted(set().union(*(set(w.columns) for w in X.values())), key=lambda c: (c.startswith("timestamp"), c))
     X = {g: w.reindex(columns=columns) for g, w in X.items()}
@@ -240,23 +253,23 @@ def load_windows(data_dir: str = CONVERTED_DIR, pattern: str = "series_1_*.csv",
 
 
 # ── models ──────────────────────────────────────────────────────────────────
-def make_classifier(key: str, params: dict):
+def make_classifier(key: str, params: dict, n_jobs: int = 1):
     p = {k: (tuple(v) if k == "hidden_layer_sizes" else v) for k, v in params.items()}
     if key == "logreg":
         # One-vs-rest: liblinear only supports it, and it keeps all solvers comparable.
         return OneVsRestClassifier(LogisticRegression(random_state=RANDOM_STATE, **p))
     if key == "rf":
-        return RandomForestClassifier(random_state=RANDOM_STATE, n_jobs=-1, **p)
+        return RandomForestClassifier(random_state=RANDOM_STATE, n_jobs=n_jobs, **p)
     if key == "mlp":
         return MLPClassifier(random_state=RANDOM_STATE, **p)
     raise KeyError(key)
 
 
-def build_steps(key: str, params: dict) -> Pipeline:
-    """The trainable part: everything after windowing."""
+def build_steps(key: str, params: dict, n_jobs: int = 1) -> Pipeline:
+    """The trainable part: everything after windowing. n_jobs: threads of the random forest."""
     return Pipeline([("imputer", SimpleImputer(strategy="median")),
                      ("scaler", StandardScaler()),
-                     ("classifier", make_classifier(key, params))])
+                     ("classifier", make_classifier(key, params, n_jobs))])
 
 
 def build_pipeline(fitted: Pipeline, windows: Windows, key: str, name: str) -> ModelPipeline:
@@ -343,7 +356,10 @@ def predict_progression(steps: Pipeline, unannotated: Windows, classes: list[str
             continue
         idx = pd.Series([order[p] for p in steps.predict(unannotated.X[g])],
                         index=pd.DatetimeIndex(unannotated.times[g]), dtype=float)
-        out[g] = idx.rolling(PROGRESSION_SMOOTHING).median()
+        smooth = idx.rolling(PROGRESSION_SMOOTHING).median()
+        # the first period has an incomplete smoothing window (and probes settling in): not scored
+        warmup = min(pd.Timedelta(PROGRESSION_SMOOTHING), (smooth.index[-1] - smooth.index[0]) / 10)
+        out[g] = smooth[smooth.index >= smooth.index[0] + warmup]
     return out
 
 
@@ -374,72 +390,124 @@ def _agg(folds, name):
     return {"mean": float(v.mean()), "std": float(v.std()), "min": float(v.min()), "max": float(v.max())}
 
 
-def cross_validate(windows: Windows, key: str, params: dict, augmentation: dict | None = None,
-                   on_fold=None, log=print) -> dict:
-    """Leave-one-sausage-out: fit on all but one annotated sausage, score on that one.
+def _fit_task(windows: Windows, key: str, params: dict, held: str | None, augmentation: dict | None,
+              unannotated: Windows | None = None) -> dict:
+    """One fit: without `held` (a CV fold) or on all sausages (held=None). Runs in a worker process."""
+    X_tr, y_tr, _ = windows.stack(exclude=held)
+    if augmentation is not None:
+        X_tr, y_tr = augment_temperature(X_tr, y_tr, augmentation)
+    steps = build_steps(key, params)
+    t = time.perf_counter()
+    steps.fit(X_tr, y_tr)
+    out = {"held": held, "steps": steps, "fit_seconds": time.perf_counter() - t}
+    if held is not None:
+        t = time.perf_counter()
+        out["y_pred"] = steps.predict(windows.X[held])
+        out["pred_seconds"] = time.perf_counter() - t
+    if unannotated is not None:
+        out["progression"] = predict_progression(steps, unannotated, windows.classes)
+    return out
 
-    augmentation: settings for augment_temperature, applied to the training part only.
-    on_fold(held_out, fitted_steps) is called after each fold (used to export fold models).
-    """
+
+def _run_tasks(tasks: list[tuple], n_jobs: int):
+    """Run (_fit_task args) in worker processes; yields (task, result) in task order as results arrive."""
+    n = min(effective_n_jobs(n_jobs), len(tasks))
+    results = Parallel(n_jobs=n, return_as="generator")(delayed(_fit_task)(*t) for t in tasks) if n > 1 \
+        else (_fit_task(*t) for t in tasks)
+    yield from zip(tasks, results)
+
+
+def _fold_scores(windows: Windows, results: list[dict], log) -> dict:
     classes = windows.classes
     folds, cm, held_out_pred = [], np.zeros((len(classes), len(classes)), dtype=int), {}
-    for held in windows.recordings:
-        X_tr, y_tr, _ = windows.stack(exclude=held)
-        if augmentation is not None:
-            X_tr, y_tr = augment_temperature(X_tr, y_tr, augmentation)
-        steps = build_steps(key, params)
-        t = time.perf_counter()
-        steps.fit(X_tr, y_tr)
-        fit_s = time.perf_counter() - t
-        t = time.perf_counter()
-        y_pred = steps.predict(windows.X[held])
-        pred_s = time.perf_counter() - t
-        y_true = windows.y[held]
+    for r in results:
+        held, y_pred, y_true = r["held"], r["y_pred"], windows.y[r["held"]]
         held_out_pred[held] = y_pred
         cm += confusion_matrix(y_true, y_pred, labels=classes)
-        f = {"held_out": held, "accuracy": accuracy_score(y_true, y_pred),
-             "balanced_accuracy": balanced_accuracy_score(y_true, y_pred),
-             "macro_f1": f1_score(y_true, y_pred, labels=classes, average="macro", zero_division=0),
-             "n_windows": int(len(y_true)), "fit_seconds": fit_s,
-             "batch_ms_per_window": pred_s * 1000 / max(len(y_true), 1)}
-        folds.append(f)
-        log(f"  without {held}: balanced acc {f['balanced_accuracy']:.3f}, macro-F1 {f['macro_f1']:.3f} ({fit_s:.1f} s)")
-        if on_fold:
-            on_fold(held, steps)
+        folds.append({"held_out": held, "accuracy": accuracy_score(y_true, y_pred),
+                      "balanced_accuracy": balanced_accuracy_score(y_true, y_pred),
+                      "macro_f1": f1_score(y_true, y_pred, labels=classes, average="macro", zero_division=0),
+                      "n_windows": int(len(y_true)), "fit_seconds": r["fit_seconds"],
+                      "batch_ms_per_window": r["pred_seconds"] * 1000 / max(len(y_true), 1)})
     return {"folds": folds, "confusion_matrix": cm, "held_out_pred": held_out_pred,
             "accuracy": _agg(folds, "accuracy"), "balanced_accuracy": _agg(folds, "balanced_accuracy"),
             "macro_f1": _agg(folds, "macro_f1"), "batch_ms_per_window": _agg(folds, "batch_ms_per_window")["mean"]}
 
 
+def _log_fold(r: dict, log) -> None:
+    if r["held"] is None:
+        log(f"  all sausages: fitted ({r['fit_seconds']:.1f} s)")
+    else:
+        log(f"  without {r['held']}: balanced acc {r['balanced_acc']:.3f} ({r['fit_seconds']:.1f} s)")
+
+
+def cross_validate(windows: Windows, key: str, params: dict, augmentation: dict | None = None,
+                   on_fold=None, n_jobs: int = N_JOBS, log=print) -> dict:
+    """Leave-one-sausage-out: fit on all but one annotated sausage, score on that one. Folds run in parallel.
+
+    augmentation: settings for augment_temperature, applied to the training part only.
+    on_fold(held_out, fitted_steps) is called after each fold (used to export fold models).
+    """
+    w = windows.without_raw()
+    tasks = [(w, key, params, held, augmentation) for held in w.recordings]
+    results = []
+    for _, r in _run_tasks(tasks, n_jobs):
+        r["balanced_acc"] = balanced_accuracy_score(w.y[r["held"]], r["y_pred"])
+        _log_fold(r, log)
+        if on_fold:
+            on_fold(r["held"], r["steps"])
+        results.append(r)
+    return _fold_scores(w, results, log)
+
+
 def compare_feature_sets(windows: Windows, unannotated: Windows | None, variants=None, keys=("logreg", "rf", "mlp"),
-                         params: dict | None = None, limit_size: bool = True, quick: bool = False, log=print):
+                         params: dict | None = None, limit_size: bool = True, quick: bool = False,
+                         n_jobs: int = N_JOBS, log=print):
     """Held-out score on the annotated run vs. phase progression on the unannotated run, per variant.
 
     variants: feature set names; append "+augmentation" to train that set with augment_temperature.
     A model that learned the season scores well on series 1 but runs backwards on series 2.
+    All fits (variants × models × folds, plus one fit on all sausages each) share one pool of worker processes.
     Returns (table, progressions) where progressions[(variant, key)] = {recording: Series}.
     """
     params = params or load_hyperparameters()[0]
-    rows, progressions = [], {}
-    for variant in variants or list(FEATURE_SETS):
+    variants = variants or list(FEATURE_SETS)
+    tasks, meta = [], []
+    for variant in variants:
         fs, _, aug = variant.partition("+")
         augmentation = AUGMENTATION if aug == "augmentation" else None
-        w = windows.select(fs)
+        w = windows.select(fs).without_raw()
         check_air_temperature(w, log)
-        u = unannotated.select(fs) if unannotated is not None else None
+        u = unannotated.select(fs).without_raw() if unannotated is not None else None
         for key in keys:
             p = training_params(key, params[key], limit_size, quick)
-            log(f"\n=== {variant} · {MODEL_NAMES[key]} ===")
-            cv = cross_validate(w, key, p, augmentation, log=log)
+            for held in w.recordings + ([None] if u is not None else []):
+                tasks.append((w, key, p, held, augmentation, u if held is None else None))
+                meta.append((variant, key))
+    log(f"{len(tasks)} fits ({len(variants)} variants × {len(keys)} models × folds) in parallel …")
+    done = {}
+    for (task, r), (variant, key) in zip(_run_tasks(tasks, n_jobs), meta):
+        w = task[0]
+        if r["held"] is not None:
+            r["balanced_acc"] = balanced_accuracy_score(w.y[r["held"]], r["y_pred"])
+        done.setdefault((variant, key), []).append(r)
+        if len(done[(variant, key)]) == len(w.recordings) + (unannotated is not None):
+            folds = [x for x in done[(variant, key)] if x["held"] is not None]
+            accs = [x["balanced_acc"] for x in folds]
+            log(f"{variant} · {MODEL_NAMES[key]}: balanced acc {np.mean(accs):.3f} "
+                f"(folds {', '.join(f'{a:.2f}' for a in accs)})")
+    rows, progressions = [], {}
+    for variant in variants:
+        for key in keys:
+            rs = done[(variant, key)]
+            w = windows.select(variant.partition("+")[0])
+            cv = _fold_scores(w, [r for r in rs if r["held"] is not None], log)
             row = {"variant": variant, "model": MODEL_NAMES[key], "features": len(w.columns),
                    "series 1: balanced acc": round(cv["balanced_accuracy"]["mean"], 3),
                    "± std": round(cv["balanced_accuracy"]["std"], 3)}
-            if u is not None:
-                X_all, y_all, _ = w.stack()
-                if augmentation is not None:
-                    X_all, y_all = augment_temperature(X_all, y_all, augmentation)
-                steps = build_steps(key, p).fit(X_all, y_all)
-                progressions[(variant, key)] = predict_progression(steps, u, w.classes)
+            final = [r for r in rs if r["held"] is None]
+            if final:
+                progressions[(variant, key)] = final[0]["progression"]
                 sc = progression_scores(progressions[(variant, key)], w.classes)
                 row["series 2: phase order ρ"] = None if sc["spearman_mean"] is None else round(sc["spearman_mean"], 3)
                 row["series 2: backwards share"] = round(sc["backward_share_mean"], 3)
@@ -463,7 +531,7 @@ def _latency_ms(pipe: ModelPipeline, raw: pd.DataFrame, ws: int, repeats: int = 
 def train_and_evaluate(windows: Windows, out_dir: str = MODELS_DIR, feature_set: str = DEFAULT_FEATURE_SET,
                        unannotated: Windows | None = None, params: dict | None = None, augmentation: dict | None = None,
                        keys=("logreg", "rf", "mlp"), limit_size: bool = True, fold_models: bool = True,
-                       quick: bool = False, log=print) -> dict:
+                       quick: bool = False, n_jobs: int = N_JOBS, log=print) -> dict:
     """Evaluate, export fold and final models, write manifest.json and metrics.json. Returns the metrics.
 
     windows: all annotated windows (any feature set; feature_set selects the signals).
@@ -489,30 +557,25 @@ def train_and_evaluate(windows: Windows, out_dir: str = MODELS_DIR, feature_set:
     for key in keys:
         p = training_params(key, params[key], limit_size, quick)
         log(f"\n=== {MODEL_NAMES[key]} ===  {p}")
-        fold_entries = {}
-
-        def export_fold(held, steps, key=key, fold_entries=fold_entries):
-            if fold_models:
-                d = os.path.join(out_dir, "folds", held)
-                name = f"{key}_without_{held}"
-                build_pipeline(steps, windows, key, name).store(d)
-                fold_entries[held] = {"dir": os.path.relpath(d, out_dir), "name": name}
-
-        cv = cross_validate(windows, key, p, augmentation, on_fold=export_fold, log=log)
+        fold_entries, results, light = {}, [], windows.without_raw()
+        u = unannotated.without_raw() if unannotated is not None else None
+        tasks = [(light, key, p, held, augmentation) for held in recs] + [(light, key, p, None, augmentation, u)]
+        for _, r in _run_tasks(tasks, n_jobs):
+            if r["held"] is not None:
+                r["balanced_acc"] = balanced_accuracy_score(windows.y[r["held"]], r["y_pred"])
+                if fold_models:
+                    d = os.path.join(out_dir, "folds", r["held"])
+                    name = f"{key}_without_{r['held']}"
+                    build_pipeline(r["steps"], windows, key, name).store(d)
+                    fold_entries[r["held"]] = {"dir": os.path.relpath(d, out_dir), "name": name}
+            _log_fold(r, log)
+            results.append(r)
+        cv = _fold_scores(windows, [r for r in results if r["held"] is not None], log)
         held_out_pred[key] = cv["held_out_pred"]
-
-        X_all, y_all, _ = windows.stack()
-        if augmentation is not None:
-            X_all, y_all = augment_temperature(X_all, y_all, augmentation)
-        steps = build_steps(key, p)
-        t = time.perf_counter()
-        steps.fit(X_all, y_all)
-        fit_all = time.perf_counter() - t
+        final_run = next(r for r in results if r["held"] is None)
+        steps, fit_all = final_run["steps"], final_run["fit_seconds"]
         final = build_pipeline(steps, windows, key, f"{key}_final")
         size = os.path.getsize(final.store(os.path.join(out_dir, "final")))
-        clf = final.steps[-1][1]
-        if hasattr(clf, "n_jobs"):
-            clf.n_jobs = 1  # one window per call in the demonstrator; threads only add overhead
         latency = _latency_ms(final, windows.raw[recs[0]], windows.window_size)
         metrics[key] = {"name": MODEL_NAMES[key], "params": p, "folds": cv["folds"],
                         "accuracy": cv["accuracy"], "balanced_accuracy": cv["balanced_accuracy"],
@@ -522,7 +585,7 @@ def train_and_evaluate(windows: Windows, out_dir: str = MODELS_DIR, feature_set:
         line = (f"  mean balanced acc {cv['balanced_accuracy']['mean']:.3f} · "
                 f"{latency:.1f} ms per prediction · {size / 1e6:.1f} MB")
         if unannotated is not None:
-            sc = progression_scores(predict_progression(steps, unannotated, classes), classes)
+            sc = progression_scores(final_run["progression"], classes)
             metrics[key]["unannotated_progression"] = sc
             if sc["spearman_mean"] is not None:
                 line += f" · series 2 phase order ρ {sc['spearman_mean']:+.2f}"
@@ -596,13 +659,14 @@ def main(argv=None):
     ap.add_argument("--no-size-limit", action="store_true", help="export the searched Random Forest without caps")
     ap.add_argument("--no-fold-models", action="store_true")
     ap.add_argument("--quick", action="store_true", help="tiny models, for smoke tests only")
+    ap.add_argument("--jobs", type=int, default=N_JOBS, help="worker processes (-1 = all cores)")
     args = ap.parse_args(argv)
-    windows = load_windows(args.data_dir, window_size=args.window_size, stride=args.stride)
+    windows = load_windows(args.data_dir, window_size=args.window_size, stride=args.stride, n_jobs=args.jobs)
     unannotated = load_windows(args.data_dir, "series_2_*.csv", args.window_size, args.stride,
-                               annotated=False, classes=windows.classes)
+                               annotated=False, classes=windows.classes, n_jobs=args.jobs)
     train_and_evaluate(windows, args.out, args.feature_set, unannotated,
                        augmentation=AUGMENTATION if args.augment else None, limit_size=not args.no_size_limit,
-                       fold_models=not args.no_fold_models, quick=args.quick)
+                       fold_models=not args.no_fold_models, quick=args.quick, n_jobs=args.jobs)
 
 
 if __name__ == "__main__":

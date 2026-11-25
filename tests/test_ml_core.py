@@ -189,3 +189,15 @@ def test_notebooks_run_end_to_end(tmp_path):
     assert json.load(open(models / "manifest.json"))["hyperparameters"].startswith("hyperparameters.json")
     assert "unannotated_progression" in json.load(open(models / "metrics.json"))["models"]["rf"]
     _run_notebook("04_check_seasonal_confound.ipynb", f"CONVERTED_DIR = {str(conv)!r}\nQUICK = True")
+
+
+def test_parallel_folds_match_sequential(synthetic_dir):
+    """Worker processes must not change results: same folds, same predictions as a sequential run."""
+    from ml_core.training import cross_validate, training_params
+    w = load_windows(str(synthetic_dir / "converted"), n_jobs=2, log=_quiet).select("temperature_difference")
+    p = training_params("rf", {"n_estimators": 10, "max_depth": 5}, limit_size=True, quick=False)
+    seq = cross_validate(w, "rf", p, n_jobs=1, log=_quiet)
+    par = cross_validate(w, "rf", p, n_jobs=2, log=_quiet)
+    assert [f["held_out"] for f in seq["folds"]] == [f["held_out"] for f in par["folds"]]
+    for g in w.recordings:
+        assert (seq["held_out_pred"][g] == par["held_out_pred"][g]).all()

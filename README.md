@@ -63,6 +63,10 @@ The dashboard needs trained models in `data/models/` (see below). The UG63 HTTP 
    feature set therefore uses the probe temperatures *relative to the air* (plus moisture and conductivity); optional
    augmentation randomises temperature level and swings in the training data (`ml_core/training.py`).
 
+Windowing, cross-validation folds and the feature-set comparison run in parallel worker processes (`N_JOBS` in the
+notebooks, default all cores; environment variable `ML_N_JOBS` for the command line). Each worker holds its own copy of
+the training windows, so lower `N_JOBS` if RAM runs short.
+
 Train with **the same scikit-learn version as the demo laptop** (pinned to 1.9.x in `requirements.txt`).
 Model files are not portable across versions; the dashboard warns on a mismatch.
 

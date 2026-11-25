@@ -59,14 +59,17 @@ Status as of 24 Nov 2026. Scope: [assignment requirements](ASSIGNMENT.md)
 
 ## Open items (in order)
 
-1. **Run notebooks 02 and 03 on the real data** and look at the results. Compare with the first search (defaults in
-   `ml_core/training.py`) to see whether the slope fix changed anything.
-2. **Check the air temperature column** on the real data: notebook 01 reports which Excel column delivered it. Series 1:
-   "Sausage Temperature Sensor 1" (per the seminar paper); series 2: *assumed* "Temperature2". Fix `AMBIENT_COLUMNS` in
-   `ml_core/conversion.py` if wrong, then re-run notebook 01.
-3. **Run notebook 04 on the real data** and choose the variant: good on series 1 *and* advancing on series 2. Set
-   `DEFAULT_FEATURE_SET` / `AUGMENT` accordingly. On synthetic data the augmentation did not change anything; the real
-   day/night swings may differ.
+1. **Real-data run of 25 Nov 2026** (notebooks 01–04, `temperature_difference`): balanced accuracy LogReg 0.71, RF 0.71,
+   MLP 0.68 (± 0.05–0.10 across sausages); `original` 0.78 / 0.75 / 0.71. Air temperature found in both exports
+   (series 1 "Sausage Temperature Sensor 1", series 2 "Temperature2", 2–26 °C, coverage ≥ 99.9 %). Probe − air is small
+   (−1.5 … +1.5 °C) and rises from about −1 °C to 0 °C while the sausage dries, in both runs. On series 2 all variants
+   advance Umrötung → Phase 1 → (Phase 2) until early February 2024, then fall back with the jump in LSE01 moisture
+   (≈ 7 → 22 %). Augmentation changes nothing (the swings of the difference are small).
+2. **Explain the February 2024 event in series 2** (probe re-inserted? batch moved?). If it is an artefact, cut or
+   flag it before the series-2 check; otherwise the check penalises every model that uses moisture.
+3. **Choose the default feature set.** Among the non-`original` sets the series-1 differences are within one standard
+   deviation; `temperature_difference` keeps temperature in the demo without the seasonal level. Re-run 04 after the
+   warm-up fix in the progression check (the first day of series 2 no longer counts; it made "backwards share" ≈ 0.7–1).
 4. **Collect sensor data:** DevEUI/AppEUI/AppKey for every sensor; check that the sensors are not still joined to another network
    server (TTN, company LNS).
 5. **UG63 setup** following RUNBOOK §2. Capture one real uplink JSON per sensor type (`data/recordings/raw_*.jsonl`) and
