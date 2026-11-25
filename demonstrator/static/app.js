@@ -334,9 +334,10 @@ function fmtFeat(f) {
     if (f.stat_key === "count") return fmtNum(f.value);
     return f.value >= 120 ? `${fmtNum(f.value / 60, 1)} min` : `${fmtNum(f.value)} s`;
   }
-  const unitful = ["min", "max", "mean", "std"].includes(f.stat_key);
+  const unitful = ["min", "max", "mean", "std"].includes(f.stat_key) || /^ctx(mean|std)_/.test(f.stat_key);
   const digits = f.signal.includes("conductivity") ? 0 : 2;
   if (f.stat_key === "slope") return `${fmtNum(f.value, 3)} ${t("unit.per_uplink")}`;
+  if (/^ctxtrend_/.test(f.stat_key)) return `${fmtNum(f.value, digits)} ${f.unit}${t("unit.per_day")}`;
   return `${fmtNum(f.value, digits)}${unitful ? " " + f.unit : ""}`;
 }
 
@@ -399,7 +400,7 @@ function renderExplain(ex) {
     const out = f.position != null && (f.position < 0 || f.position > 1);
     const mark = f.position == null ? "" : `<i style="left:calc(${Math.min(1, Math.max(0, f.position)) * 100}% - 1px)"></i>`;
     const title = f.range[0] != null ? t("ex.range", {lo: fmtNum(f.range[0], 2), hi: fmtNum(f.range[1], 2)}) : "";
-    return `<div class="frow"><span>${esc(t("stat." + f.stat_key))}</span><span class="v">${fmtFeat(f)}</span><span class="range ${out ? "out" : ""}" title="${esc(title)}">${mark}</span></div>`;
+    return `<div class="frow"><span>${esc(statLabel(f.stat_key))}</span><span class="v">${fmtFeat(f)}</span><span class="range ${out ? "out" : ""}" title="${esc(title)}">${mark}</span></div>`;
   }).join("")}</div>`).join("");
   const s2 = `<section class="ex-step" id="ex-s2"><h3><b>2</b>${t("ex.s2_title", {n: ex.features.length})}</h3>
     <p>${t("ex.s2_text")}</p><div class="ex-cols">${sigs}</div></section>`;

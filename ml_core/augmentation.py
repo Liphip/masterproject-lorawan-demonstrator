@@ -147,6 +147,8 @@ def augment_temperature(X: pd.DataFrame, y: np.ndarray, settings: dict | None = 
     The window statistics transform in closed form (min/max swap when mirrored, std·b, skew·m, slope·m·b), so this
     works on the features directly; tests/test_ml_core.py checks it against transforming the raw rows.
     signal_of: column → signal name (training.feature_signal; passed in to avoid a circular import).
+    Context features (WindowFeatures(context=…)) are left unchanged: they span hours to days, where a per-window
+    offset or swing change has no closed form. Use row augmentations if context is on.
     """
     if signal_of is None:
         from .training import feature_signal as signal_of

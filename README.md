@@ -67,6 +67,11 @@ Both need trained models in `data/models/` (see below). Uplinks from the case ar
    conductivity). Optional training-only augmentation (`ml_core/augmentation.py`): probe calibration, noise and lost
    uplinks, temperature level and swings; switched on with `AUGMENT` in notebook 03 or `--augment` on the command line.
 
+5. **05_compare_windows**: how much history a prediction should see: longer windows (e.g. 30 uplinks) and context
+   features (mean, spread and trend per day over the last 24 h / 7 days per signal, `context` in `WindowFeatures`).
+   Window size, stride and context are settings (`DEFAULT_WINDOW_SIZE`, `DEFAULT_CONTEXT` in `ml_core/training.py`);
+   the demonstrator reads them from the exported models.
+
 Unattended (e.g. overnight), all notebooks one after another, outputs saved in the notebooks as in Jupyter:
 
 ```powershell

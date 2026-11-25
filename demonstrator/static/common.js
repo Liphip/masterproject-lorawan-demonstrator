@@ -65,9 +65,18 @@ const signed = (v, d = 1) => (v > 0 ? "+" : v < 0 ? "−" : "±") + fmtNum(Math.
 // Readable name of a window feature, e.g. 'Moisture (LSE01) · mean'.
 function featLabel(name) {
   for (const sig of SIGNAL_KEYS) {
-    if (name.startsWith(sig + "_")) return `${t("sig." + sig)} · ${t("stat." + name.slice(sig.length + 1))}`;
+    if (name.startsWith(sig + "_")) return `${t("sig." + sig)} · ${statLabel(name.slice(sig.length + 1))}`;
   }
   return name;
+}
+// "mean" -> "Mittelwert"; context statistics "ctxtrend_7d" -> "Trend der letzten 7 Tage"
+function statLabel(key) {
+  const m = /^(ctx(?:mean|std|trend))_(\d+)([hd])$/.exec(key || "");
+  if (!m) return t("stat." + key);
+  const n = Number(m[2]);
+  const words = {de: {h: ["Stunde", "Stunden"], d: ["Tag", "Tage"]}, en: {h: ["hour", "hours"], d: ["day", "days"]}};
+  const w = (words[LANG] || words.en)[m[3]][n === 1 ? 0 : 1];
+  return t("stat." + m[1], {h: `${n} ${w}`});
 }
 
 // ── readable names for recordings and slots ────────────────────────────────

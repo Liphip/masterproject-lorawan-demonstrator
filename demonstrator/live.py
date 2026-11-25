@@ -20,7 +20,10 @@ from .inference import ModelRegistry
 
 log = logging.getLogger(__name__)
 # After a restart, rows younger than this are loaded back from the recordings, so predictions continue at once.
-RESTORE_MAX_AGE = dt.timedelta(hours=6)
+RESTORE_MAX_AGE = dt.timedelta(hours=6)   # at least; longer if the models use context features (e.g. 7 days)
+# Rows kept per slot / of the environment sensor: enough for 7 days of context at one uplink per sensor and minute
+# would be ~20k; the case sensors send every few minutes, so this covers a week comfortably.
+SLOT_ROWS, ENV_ROWS = 6000, 3000
 
 
 def utcnow() -> dt.datetime:
@@ -41,7 +44,7 @@ class LiveState:
         self.devices: dict[str, dict] = {}
         self.recent = deque(maxlen=40)
         self.slot_rows: dict[str, deque] = {}
-        self.env_rows = deque(maxlen=200)
+        self.env_rows = deque(maxlen=ENV_ROWS)
         self.predictions: dict[str, dict] = {}
         self.ambient = cfg.ambient_temperature
         self.uplinks = 0
@@ -51,7 +54,7 @@ class LiveState:
         for d in cfg.devices:
             self.devices[normalize_eui(d.dev_eui)] = self._device_entry(d.dev_eui, d.name, d.type, d.slot, True)
         for s in cfg.slots:
-            self.slot_rows[s] = deque(maxlen=500)
+            self.slot_rows[s] = deque(maxlen=SLOT_ROWS)
         self._restore()
 
     @staticmethod
@@ -114,7 +117,7 @@ class LiveState:
                 self.env_rows.append(row)
                 affected = list(self.slot_rows)
             else:
-                self.slot_rows.setdefault(dev_cfg.slot, deque(maxlen=500)).append(row)
+                self.slot_rows.setdefault(dev_cfg.slot, deque(maxlen=SLOT_ROWS)).append(row)
                 affected = [dev_cfg.slot]
         if self.cfg.record_live and source == "live":
             self._record(row, affected)
@@ -163,20 +166,26 @@ class LiveState:
     def _restore(self):
         """Load the latest recorded rows of every slot (younger than RESTORE_MAX_AGE) after a restart.
 
-        Rows are taken from the newest live_<day>_<slot>.csv; the WS202 rows in it refill the shared environment rows.
+        Rows come from the live_<day>_<slot>.csv files of the days concerned (the models' context horizon, at
+        least RESTORE_MAX_AGE); the WS202 rows in them refill the shared environment rows.
         Devices themselves reappear with their next uplink.
         """
-        cutoff = pd.Timestamp(utcnow() - RESTORE_MAX_AGE)
+        cutoff = pd.Timestamp(utcnow() - max(RESTORE_MAX_AGE, self.models.history.to_pytimedelta()
+                                             if self.models.ok else RESTORE_MAX_AGE))
         env = {}
         for slot in list(self.slot_rows):
             files = sorted(glob.glob(os.path.join(self.cfg.recordings_dir, f"live_*_{slot}.csv")))
-            if not files:
+            day0 = f"live_{cutoff:%Y%m%d}"
+            files = [f for f in files if os.path.basename(f) >= day0]   # only the days that can hold recent rows
+            parts = []
+            for f in files:
+                try:
+                    parts.append(pd.read_csv(f, parse_dates=["timestamp"]))
+                except (OSError, ValueError, pd.errors.ParserError) as e:
+                    self._error(f"could not restore {os.path.basename(f)}: {e}")
+            if not parts:
                 continue
-            try:
-                df = pd.read_csv(files[-1], parse_dates=["timestamp"])
-            except (OSError, ValueError, pd.errors.ParserError) as e:
-                self._error(f"could not restore {os.path.basename(files[-1])}: {e}")
-                continue
+            df = pd.concat(parts, ignore_index=True)
             df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
             df = df[df["timestamp"] >= cutoff]
             for r in df.to_dict("records"):

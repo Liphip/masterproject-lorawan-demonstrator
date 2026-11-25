@@ -144,7 +144,8 @@ const I18N = {
     "sig.lse01_temperature_diff": "Core temperature − air (LSE01)", "sig.ltcfs_temperature_diff": "Probe temperature − air (LTC-FS)",
     "stat.min": "minimum", "stat.max": "maximum", "stat.mean": "mean", "stat.std": "spread (std)", "stat.skew": "skew",
     "stat.slope": "trend (slope)", "stat.count": "uplinks", "stat.duration": "window length", "stat.interval": "avg gap",
-    "stat.min_interval": "shortest gap", "stat.max_interval": "longest gap", "unit.per_uplink": "/uplink",
+    "stat.min_interval": "shortest gap", "stat.max_interval": "longest gap", "unit.per_uplink": "/uplink", "unit.per_day": "/day",
+    "stat.ctxmean": "mean over last {h}", "stat.ctxstd": "spread over last {h}", "stat.ctxtrend": "trend over last {h}",
   },
 
   de: {
@@ -289,7 +290,8 @@ const I18N = {
     "sig.lse01_temperature_diff": "Kerntemperatur − Luft (LSE01)", "sig.ltcfs_temperature_diff": "Fühlertemperatur − Luft (LTC-FS)",
     "stat.min": "Minimum", "stat.max": "Maximum", "stat.mean": "Mittelwert", "stat.std": "Streuung (Std.)", "stat.skew": "Schiefe",
     "stat.slope": "Trend (Steigung)", "stat.count": "Uplinks", "stat.duration": "Fensterlänge", "stat.interval": "mittl. Abstand",
-    "stat.min_interval": "kürzester Abstand", "stat.max_interval": "längster Abstand", "unit.per_uplink": "/Uplink",
+    "stat.min_interval": "kürzester Abstand", "stat.max_interval": "längster Abstand", "unit.per_uplink": "/Uplink", "unit.per_day": "/Tag",
+    "stat.ctxmean": "Mittel der letzten {h}", "stat.ctxstd": "Streuung der letzten {h}", "stat.ctxtrend": "Trend der letzten {h}",
   },
 };
 

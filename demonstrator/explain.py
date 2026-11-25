@@ -148,7 +148,7 @@ def _norm(v) -> list[float]:
     return [round(float(x) / m, 3) if m > 0 else 0.0 for x in v]
 
 
-def explain_model(pipe, key: str, rows: pd.DataFrame) -> dict:
+def explain_model(pipe, key: str, rows: pd.DataFrame, feats: pd.DataFrame | None = None) -> dict:
     """Explain one model's prediction for the last window of `rows`.
 
     Returns the probabilities, the occlusion test per sensor signal (same method for every model; the change in
@@ -156,7 +156,8 @@ def explain_model(pipe, key: str, rows: pd.DataFrame) -> dict:
     model-specific detail (_logreg / _forest / _mlp).
     """
     wm, imputer, scaler, clf = _steps(pipe)
-    feats = wm.transform(rows[FEATURE_ORDER]).tail(1)
+    if feats is None:
+        feats = wm.transform_last(rows[FEATURE_ORDER])
     names = list(imputer.get_feature_names_out())
     xi = imputer.transform(feats)
     xs = scaler.transform(xi)
@@ -202,11 +203,12 @@ def explain(registry, rows: pd.DataFrame, group: str | None) -> dict:
     `group` selects the fold model that never saw that recording (as in the replay).
     """
     ws = registry.window_size
-    rows = rows[FEATURE_ORDER].tail(ws).reset_index(drop=True)
-    if len(rows) < ws:
-        return {"ready": False, "reason": f"need {ws} uplinks, have {len(rows)}"}
-    any_pipe, _ = registry.model_for(registry.keys[0], group)
-    feats = any_pipe.steps[0][1].transform(rows).iloc[-1]
+    hist = registry.history_rows(rows)
+    if len(hist) < ws:
+        return {"ready": False, "reason": f"need {ws} uplinks, have {len(hist)}"}
+    rows = hist.tail(ws).reset_index(drop=True)
+    feats_df = registry.features(hist)
+    feats = feats_df.iloc[-1]
     ranges = registry.manifest.get("feature_ranges", {})
     features = []
     for name, v in feats.items():
@@ -226,6 +228,7 @@ def explain(registry, rows: pd.DataFrame, group: str | None) -> dict:
     models = {}
     for key in registry.keys:
         pipe, seen = registry.model_for(key, group)
-        models[key] = explain_model(pipe, key, rows) | {"model_saw_this_recording": seen}
+        models[key] = explain_model(pipe, key, hist, feats_df) | {"model_saw_this_recording": seen}
     return {"ready": True, "uplinks": uplinks, "window_seconds": (t1 - t0).total_seconds(),
+            "context": list(registry.manifest.get("context", [])),
             "features": features, "models": models}

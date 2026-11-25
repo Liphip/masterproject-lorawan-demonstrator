@@ -10,6 +10,8 @@ import time
 import numpy as np
 import pandas as pd
 
+from sklearn.pipeline import Pipeline
+
 from ml_core import ModelPipeline, WindowFeatures
 from ml_core.data import FEATURE_ORDER
 
@@ -79,7 +81,7 @@ class ModelRegistry:
             log.exception("model loading failed")
         w = self.manifest
         self._wf = WindowFeatures(window_size=w["window_size"], stride=w["stride"],
-                                   output_columns=w["output_columns"])
+                                   output_columns=w["output_columns"], context=w.get("context", ()))
 
     @property
     def ok(self) -> bool:
@@ -95,6 +97,25 @@ class ModelRegistry:
     def stride(self) -> int:
         """Step between windows used in training (the replay predicts at the same step)."""
         return self.manifest["stride"] if self.manifest else 2
+
+    @property
+    def history(self) -> pd.Timedelta:
+        """History the models need before the current window (longest context horizon; 0 without context)."""
+        return self._wf.history if self.manifest else pd.Timedelta(0)
+
+    def history_rows(self, rows: pd.DataFrame) -> pd.DataFrame:
+        """The rows a prediction needs: the last window plus the context history before it (FEATURE_ORDER columns)."""
+        rows = rows[FEATURE_ORDER]
+        if self.history <= pd.Timedelta(0) or not len(rows):
+            return rows.tail(self.window_size).reset_index(drop=True)
+        ts = pd.to_datetime(rows["timestamp"], utc=True)
+        keep = (ts > ts.iloc[-1] - self.history).to_numpy().copy()
+        keep[-self.window_size:] = True
+        return rows[keep].reset_index(drop=True)
+
+    def features(self, rows: pd.DataFrame) -> pd.DataFrame:
+        """Window features of the last window of `rows` (one row, the models' input before imputing)."""
+        return self._wf.transform_last(self.history_rows(rows))
 
     @property
     def keys(self) -> list[str]:
@@ -135,6 +156,7 @@ class ModelRegistry:
                 e = m["folds"][held_out] if held_out else m["final"]
                 pipe = ModelPipeline.load(os.path.join(self.models_dir, e["dir"]), e["name"])
                 single_threaded(pipe)
+                pipe.after_windows = Pipeline(pipe.steps[1:])   # imputer → scaler → classifier, for ready features
                 self._cache[ck] = pipe
             return self._cache[ck]
 
@@ -150,7 +172,10 @@ class ModelRegistry:
         """Share of window features outside the training range (0.5–99.5 percentile ± 5 %).
         Above OOD_THRESHOLD the dashboard warns that the input is unlike the training data.
         """
-        feats = self._wf.transform(rows).iloc[-1]
+        return self._ood(self.features(rows).iloc[-1])
+
+    def _ood(self, feats: pd.Series) -> float:
+        """ood_fraction for ready features."""
         ranges = self.manifest.get("feature_ranges", {})
         checked = outside = 0
         for c, (lo, hi) in ranges.items():
@@ -163,17 +188,26 @@ class ModelRegistry:
         return outside / checked if checked else 1.0
 
     def predict(self, rows: pd.DataFrame, group: str | None = None) -> dict:
-        """Predict on the most recent window of raw rows (FEATURE_ORDER columns)."""
+        """Predict on the most recent window of raw rows (FEATURE_ORDER columns; with context models, pass the
+        history too: rows of the last `history` before the window, see history_rows).
+
+        The window features are computed once and fed to every model; each model's "ms" is the feature time plus
+        its own time, i.e. what one prediction costs on its own.
+        """
         ws = self.window_size
-        rows = rows[FEATURE_ORDER].tail(ws).reset_index(drop=True)
-        if len(rows) < ws:
-            return {"ready": False, "reason": f"need {ws} uplinks, have {len(rows)}"}
+        hist = self.history_rows(rows)
+        if len(hist) < ws:
+            return {"ready": False, "reason": f"need {ws} uplinks, have {len(hist)}"}
+        t = time.perf_counter()
+        feats = self._wf.transform_last(hist)
+        feat_ms = (time.perf_counter() - t) * 1000
+        rows = hist.tail(ws).reset_index(drop=True)
         out = {"ready": True, "models": {}, "any_model_saw_data": False}
         for key in self.keys:
             pipe, seen = self.model_for(key, group)
             t = time.perf_counter()
-            proba = pipe.predict_proba(rows)[-1]
-            ms = (time.perf_counter() - t) * 1000
+            proba = pipe.after_windows.predict_proba(feats)[-1]
+            ms = feat_ms + (time.perf_counter() - t) * 1000
             classes = [str(c) for c in pipe.classes_]
             i = int(np.argmax(proba))
             out["models"][key] = {"label": classes[i], "confidence": float(proba[i]),
@@ -185,6 +219,6 @@ class ModelRegistry:
         out["agreement"] = ("all" if out["agreement_count"] == len(labels)
                             else "none" if out["agreement_count"] == 1 else "partial")
         out["values"] = latest_values(rows)
-        out["ood_fraction"] = self.ood_fraction(rows)
+        out["ood_fraction"] = self._ood(feats.iloc[-1])
         out["compatible"] = out["ood_fraction"] <= OOD_THRESHOLD
         return out

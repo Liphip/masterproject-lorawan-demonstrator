@@ -28,6 +28,7 @@ import glob
 import importlib
 import json
 import os
+import re
 import sys
 import time
 import warnings
@@ -129,6 +130,12 @@ TIMING_STATS = {"count", "duration", "interval", "min_interval", "max_interval"}
 # calibration_large lifted the random forest from 0.71 to 0.79 balanced accuracy and series-2 phase order from
 # 0.80 to 0.87, without costing the other models.
 DEFAULT_AUGMENTATION = ["calibration_large"]
+# Windows: uplinks per window, step between windows, and optional long-term context (see WindowFeatures).
+# Notebook 04 compares window configurations; nothing here is fixed by the demonstrator, which reads them from
+# manifest.json.
+DEFAULT_WINDOW_SIZE = 10
+DEFAULT_STRIDE = 2
+DEFAULT_CONTEXT: tuple[str, ...] = ()
 # Smoothing of predicted phases before scoring their progression (one day of windows).
 PROGRESSION_SMOOTHING = "1D"
 # Not scored at the start of a run: in series 2 every model predicts Phase 2 for the first 1–3 days, probably while the
@@ -169,6 +176,7 @@ class Windows:
     row_labels: dict[str, np.ndarray] = field(default_factory=dict)  # label per row (to re-window augmented rows)
     augmented: dict[str, list[tuple[pd.DataFrame, np.ndarray]]] = field(default_factory=dict)  # copies per recording
     augmentation: tuple[str, ...] = ()  # row augmentations the copies were made with
+    context: tuple[str, ...] = ()       # context horizons of the window features (WindowFeatures.context)
 
     @property
     def recordings(self) -> list[str]:
@@ -202,7 +210,8 @@ class Windows:
         tasks = [(g, i, c) for i, g in enumerate(self.recordings) for c in range(copies)]
         log(f"Augmenting the training data ({' + '.join(rows)}): {copies} copies per sausage …")
         results = Parallel(n_jobs=min(effective_n_jobs(n_jobs), len(tasks)), **NO_MEMMAP)(
-            delayed(_augment_recording)(self.raw[g], self.row_labels[g], i, c, rows, self.window_size, self.stride)
+            delayed(_augment_recording)(self.raw[g], self.row_labels[g], i, c, rows, self.window_size, self.stride,
+                                        self.context)
             for g, i, c in tasks)
         augmented = {}
         for (g, _, _), (X, y) in zip(tasks, results):
@@ -228,9 +237,13 @@ class Windows:
 
 
 def feature_signal(column: str) -> str | None:
-    """'lse01_temperature_diff_mean' -> 'lse01_temperature_diff'; 'timestamp_interval' -> 'timestamp'."""
+    """'lse01_temperature_diff_mean' -> 'lse01_temperature_diff'; 'timestamp_interval' -> 'timestamp';
+    context features: 'lse01_moisture_ctxtrend_7d' -> 'lse01_moisture'."""
     if column.startswith("timestamp_") and column[len("timestamp_"):] in TIMING_STATS:
         return "timestamp"
+    m = re.match(r"^(.*)_ctx(?:mean|std|trend)_\w+$", column)
+    if m:
+        return m.group(1)
     signal, _, stat = column.rpartition("_")
     return signal if stat in SIGNAL_STATS else None
 
@@ -249,7 +262,7 @@ def check_air_temperature(windows: Windows, log=print) -> None:
         log(f"WARNING: only {coverage:.0%} of the windows have an air temperature.")
 
 
-def _window_recording(path: str, window_size: int, stride: int, annotated: bool):
+def _window_recording(path: str, window_size: int, stride: int, annotated: bool, context=()):
     """Load one converted CSV and compute its window features (runs in a worker process)."""
     g = recording_name(path)
     df = load_recording(path)
@@ -258,7 +271,7 @@ def _window_recording(path: str, window_size: int, stride: int, annotated: bool)
             raise ValueError(f"{path} has no labels")
         df = df.dropna(subset=["label"]).reset_index(drop=True)
     raw = df[FEATURE_ORDER]
-    X = WindowFeatures(window_size=window_size, stride=stride).transform(raw)
+    X = WindowFeatures(window_size=window_size, stride=stride, context=context).transform(raw)
     y = window_labels(df["label"], window_size, stride) if annotated else np.array([], dtype=object)
     times = df["timestamp"].to_numpy()[np.arange(len(X)) * stride + window_size - 1]
     labels = df["label"].to_numpy() if annotated else np.array([], dtype=object)
@@ -266,23 +279,28 @@ def _window_recording(path: str, window_size: int, stride: int, annotated: bool)
 
 
 def _augment_recording(raw: pd.DataFrame, labels: np.ndarray, index: int, copy: int, names, window_size: int,
-                       stride: int):
+                       stride: int, context=()):
     """One augmented copy of one recording, windowed like the original (runs in a worker process)."""
     df = raw.assign(label=labels)
     df = aug.augment_rows(df, names, aug.copy_rng(index, copy))
-    X = WindowFeatures(window_size=window_size, stride=stride).transform(df[FEATURE_ORDER])
+    X = WindowFeatures(window_size=window_size, stride=stride, context=context).transform(df[FEATURE_ORDER])
     return X, window_labels(df["label"], window_size, stride)
 
 
 def load_windows(data_dir: str = CONVERTED_DIR, pattern: str = "series_1_*.csv", window_size: int = 10,
-                 stride: int = 2, annotated: bool = True, classes=None, n_jobs: int = N_JOBS, log=print) -> Windows:
-    """Window features of all recordings matching pattern. annotated=False for series 2."""
+                 stride: int = 2, annotated: bool = True, classes=None, context=(), n_jobs: int = N_JOBS,
+                 log=print) -> Windows:
+    """Window features of all recordings matching pattern. annotated=False for series 2.
+
+    context: horizons of the long-term context features, e.g. ("24h", "7d") (see WindowFeatures); () = none.
+    """
+    context = parse_context(context)
     paths = sorted(glob.glob(os.path.join(data_dir, pattern)))
     if not paths:
         raise FileNotFoundError(f"No files match {pattern} in {data_dir}")
     X, y, times, raw, labels = {}, {}, {}, {}, {}
     jobs = Parallel(n_jobs=min(effective_n_jobs(n_jobs), len(paths)), return_as="generator", **NO_MEMMAP)(
-        delayed(_window_recording)(p, window_size, stride, annotated) for p in paths)
+        delayed(_window_recording)(p, window_size, stride, annotated, context) for p in paths)
     for g, raw[g], X[g], y[g], times[g], labels[g] in jobs:
         log(f"{g}: {len(raw[g]):,} rows → {len(X[g]):,} windows")
     # one fixed feature schema for all recordings (timing features last)
@@ -291,7 +309,24 @@ def load_windows(data_dir: str = CONVERTED_DIR, pattern: str = "series_1_*.csv",
     if classes is None:
         classes = in_phase_order(np.concatenate(list(y.values()))) if annotated else []
     return Windows(X, y, times, raw, columns, list(classes), window_size, stride,
-                   row_labels=labels if annotated else {})
+                   row_labels=labels if annotated else {}, context=context)
+
+
+def parse_context(context) -> tuple[str, ...]:
+    """None/"" → (); "24h+7d" or ["24h", "7d"] → ("24h", "7d"). Each horizon must be a pandas offset."""
+    if not context:
+        return ()
+    if isinstance(context, str):
+        context = [c for c in context.split("+") if c]
+    for h in context:
+        pd.Timedelta(h)  # raises on typos
+    return tuple(context)
+
+
+def describe_windows(window_size: int, context) -> str:
+    """Short label for a window configuration, e.g. "10 uplinks + 24h/7d context"."""
+    ctx = parse_context(context)
+    return f"{window_size} uplinks" + (f" + {'/'.join(ctx)} context" if ctx else "")
 
 
 # ── models ──────────────────────────────────────────────────────────────────
@@ -319,7 +354,8 @@ def build_steps(key: str, params: dict, n_jobs: int = 1) -> Pipeline:
 
 def build_pipeline(fitted: Pipeline, windows: Windows, key: str, name: str) -> ModelPipeline:
     """Fitted steps + window features = a pipeline that takes raw uplink rows."""
-    wf = WindowFeatures(window_size=windows.window_size, stride=windows.stride, output_columns=windows.columns)
+    wf = WindowFeatures(window_size=windows.window_size, stride=windows.stride, output_columns=windows.columns,
+                        context=windows.context)
     return ModelPipeline([("windows", wf)] + list(fitted.steps), name=name,
                          model_type=MODEL_NAMES[key], feature_order=list(FEATURE_ORDER))
 
@@ -383,14 +419,14 @@ def save_hyperparameters(result: dict, windows: Windows, out_dir: str = MODELS_D
     if os.path.exists(path):
         with open(path) as fh:
             old = json.load(fh)
-        if (old.get("feature_set"), old.get("window_size"), old.get("stride")) == \
-                (windows.feature_set, windows.window_size, windows.stride):
+        if (old.get("feature_set"), old.get("window_size"), old.get("stride"), tuple(old.get("context", ()))) == \
+                (windows.feature_set, windows.window_size, windows.stride, windows.context):
             models = old.get("models", {})
     models.update({k: {"params": v["params"], "score": v["score"]} for k, v in result.items()})
     with open(path, "w") as fh:
         json.dump({"created_at": dt.datetime.now(dt.timezone.utc).isoformat(), "scoring": scoring,
                    "feature_set": windows.feature_set, "window_size": windows.window_size, "stride": windows.stride,
-                   "models": models}, fh, indent=2)
+                   "context": list(windows.context), "models": models}, fh, indent=2)
     return path
 
 
@@ -618,13 +654,17 @@ def compare_feature_sets(windows: Windows, unannotated: Windows | None, variants
 
 # ── training and export ─────────────────────────────────────────────────────
 def _latency_ms(pipe: ModelPipeline, raw: pd.DataFrame, ws: int, repeats: int = 30) -> float:
-    """Median wall time for ONE prediction from raw rows, windowing included."""
-    sample = raw.iloc[:ws]
-    pipe.predict_proba(sample)  # warm-up
+    """Median wall time for ONE prediction from raw rows, windowing included (as the demonstrator does it:
+    the features of the last window, with its context history if the models use context)."""
+    wf, rest = pipe.steps[0][1], Pipeline(pipe.steps[1:])
+    t_end = pd.to_datetime(raw["timestamp"]).iloc[len(raw) // 2]
+    ts = pd.to_datetime(raw["timestamp"])
+    sample = raw[(ts <= t_end) & (ts > t_end - wf.history)] if wf.history > pd.Timedelta(0) else raw.iloc[:ws]
+    rest.predict_proba(wf.transform_last(sample))  # warm-up
     times = []
     for _ in range(repeats):
         t = time.perf_counter()
-        pipe.predict_proba(sample)
+        rest.predict_proba(wf.transform_last(sample))
         times.append((time.perf_counter() - t) * 1000)
     return float(np.median(times))
 
@@ -713,6 +753,7 @@ def train_and_evaluate(windows: Windows, out_dir: str = MODELS_DIR, feature_set:
 
     now = dt.datetime.now(dt.timezone.utc).isoformat()
     manifest = {"created_at": now, "window_size": windows.window_size, "stride": windows.stride,
+                "context": list(windows.context),
                 "feature_set": feature_set, "signals": FEATURE_SETS[feature_set], "augmentation": aug.settings(augmentation),
                 "feature_order": FEATURE_ORDER, "output_columns": windows.columns, "classes": classes,
                 "labeled_groups": recs, "models": manifest_models, "feature_ranges": ranges,
@@ -725,7 +766,8 @@ def train_and_evaluate(windows: Windows, out_dir: str = MODELS_DIR, feature_set:
               "unannotated_recordings": unannotated.recordings if unannotated is not None else [],
               "dataset": {"labeled_groups": recs, "n_windows": int(len(y_all)),
                           "class_counts": {c: int((y_all == c).sum()) for c in classes},
-                          "window_size": windows.window_size, "stride": windows.stride}}
+                          "window_size": windows.window_size, "stride": windows.stride,
+                          "context": list(windows.context)}}
     os.makedirs(out_dir, exist_ok=True)
     for fname, obj in (("manifest.json", manifest), ("metrics.json", result)):
         with open(os.path.join(out_dir, fname), "w") as fh:
@@ -763,16 +805,19 @@ def main(argv=None):
                     help=f"training-only augmentations (default {DEFAULT_AUGMENTATION}; --augment alone = none)")
     ap.add_argument("--models", nargs="*", default=list(DEMO_MODELS), choices=list(MODEL_NAMES),
                     help=f"model families to train (default {list(DEMO_MODELS)})")
-    ap.add_argument("--window-size", type=int, default=10)
-    ap.add_argument("--stride", type=int, default=2)
+    ap.add_argument("--window-size", type=int, default=DEFAULT_WINDOW_SIZE)
+    ap.add_argument("--stride", type=int, default=DEFAULT_STRIDE)
+    ap.add_argument("--context", nargs="*", default=list(DEFAULT_CONTEXT), metavar="HORIZON",
+                    help="long-term context horizons, e.g. --context 24h 7d (default: none)")
     ap.add_argument("--no-size-limit", action="store_true", help="export the searched Random Forest without caps")
     ap.add_argument("--no-fold-models", action="store_true")
     ap.add_argument("--quick", action="store_true", help="tiny models, for smoke tests only")
     ap.add_argument("--jobs", type=int, default=N_JOBS, help="worker processes (-1 = all cores)")
     args = ap.parse_args(argv)
-    windows = load_windows(args.data_dir, window_size=args.window_size, stride=args.stride, n_jobs=args.jobs)
+    windows = load_windows(args.data_dir, window_size=args.window_size, stride=args.stride, context=args.context,
+                           n_jobs=args.jobs)
     unannotated = load_windows(args.data_dir, "series_2_*.csv", args.window_size, args.stride,
-                               annotated=False, classes=windows.classes, n_jobs=args.jobs)
+                               annotated=False, classes=windows.classes, context=args.context, n_jobs=args.jobs)
     train_and_evaluate(windows, args.out, args.feature_set, unannotated,
                        augmentation=args.augment, keys=args.models, limit_size=not args.no_size_limit,
                        fold_models=not args.no_fold_models, quick=args.quick, n_jobs=args.jobs)

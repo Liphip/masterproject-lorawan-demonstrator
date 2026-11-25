@@ -56,6 +56,14 @@ def _span(path: str) -> tuple[str | None, str | None, bool]:
     return start, end, labeled
 
 
+def window_with_history(feats: pd.DataFrame, ts_ns: np.ndarray, k: int, ws: int, history: pd.Timedelta):
+    """Rows of the window ending at row k plus the context history before it (models with context features)."""
+    start = k + 1 - ws
+    if history > pd.Timedelta(0):
+        start = min(start, int(np.searchsorted(ts_ns, ts_ns[k] - history.value, side="right")))
+    return feats.iloc[max(start, 0):k + 1]
+
+
 def list_recordings(dirs: list[str]) -> list[dict]:
     """All CSV recordings in `dirs` (converted training data and live recordings), with a Git LFS check.
 
@@ -214,7 +222,8 @@ class ReplayEngine:
                 if scored:
                     self.running_score = {key: float(np.mean([preds[key][w] == truth[w] for w in scored]))
                                           for key in preds} | {"n": len(scored)}
-            last = feats.iloc[ends[-1] + 1 - ws:ends[-1] + 1]
+            ts_ns = pd.to_datetime(df["timestamp"], utc=True).astype("int64").to_numpy()
+            last = window_with_history(feats, ts_ns, int(ends[-1]), ws, self.models.history)
             res = self.models.predict(last, group=group)
             res.update(time=times.iloc[-1].isoformat(), truth=truth[-1] if isinstance(truth[-1], str) else None)
             with self.lock:
@@ -237,6 +246,8 @@ class ReplayEngine:
         # history of the first window so the first prediction can be made right away
         data_time = ts.iloc[max(i - 1, 0)]
         feats = df[FEATURE_ORDER]
+        ts_ns = pd.to_datetime(ts, utc=True).astype("int64").to_numpy()
+        history = self.models.history
         labels = df["label"] if "label" in df.columns else None
         n = len(df)
         hits = {k: 0 for k in self.models.keys}
@@ -258,7 +269,7 @@ class ReplayEngine:
                     self.series.append({"t": r["timestamp"].isoformat(), "sensor": r["sensor"],
                                         **{c: float(r[c]) for c in FEATURE_ORDER[2:] if pd.notna(r[c])}})
             for k in pred_at:
-                window = feats.iloc[k + 1 - ws:k + 1]
+                window = window_with_history(feats, ts_ns, k, ws, history)
                 res = self.models.predict(window, group=group)
                 if not res.get("ready"):
                     continue

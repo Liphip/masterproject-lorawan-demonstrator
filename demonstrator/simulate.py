@@ -75,7 +75,13 @@ class Simulator:
         target = t0 + (t1 - t0) * position
         k = int(np.searchsorted(ts.values, target.to_datetime64(), side="right")) - 1
         k = min(max(k, ws - 1), len(df) - 1)
-        base = df[FEATURE_ORDER + ["ambient_temperature"]].iloc[k + 1 - ws:k + 1].copy()
+        # the window plus, for models with context features, its history: the sliders shift all of it,
+        # so the context describes a sausage that has been at the new level for a while
+        start = k + 1 - ws
+        if self.models.history > pd.Timedelta(0):
+            start = min(start, int(np.searchsorted(ts.values, (ts.iloc[k] - self.models.history).to_datetime64(),
+                                                   side="right")))
+        base = df[FEATURE_ORDER + ["ambient_temperature"]].iloc[max(start, 0):k + 1].copy()
         win = base.copy()
         win["lse01_moisture"] = (win["lse01_moisture"] + dm).clip(0, 100)
         win["lse01_conductivity"] = (win["lse01_conductivity"] * cf).clip(lower=0)
@@ -90,13 +96,14 @@ class Simulator:
             truth = lw.mode().iloc[0] if len(lw) else None
         cols = ["lse01_moisture", "lse01_conductivity", "lse01_temperature", "ltcfs_temperature",
                 "ambient_temperature", "lse01_temperature_diff", "ltcfs_temperature_diff"]
-        mean = lambda d: {c: (None if d[c].isna().all() else float(d[c].mean())) for c in cols}
+        mean = lambda d: {c: (None if d[c].isna().all() else float(d[c].mean())) for c in cols}  # noqa: E731
+        base_w, win_w = base.tail(ws), win.tail(ws)   # shown values: the window itself, not the history
         res.update(simulated=True, group=group, position=position,
                    time=ts.iloc[k].isoformat(), day=(ts.iloc[k] - t0).total_seconds() / 86400,
                    run_days=(t1 - t0).total_seconds() / 86400,
                    adjust={"moisture_delta": dm, "conductivity_factor": cf, "temperature_delta": dt},
-                   recorded_means=mean(base), simulated_means=mean(win),
+                   recorded_means=mean(base_w), simulated_means=mean(win_w),
                    truth=truth, truth_is_for_unmodified=bool(dm or cf != 1 or dt))
         with self.lock:
-            self.last = (win.reset_index(drop=True), group, res)
+            self.last = (win.reset_index(drop=True), group, res)  # with history, for /api/explain
         return res

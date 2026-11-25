@@ -194,6 +194,8 @@ def test_notebooks_run_end_to_end(tmp_path):
     assert json.load(open(models / "manifest.json"))["hyperparameters"].startswith("hyperparameters.json")
     assert "unannotated_progression" in json.load(open(models / "metrics.json"))["models"]["rf"]
     _run_notebook("04_check_seasonal_confound.ipynb", f"CONVERTED_DIR = {str(conv)!r}\nQUICK = True")
+    _run_notebook("05_compare_windows.ipynb", f"CONVERTED_DIR = {str(conv)!r}\nQUICK = True\n"
+                  "CONFIGS = [(10, ()), (10, ('6h',))]\nMODELS = ['logreg']")
 
 
 def test_parallel_folds_match_sequential(synthetic_dir):
@@ -299,3 +301,63 @@ def test_hyperparameters_of_other_models_are_kept(tmp_path, synthetic_dir):
     save_hyperparameters({"hgb": {"params": {"max_iter": 9}, "score": 0.6}}, w, str(tmp_path))
     params, _, fs = load_hyperparameters(str(tmp_path))
     assert params["rf"] == {"n_estimators": 7} and params["hgb"] == {"max_iter": 9} and fs == "temperature_difference"
+
+
+# ── long-term context features ──────────────────────────────────────────────
+def test_context_features_match_a_direct_computation(synthetic_dir):
+    """Mean/std/trend over the last 6 h of a sensor's readings, at the window's last uplink; transform_last agrees."""
+    df = load_recording(str(synthetic_dir / "converted" / "series_1_sausage_1.csv"))[FEATURE_ORDER]
+    wf = WindowFeatures(10, 2, context=("6h",))
+    X = wf.transform(df)
+    i = 300
+    k = i * 2 + 9                                                           # last row of window i
+    past = df.iloc[:k + 1]
+    s = past[(past["sensor"] == "lse01") & past["lse01_moisture"].notna()]
+    t = pd.to_datetime(s["timestamp"])
+    w = s[t > t.iloc[-1] - pd.Timedelta("6h")]
+    days = (pd.to_datetime(w["timestamp"]) - t.iloc[0]).dt.total_seconds() / 86400
+    assert X.loc[i, "lse01_moisture_ctxmean_6h"] == pytest.approx(w["lse01_moisture"].mean())
+    assert X.loc[i, "lse01_moisture_ctxstd_6h"] == pytest.approx(w["lse01_moisture"].std())
+    assert X.loc[i, "lse01_moisture_ctxtrend_6h"] == pytest.approx(np.polyfit(days, w["lse01_moisture"], 1)[0])
+    last = wf.transform_last(past)
+    np.testing.assert_allclose(last.iloc[0].to_numpy(float), X.loc[i, last.columns].to_numpy(float), equal_nan=True)
+    assert feature_signal("lse01_moisture_ctxtrend_6h") == "lse01_moisture"
+
+
+def test_models_with_context_run_in_the_demonstrator(synthetic_dir, tmp_path):
+    """Train with context, then live, replay (animated and whole run), explanation and simulation must all work."""
+    import time
+    from fastapi.testclient import TestClient
+    from demonstrator.app import create_app
+    from demonstrator.config import Config, Device
+    conv = str(synthetic_dir / "converted")
+    w = load_windows(conv, context=("6h",), n_jobs=1, log=_quiet)
+    assert any("_ctxtrend_6h" in c for c in w.columns)
+    train_and_evaluate(w, str(tmp_path / "models"), keys=("logreg", "rf"), quick=True, n_jobs=1, log=_quiet)
+    manifest = json.load(open(tmp_path / "models" / "manifest.json"))
+    assert manifest["context"] == ["6h"] and any("ctx" in c for c in manifest["output_columns"])
+    cfg = Config(models_dir=str(tmp_path / "models"), replay_dirs=[conv], recordings_dir=str(tmp_path / "rec"),
+                 devices=[Device("A840410000000001", "W1", "lse01", "sausage_1")])
+    with TestClient(create_app(cfg)) as c:
+        for i in range(12):
+            c.post("/ingest/uplink", json={"devEUI": "A840410000000001",
+                                           "object": {"water_SOIL": 40 - i, "temp_SOIL": 15, "conduct_SOIL": 4000}})
+        assert c.get("/api/state").json()["live"]["predictions"]["sausage_1"]["ready"]
+        c.post("/api/replay/start", json={"group": "series_1_sausage_2", "speed": 200000, "start_fraction": 0.5})
+        for _ in range(50):
+            if c.get("/api/state").json()["replay"]["latest"]:
+                break
+            time.sleep(0.2)
+        ex = c.get("/api/explain?source=replay").json()
+        assert ex["ready"] and ex["context"] == ["6h"] and len(ex["uplinks"]) == 10
+        assert any(f["feature"].endswith("_ctxtrend_6h") for f in ex["features"])
+        c.post("/api/replay/start", json={"group": "series_1_sausage_2", "complete": True})
+        for _ in range(100):
+            st = c.get("/api/state").json()["replay"]["status"]
+            if st["finished"] or st["error"]:
+                break
+            time.sleep(0.1)
+        assert st["finished"] and not st["error"]
+        sim = c.post("/api/simulate", json={"group": "series_1_sausage_1", "position": 0.7,
+                                            "adjust": {"moisture_delta": -10}}).json()
+        assert sim["ready"] and sim["simulated_means"]["lse01_moisture"] < sim["recorded_means"]["lse01_moisture"]
