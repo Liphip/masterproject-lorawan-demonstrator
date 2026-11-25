@@ -1,8 +1,8 @@
 # LoRaWAN × AI Demonstrator — "Ahle Wurst meets KI"
 
 Portable demonstrator (University of Kassel, ComTec): real LoRaWAN sensors send measurements via a
-**Milesight UG63** gateway and a router to a laptop. The laptop decodes them, runs **three lightweight
-CPU models** (Logistic Regression, Random Forest, MLP) and shows the results side by side in a browser.
+**Milesight UG63** gateway and a router to a laptop. The laptop decodes them, runs **four lightweight
+CPU models** (Logistic Regression, Random Forest, MLP, Gradient Boosting) and shows the results side by side in a browser.
 The models classify the curing phase of a sausage (*Umrötung → Reifung Phase 1 → Reifung Phase 2*).
 
 Without a sausage in the case, the **virtual sausage** tab takes a real recorded day and lets you shift
@@ -42,7 +42,7 @@ powershell -ExecutionPolicy Bypass -File scripts\start_demo.ps1  # opens http://
 
 Linux: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && git lfs pull`, then `scripts/start_demo.sh`.
 
-Two views: `http://localhost:8000/` is the **presentation view** (one source at a time, consensus phase, three models,
+Two views: `http://localhost:8000/` is the **presentation view** (one source at a time, consensus phase, the models,
 four measurements, hardly any text); `/details` is the full dashboard (devices, timeline, evaluation, explanations).
 Both need trained models in `data/models/` (see below). Uplinks from the case are stored in `data/recordings/`
 (see [RUNBOOK](docs/RUNBOOK.md) §4). The UG63 HTTP integration must point to
@@ -56,7 +56,7 @@ Both need trained models in `data/models/` (see below). Uplinks from the case ar
 ```
 
 1. **01_convert_raw_data**: only needed if the Excel exports change.
-2. **02_search_hyperparameters**: searches the three model families (leave-one-sausage-out, balanced accuracy) and
+2. **02_search_hyperparameters**: searches the model families (leave-one-sausage-out, balanced accuracy) and
    saves the winners to `data/models/hyperparameters.json`. Tens of minutes on CPU; uses a GPU via RAPIDS if installed.
 3. **03_train_and_evaluate**: evaluates, trains and exports the models the demonstrator loads, and checks them on the
    unannotated series 2 (phases must advance in time there too). Without a search result it uses

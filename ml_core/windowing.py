@@ -8,6 +8,12 @@ import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
+def horizon(h: str) -> pd.Timedelta:
+    """A context horizon as Timedelta: "24h", "7d" (also "7D"). Lower-case days are accepted here because pandas 4
+    deprecates them; the name stays as written (it is part of the feature names, e.g. ..._ctxtrend_7d)."""
+    return pd.Timedelta(h[:-1] + "D" if h.endswith("d") else h)
+
+
 class WindowFeatures(BaseEstimator, TransformerMixin):
     """Turn raw uplink rows into one feature row per sliding window.
 
@@ -44,7 +50,7 @@ class WindowFeatures(BaseEstimator, TransformerMixin):
     def history(self) -> pd.Timedelta:
         """How much history before a window the features need (the longest context horizon, else 0)."""
         ctx = getattr(self, "context", ())  # models pickled before context existed
-        return max((pd.Timedelta(h) for h in ctx), default=pd.Timedelta(0))
+        return max((horizon(h) for h in ctx), default=pd.Timedelta(0))
 
     def transform_last(self, X: pd.DataFrame) -> pd.DataFrame:
         """Features of the last window only (one row): the last window_size rows plus, for the context, the
@@ -121,7 +127,7 @@ class WindowFeatures(BaseEstimator, TransformerMixin):
                     d = (t - t[0]) / 86400e9                             # days since the first reading (stable sums)
                     frame = pd.DataFrame({"n": 1.0, "y": y, "yy": y * y, "d": d, "dd": d * d, "dy": d * y},
                                          index=pd.DatetimeIndex(t))
-                    r = frame.rolling(pd.Timedelta(h)).sum().to_numpy()
+                    r = frame.rolling(horizon(h)).sum().to_numpy()
                     n, sy, syy, sd, sdd, sdy = (r[:, i] for i in range(6))
                     mean = sy / n
                     var = np.maximum(syy / n - mean ** 2, 0) * n / np.maximum(n - 1, 1)

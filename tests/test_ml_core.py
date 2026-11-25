@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from ml_core.training import DEMO_MODELS
+
 from ml_core import ModelPipeline, WindowFeatures
 from ml_core.conversion import classify_device, convert_all
 from ml_core.data import ALL_COLUMNS, FEATURE_ORDER, ROOT, add_temperature_difference, load_recording
@@ -101,7 +103,7 @@ def test_search_result_is_used_by_training(synthetic_dir, tmp_path):
 def test_training_outputs(trained):
     m = json.load(open(trained / "models" / "metrics.json"))
     man = json.load(open(trained / "models" / "manifest.json"))
-    assert set(m["models"]) == {"logreg", "rf", "mlp"}
+    assert set(m["models"]) == set(DEMO_MODELS)
     assert m["models"]["rf"]["params"]["max_depth"] == 10            # size limit applied
     assert m["classes"] == ["Umroetung", "Reifung Phase 1", "Reifung Phase 2"]  # chronological
     assert man["feature_set"] == "temperature_difference"                # default: no absolute temperature, no timing
@@ -187,13 +189,13 @@ def test_notebooks_run_end_to_end(tmp_path):
     make_raw_workbooks(str(raw), n_sausages=2, rows_per_device=60)
     _run_notebook("01_convert_raw_data.ipynb", f"RAW_DIR = {str(raw)!r}\nCONVERTED_DIR = {str(conv)!r}")
     assert len(list(conv.glob("*.csv"))) == 4
-    common = f"CONVERTED_DIR = {str(conv)!r}\nMODELS_DIR = {str(models)!r}\nQUICK = True"
+    common = f"CONVERTED_DIR = {str(conv)!r}\nMODELS_DIR = {str(models)!r}\nQUICK = True\nCONTEXT = ('6h',)"
     _run_notebook("02_search_hyperparameters.ipynb", common + "\nN_JOBS = 1")
     assert (models / "hyperparameters.json").exists()
     _run_notebook("03_train_and_evaluate.ipynb", common)
     assert json.load(open(models / "manifest.json"))["hyperparameters"].startswith("hyperparameters.json")
     assert "unannotated_progression" in json.load(open(models / "metrics.json"))["models"]["rf"]
-    _run_notebook("04_check_seasonal_confound.ipynb", f"CONVERTED_DIR = {str(conv)!r}\nQUICK = True")
+    _run_notebook("04_check_seasonal_confound.ipynb", f"CONVERTED_DIR = {str(conv)!r}\nQUICK = True\nCONTEXT = ('6h',)")
     _run_notebook("05_compare_windows.ipynb", f"CONVERTED_DIR = {str(conv)!r}\nQUICK = True\n"
                   "CONFIGS = [(10, ()), (10, ('6h',))]\nMODELS = ['logreg']")
 
@@ -218,6 +220,7 @@ def test_run_notebooks_script(tmp_path):
     raw, conv, models, out = tmp_path / "raw", tmp_path / "converted", tmp_path / "models", tmp_path / "out"
     make_raw_workbooks(str(raw), n_sausages=2, rows_per_device=60)
     common = [f"RAW_DIR = {str(raw)!r}", f"CONVERTED_DIR = {str(conv)!r}", f"MODELS_DIR = {str(models)!r}",
+              "CONTEXT = ('6h',)",
               "QUICK = True", "N_JOBS = 1"]
     args = sum((["--set", o] for o in common), []) + ["--out", str(out)]
     assert run_notebooks.main(["01", "02", "03"] + args) == 0

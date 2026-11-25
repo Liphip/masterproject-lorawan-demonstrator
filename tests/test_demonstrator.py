@@ -11,6 +11,7 @@ from demonstrator.app import create_app
 from demonstrator.config import Config, Device
 from demonstrator.decoders import decode_lse01, decode_values, decode_ws202, extract_envelope
 from ml_core.data import FEATURE_ORDER, load_recording
+from ml_core.training import DEMO_MODELS
 from ml_core.training import FEATURE_SETS
 
 
@@ -69,7 +70,7 @@ def test_live_path_produces_three_predictions(client):
         assert r.status_code == 200 and r.json()["results"][0]["mapped"], r.text
     st = client.get("/api/state").json()
     pred = st["live"]["predictions"]["sausage_1"]
-    assert pred["ready"] and set(pred["models"]) == {"logreg", "rf", "mlp"}
+    assert pred["ready"] and set(pred["models"]) == set(DEMO_MODELS)
     for m in pred["models"].values():
         assert 0 <= m["confidence"] <= 1 and m["ms"] < 1000
     assert {d["type"] for d in st["live"]["devices"]} == {"lse01", "ltcfs", "ws202"}
@@ -109,7 +110,7 @@ def test_replay_uses_held_out_fold_models(client):
 
 def test_metrics_endpoint(client):
     m = client.get("/api/metrics").json()
-    assert set(m["models"]) == {"logreg", "rf", "mlp"}
+    assert set(m["models"]) == set(DEMO_MODELS)
     assert "balanced_accuracy" in m["models"]["rf"] and m["agreement_on_held_out"]
 
 
@@ -264,4 +265,4 @@ def test_agreement_counts_the_largest_group(client):
     st = client.get("/api/state").json()["live"]["predictions"]["sausage_1"]
     labels = [m["label"] for m in st["models"].values()]
     assert st["agreement_count"] == max(labels.count(x) for x in labels)
-    assert st["agreement"] == ("all" if st["agreement_count"] == 3 else "none" if st["agreement_count"] == 1 else "partial")
+    assert st["agreement"] == ("all" if st["agreement_count"] == len(labels) else "none" if st["agreement_count"] == 1 else "partial")

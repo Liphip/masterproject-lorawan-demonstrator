@@ -104,7 +104,7 @@ class KernelOutputFilter:
         """Close our end of the pipe, wait for the workers' output to drain, return a one-line summary."""
         os.close(self.write_fd)
         self._thread.join(timeout=wait)
-        parts = [f"{n}× {w[:90]}" for w, n in self.warnings.items() if n > 1]
+        parts = [f"{n}x {w[:90]}" for w, n in self.warnings.items() if n > 1]
         if self.dropped:
             parts.append(f"{self.dropped} harmless joblib clean-up messages hidden")
         return ("  (console: " + "; ".join(parts) + ")") if parts else ""

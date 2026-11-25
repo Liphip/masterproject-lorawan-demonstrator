@@ -55,7 +55,7 @@ from .augmentation import AUGMENTATIONS, augment_temperature  # noqa: F401  (re-
 from .data import (CONVERTED_DIR, FEATURE_ORDER, MODELS_DIR, in_phase_order, load_recording, recording_name,
                    window_labels)
 from .pipeline import ModelPipeline
-from .windowing import WindowFeatures
+from .windowing import WindowFeatures, horizon
 
 # Windows in which a sensor never reported give all-NaN feature columns in some folds.
 warnings.filterwarnings("ignore", message="Skipping features without any observed values")
@@ -70,10 +70,10 @@ N_JOBS = int(os.environ.get("ML_N_JOBS", "-1"))
 NO_MEMMAP = {"max_nbytes": None}
 MODEL_NAMES = {"logreg": "Logistic Regression", "rf": "Random Forest", "mlp": "MLP (neural net)",
                "hgb": "Gradient Boosting"}
-# The three families of the demonstrator (assignment: ≥ 3 families). "hgb" (histogram gradient boosting, the usual
-# strongest choice for tabular data) is an extra candidate: compared in notebook 04 and searched in notebook 02 by
-# default, exported only if MODELS in notebook 03 includes it. The dashboards show however many models are exported.
-DEMO_MODELS = ("logreg", "rf", "mlp")
+# The families exported for the demonstrator (assignment: ≥ 3). "hgb" (histogram gradient boosting) joined on
+# 25 Nov 2026: with 7-day context the best model on series 1 (0.90) with stable series-2 order (0.85).
+# The dashboards show however many models are exported.
+DEMO_MODELS = ("logreg", "rf", "mlp", "hgb")
 ALL_MODELS = tuple(MODEL_NAMES)
 HYPERPARAMETERS_FILE = "hyperparameters.json"
 
@@ -135,7 +135,9 @@ DEFAULT_AUGMENTATION = ["calibration_large"]
 # manifest.json.
 DEFAULT_WINDOW_SIZE = 10
 DEFAULT_STRIDE = 2
-DEFAULT_CONTEXT: tuple[str, ...] = ()
+# 25 Nov 2026 (notebook 05): 24 h + 7 d context lifted balanced accuracy from 0.72–0.78 to 0.83–0.90 and the worst
+# sausage from ~0.58 to 0.66–0.77; series-2 phase order held for gradient boosting (0.85) and the random forest (0.82).
+DEFAULT_CONTEXT: tuple[str, ...] = ("24h", "7d")
 # Smoothing of predicted phases before scoring their progression (one day of windows).
 PROGRESSION_SMOOTHING = "1D"
 # Not scored at the start of a run: in series 2 every model predicts Phase 2 for the first 1–3 days, probably while the
@@ -341,7 +343,7 @@ def parse_context(context) -> tuple[str, ...]:
     if isinstance(context, str):
         context = [c for c in context.split("+") if c]
     for h in context:
-        pd.Timedelta(h)  # raises on typos
+        horizon(h)  # raises on typos
     return tuple(context)
 
 

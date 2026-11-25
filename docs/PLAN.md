@@ -82,17 +82,29 @@ Status as of 25 Nov 2026 (evening). Scope: [assignment requirements](ASSIGNMENT.
   sausage 3 0.81 → 0.92. Logistic regression and MLP change by ≤ 0.01. `robust` costs 0.00–0.03. **Sausage 1 stays at
   0.60 for every model, feature set and augmentation**: not a probe-level difference that augmentation can model;
   more likely it was ahead of/behind the batch (labels) or a sensor problem.
+- **History matters most (notebook 05, all configurations scored without the first 7 days of each run):**
+
+  | windows | LogReg | RF | MLP | Gradient Boosting | worst sausage | series-2 ρ |
+  |---|---|---|---|---|---|---|
+  | 10 uplinks | 0.72 | 0.78 | 0.69 | 0.75 | 0.58–0.59 | 0.81–0.86 |
+  | 30 uplinks | 0.76 | 0.79 | 0.71 | 0.78 | 0.58–0.64 | 0.79–0.86 |
+  | 10 + 24 h context | 0.78 | 0.82 | 0.78 | 0.84 | 0.52–0.63 | 0.68–0.84 |
+  | **10 + 24 h/7 d context** | **0.83** | **0.88** | **0.84** | **0.90** | **0.66–0.77** | 0.59–0.85 |
+
+  7-day context is the largest gain so far, also for sausage 1 (0.60 → 0.66–0.77): its problem was partly the missing
+  history. Series-2 order holds for gradient boosting (0.85) and the random forest (0.82) but drops for the MLP (0.59,
+  backwards share 0.36) and logistic regression (0.76). Possible reason: the drying *rate* depends on temperature, so
+  a 7-day trend carries some season again. Adopted: `DEFAULT_CONTEXT = ("24h", "7d")`, gradient boosting exported as
+  the fourth model (best on series 1, stable on series 2). Hyperparameters were searched without context; the
+  re-search with context is in the next run.
 
 ## Open items (in order)
 
-1. **Overnight run with gradient boosting:** notebook 02 (searches `hgb`; the other results are kept if only
-   `MODELS = ["hgb"]`), then 03 and 04 (adds `calibration_xl`). Export `hgb` (`MODELS` in notebook 03) only if it beats
-   the random forest on mean *and* worst sausage *and* series-2 order.
-2. **Sausage 1:** look at its raw curves against the others (notebook 01 `SAMPLES`): offset, drift, a jump? If its
-   probe misbehaved, say so in the evaluation; if not, it shows the limit of batch-level labels.
-3. **Run notebook 05** (window sizes and context): adopt a configuration only if mean *and* worst sausage improve and
-   series-2 order holds; check the progression plots for a different look in the first days (short-history effect).
-   A sequence model would be the next step after that, not before.
+1. **Re-run 02–04 with the new defaults** (7-day context, four models): the search with context, the export, and the
+   feature-set check with context (does `original` still learn the season? does `temperature_difference` stay best?).
+2. **Season in the trend?** If the MLP/LogReg drop on series 2 persists, compare trend features of moisture only vs.
+   all signals, or normalise trends by the moisture level, in notebook 05.
+3. **Sausage 1:** still the weakest (0.66–0.77 with context); look at its raw curves against the others (notebook 01).
 4. **Collect sensor data:** DevEUI/AppEUI/AppKey for every sensor; check that the sensors are not still joined to another
    network server (TTN, company LNS).
 5. **UG63 setup** following RUNBOOK §2. Capture one real uplink JSON per sensor type (`data/recordings/raw_*.jsonl`) and
@@ -102,7 +114,8 @@ Status as of 25 Nov 2026 (evening). Scope: [assignment requirements](ASSIGNMENT.
 7. Case assembly and packing list (A5). Document exact sensor and power-supply models.
 8. Optional: widen the Logistic Regression grid beyond C = 100 (or raise `max_iter`) if it stays relevant.
 
-Done since the last plan: calibration/robust augmentation, faster replay (up to 1 week/s) and whole-run view, readable
+Done since the last plan: context features with filled history, window comparison (notebook 05), gradient boosting exported,
+calibration/robust augmentation, faster replay (up to 1 week/s) and whole-run view, readable
 recording names, persistent case recordings, model-count-independent UI, uplink-timing shortcut (the default feature set no longer contains `timestamp_*`; it only
 matters for `original`), slope bug re-search, parallel training, presentation view, unattended notebook runs.
 
