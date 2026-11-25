@@ -11,8 +11,7 @@ from demonstrator.app import create_app
 from demonstrator.config import Config, Device
 from demonstrator.decoders import decode_lse01, decode_values, decode_ws202, extract_envelope
 from ml_core.data import FEATURE_ORDER, load_recording
-from ml_core.training import DEMO_MODELS
-from ml_core.training import FEATURE_SETS
+from ml_core.training import DEFAULT_FEATURE_SET, DEMO_MODELS, set_signals
 
 
 # ── decoders ────────────────────────────────────────────────────────────────
@@ -129,7 +128,7 @@ def test_explain_replay_snapshot(client):
     assert sum(rf["detail"]["votes"]) == rf["detail"]["n_trees"]
     assert mlp["detail"]["layers"][0]["size"] == mlp["n_features_used"]
     for m in ex["models"].values():
-        assert {o["signal"] for o in m["occlusion"]} == set(FEATURE_SETS["temperature_difference"])  # default feature set
+        assert {o["signal"] for o in m["occlusion"]} == set(set_signals(DEFAULT_FEATURE_SET))  # default feature set
         assert abs(sum(m["proba"].values()) - 1) < 1e-6
     client.post("/api/replay/stop")
 

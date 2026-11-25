@@ -106,13 +106,19 @@ Status as of 25 Nov 2026 (evening). Scope: [assignment requirements](ASSIGNMENT.
   spread of the temperature difference is the day/night swing, larger in summer. New feature set
   `temperature_difference_now`: temperature difference only from the current window, no context for it.
   `calibration_xl` hurts gradient boosting (0.81, worst sausage 0.51): `calibration_large` stays.
+- **`temperature_difference_now` (04, with `calibration_large`):** ρ 0.83 / 0.88 / 0.85 / 0.86 (LogReg / RF / MLP /
+  GB), backwards share ≤ 0.06, the MLP included; balanced accuracy 0.80 / 0.80 / 0.75 / 0.77. So most of the accuracy
+  that the temperature context added (0.83–0.88) was the season. **Adopted as default.** Honest caveat: the swing of
+  the difference may also change as the sausage dries (less evaporative cooling); with one annotated run the two
+  cannot be separated, and series 2 says the full context transfers worse. `+robust` makes gradient boosting
+  unstable (worst sausage 0.34).
 
 ## Open items (in order)
 
-1. **Run notebook 04 only** (≈ 15 min): does `temperature_difference_now` keep the series-2 order of `no_temperature`
-   with the accuracy of `temperature_difference`? Then set `DEFAULT_FEATURE_SET` and re-run 02–03.
-2. **MLP on series 2** (ρ ≈ 0.6 with context in every feature set except `no_temperature`): check again after item 1.
-   If it stays, keep it in the demo as the example of a model that fits the training run but transfers worse.
+1. **Re-run 02–03** with the new default feature set (`temperature_difference_now`): search and export. Expected
+   balanced accuracy ≈ 0.75–0.80 with series-2 ρ ≈ 0.83–0.88 for all four models.
+2. **Presentation story:** the season trap is now the strongest result of the evaluation (absolute temperature
+   + history: series 2 backwards, ρ down to −0.61). Worth a slide: "a model can be 89 % right and still learn summer".
 3. **Sausage 1:** still the weakest (0.66–0.77 with context); look at its raw curves against the others (notebook 01).
 4. **Collect sensor data:** DevEUI/AppEUI/AppKey for every sensor; check that the sensors are not still joined to another
    network server (TTN, company LNS).

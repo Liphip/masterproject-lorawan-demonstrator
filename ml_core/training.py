@@ -128,7 +128,10 @@ FEATURE_SETS = {
     "temperature_difference_now": ["lse01_conductivity", "lse01_moisture",
                                    "lse01_temperature_diff:now", "ltcfs_temperature_diff:now"],
 }
-DEFAULT_FEATURE_SET = "temperature_difference"
+# 25 Nov 2026 (notebook 04, 24 h + 7 d context, calibration_large): temperature_difference_now keeps the series-2
+# phase order of no_temperature (ρ 0.83–0.88, backwards ≤ 0.06) at balanced accuracy 0.75–0.80;
+# temperature_difference reaches 0.83–0.88 but ρ only 0.61–0.85: much of its extra accuracy is the season.
+DEFAULT_FEATURE_SET = "temperature_difference_now"
 # Statistics WindowFeatures computes per signal (used to select feature columns exactly).
 SIGNAL_STATS = {"min", "max", "mean", "std", "skew", "slope"}
 TIMING_STATS = {"count", "duration", "interval", "min_interval", "max_interval"}

@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ml_core.training import DEMO_MODELS
+from ml_core.training import DEFAULT_FEATURE_SET, DEMO_MODELS, set_signals
 
 from ml_core import ModelPipeline, WindowFeatures
 from ml_core.conversion import classify_device, convert_all
@@ -106,8 +106,8 @@ def test_training_outputs(trained):
     assert set(m["models"]) == set(DEMO_MODELS)
     assert m["models"]["rf"]["params"]["max_depth"] == 10            # size limit applied
     assert m["classes"] == ["Umroetung", "Reifung Phase 1", "Reifung Phase 2"]  # chronological
-    assert man["feature_set"] == "temperature_difference"                # default: no absolute temperature, no timing
-    assert {feature_signal(c) for c in man["output_columns"]} == set(FEATURE_SETS["temperature_difference"])
+    assert man["feature_set"] == DEFAULT_FEATURE_SET                     # default: no absolute temperature, no timing
+    assert {feature_signal(c) for c in man["output_columns"]} == set(set_signals(DEFAULT_FEATURE_SET))
     assert m["models"]["rf"]["unannotated_progression"]["spearman_mean"] > 0.5
     assert man["versions"]["scikit-learn"] and man["hyperparameters"].startswith("defaults")
     for e in man["models"]:
