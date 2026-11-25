@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-11-25T17:31:01.127492+00:00",
+  "created_at": "2026-11-25T20:20:39.772863+00:00",
   "scoring": "balanced_accuracy",
   "feature_set": "temperature_difference",
   "window_size": 10,
