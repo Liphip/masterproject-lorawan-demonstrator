@@ -1,7 +1,8 @@
 {
-  "created_at": "2026-11-25T10:25:55.687940+00:00",
+  "created_at": "2026-11-25T15:11:37.578402+00:00",
   "window_size": 10,
   "stride": 2,
+  "context": [],
   "feature_set": "temperature_difference",
   "signals": [
     "lse01_conductivity",
@@ -9,7 +10,18 @@
     "lse01_temperature_diff",
     "ltcfs_temperature_diff"
   ],
-  "augmentation": {},
+  "augmentation": {
+    "calibration_large": {
+      "kind": "rows",
+      "copies": 2,
+      "segment": "1D",
+      "moisture_offset": 2.0,
+      "conductivity_scale": [
+        0.67,
+        1.5
+      ]
+    }
+  },
   "feature_order": [
     "timestamp",
     "sensor",

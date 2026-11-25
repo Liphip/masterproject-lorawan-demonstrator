@@ -1,9 +1,10 @@
 {
-  "created_at": "2026-11-25T10:22:25.061428+00:00",
+  "created_at": "2026-11-25T15:02:41.686683+00:00",
   "scoring": "balanced_accuracy",
   "feature_set": "temperature_difference",
   "window_size": 10,
   "stride": 2,
+  "context": [],
   "models": {
     "logreg": {
       "params": {
@@ -43,6 +44,19 @@
         "validation_fraction": 0.15
       },
       "score": 0.7350350005627193
+    },
+    "hgb": {
+      "params": {
+        "class_weight": "balanced",
+        "early_stopping": true,
+        "l2_regularization": 1.0,
+        "learning_rate": 0.05,
+        "max_iter": 300,
+        "max_leaf_nodes": 15,
+        "min_samples_leaf": 200,
+        "validation_fraction": 0.1
+      },
+      "score": 0.7239359766960816
     }
   }
 }
