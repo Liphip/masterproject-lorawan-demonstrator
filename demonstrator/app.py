@@ -98,13 +98,15 @@ def create_app(cfg: Config) -> FastAPI:
 
     @app.post("/api/replay/start")
     async def replay_start(request: Request):
-        """Start replaying a recording: {group, speed (data seconds per second), start_fraction 0..1}."""
+        """Start replaying a recording: {group, speed (data seconds per second), start_fraction 0..1, complete}.
+
+        complete=true shows the whole run at once (predicted in one batch) instead of animating it."""
         body = await request.json()
         if not models.ok:
             raise HTTPException(409, models.error or "models not loaded")
         try:
             await _run_sync(replay.start, body["group"], float(body.get("speed", 1800)),
-                            float(body.get("start_fraction", 0)))
+                            float(body.get("start_fraction", 0)), bool(body.get("complete", False)))
         except (KeyError, ValueError) as e:
             raise HTTPException(400, str(e))
         return {"ok": True}

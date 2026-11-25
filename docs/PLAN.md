@@ -1,6 +1,6 @@
 # Project plan
 
-Status as of 25 Nov 2026. Scope: [assignment requirements](ASSIGNMENT.md)
+Status as of 25 Nov 2026 (evening). Scope: [assignment requirements](ASSIGNMENT.md)
 (A1–A11). The principle: **demonstrate the whole chain reliably**. This is not a general IoT platform.
 
 ## Architecture decisions
@@ -14,7 +14,9 @@ Status as of 25 Nov 2026. Scope: [assignment requirements](ASSIGNMENT.md)
 | Honest replay | Replaying a labeled sausage uses the **fold model trained without it** | Otherwise the demo would show memorised training data. The unlabeled series 2 (independent run) uses the final models. |
 | No sausage in the case | Three views of one system: **live** (real sensors, proves the LoRaWAN path), **replay** (a real recorded run with held-out models), **virtual sausage** (a recorded window from any day, levels shifted by sliders, models re-predict instantly) | Considered: mixing live readings into a recorded run, so that a live uplink advances the "sausage". Rejected: live air readings mixed with sausage readings would be a third, unrealistic kind of data and hard to label honestly. The simulator keeps real uplink timing and noise and changes only levels, and is labelled SIMULATED everywhere. Limit: shifting a level does not create a realistic *history* (e.g. a sausage that dried slowly). It answers "what does the model do with these numbers?", not "what would this sausage really do?". |
 | Seasonal confound | Default feature set **`temperature_difference`**: moisture, conductivity and both probe temperatures *minus the air temperature* (no absolute temperature, no uplink timing). The unannotated series 2 (summer → spring) is used as a label-free check: predicted phases must advance in time (Spearman ρ of time vs. phase, shown in notebook 03 and the dashboard). Notebook 04 compares the feature sets | Series 1 (30.03.–02.08.2023, attic without climate control) has temperature rising with the phase, so a model can learn "summer" instead of "ripe" (already noted in the 2024 seminar paper). The series-1 score cannot reveal this; series 2 can. The difference removes the seasonal level and keeps the sausage's own behaviour (a moist sausage stays cooler than the air). The air temperature comes from the LSN50-v2-S31 in the raw data, aligned to every uplink in the conversion; the case has no air sensor, so live data uses a value set in the config/UI, while replay and simulation use the recorded air temperature. Series 2 is not used for training: it has no labels, its timing is unknown (probably slower in the cold), and labels from the model itself would inherit its bias. |
-| Augmentation | Optional, training data only, chosen by name (`AUGMENTATIONS` in `ml_core/augmentation.py`): **calibration** (per probe and day: moisture ± 0.5/1/2 points, conductivity ± ~10/25/50 %), **robust** (measurement noise, 15 % lost uplinks), **temperature** (level offset, scaled/mirrored day-night swings). Calibration and robust change the raw rows and re-compute the windows (once per recording); temperature works on the window features in closed form. Off by default until notebook 04 shows a benefit on the real data | The scores differ more between sausages (0.58–0.81) than between models, so sausage/probe differences are the bigger weakness than the season. Calibration targets that; success = a better *worst sausage*, not only a better mean. Robust aims at live operation (irregular uplinks, noise); the held-out score can only show what it costs. Magnitudes are judgement calls from the data, not probe specifications. Too strong a moisture shift erases the signal (the phases differ by a few points), hence three strengths. Time stretching ("a cold run ripens slower") is not possible with windows of a few minutes. |
+| Augmentation | Optional, training data only, chosen by name (`AUGMENTATIONS` in `ml_core/augmentation.py`): **calibration** (per probe and day: moisture ± 0.5/1/2 points, conductivity ± ~10/25/50 %), **robust** (measurement noise, 15 % lost uplinks), **temperature** (level offset, scaled/mirrored day-night swings). Calibration and robust change the raw rows and re-compute the windows (once per recording); temperature works on the window features in closed form. Default since 25 Nov 2026: `calibration_large` (`DEFAULT_AUGMENTATION`), see results | The scores differ more between sausages (0.58–0.81) than between models, so sausage/probe differences are the bigger weakness than the season. Calibration targets that; success = a better *worst sausage*, not only a better mean. Robust aims at live operation (irregular uplinks, noise); the held-out score can only show what it costs. Magnitudes are judgement calls from the data, not probe specifications. Too strong a moisture shift erases the signal (the phases differ by a few points), hence three strengths. Time stretching ("a cold run ripens slower") is not possible with windows of a few minutes. |
+| Fourth model family | **Gradient boosting** (`hgb`, scikit-learn `HistGradientBoostingClassifier`) as a candidate: searched (02) and compared (04) by default, exported only if `MODELS` in notebook 03 includes it. The dashboards show any number of models; its explanation shows the phase probabilities as trees are added | Usually the strongest model for tabular features, CPU-only, small, no new dependency. It does not address the main limit (windows of minutes, see open items); a sequence model (1D-CNN/GRU over days) would, but needs more context per prediction, PyTorch and more data than 5 sausages to be trustworthy. |
+| Case recordings | Every live uplink raw (`raw_<day>.jsonl`, before decoding) plus decoded rows per slot (`live_<day>_<slot>.csv`), flushed to disk; the last 6 h are reloaded at start | Nothing from the case is lost if a decoder is wrong or the laptop restarts; recordings are replayable like training data. |
 | Live compatibility | Out-of-range check against training feature percentiles | Implements "only show live predictions where data is compatible": the dashboard warns instead of hiding. |
 | Random Forest size | Demo cap `max_depth ≤ 10, n_estimators ≤ 100` (`SIZE_LIMITS`; latest search: depth 10, 200 trees) | An unbounded forest on ~100k windows grows to hundreds of MB; 100 trees score within 0.01 of 200 in the search. Compare with `LIMIT_SIZE = False` in notebook 03 if needed. |
 
@@ -74,25 +76,34 @@ Status as of 25 Nov 2026. Scope: [assignment requirements](ASSIGNMENT.md)
 - **Per sausage** balanced accuracy ranges 0.58–0.81; sausage 1 ≈ 0.60 for every model and feature set.
 - **Logistic Regression** search: best C = 100 at the grid edge, liblinear does not converge there (warnings in the
   log); the neighbouring settings score within 0.005.
+- **Calibration augmentation (third run):** the random forest gains with strength: balanced accuracy 0.71 → 0.76 /
+  0.78 / 0.79 (small / medium / large), series-2 ρ 0.80 → 0.87, backwards share 0.08 → 0.00; sausage 4 0.58 → 0.74,
+  sausage 3 0.81 → 0.92. Logistic regression and MLP change by ≤ 0.01. `robust` costs 0.00–0.03. **Sausage 1 stays at
+  0.60 for every model, feature set and augmentation**: not a probe-level difference that augmentation can model;
+  more likely it was ahead of/behind the batch (labels) or a sensor problem.
 
 ## Open items (in order)
 
-1. **Run notebook 04 with the new augmentation variants** (calibration in three strengths, robust, both). Adopt one
-   (`AUGMENT` in notebook 03) only if the worst sausage improves without losing series-2 phase order. If nothing
-   helps, sausage 1 is probably a label question (ahead of/behind the batch): also a finding for the evaluation.
-2. **Collect sensor data:** DevEUI/AppEUI/AppKey for every sensor; check that the sensors are not still joined to another
+1. **Overnight run with gradient boosting:** notebook 02 (searches `hgb`; the other results are kept if only
+   `MODELS = ["hgb"]`), then 03 and 04 (adds `calibration_xl`). Export `hgb` (`MODELS` in notebook 03) only if it beats
+   the random forest on mean *and* worst sausage *and* series-2 order.
+2. **Sausage 1:** look at its raw curves against the others (notebook 01 `SAMPLES`): offset, drift, a jump? If its
+   probe misbehaved, say so in the evaluation; if not, it shows the limit of batch-level labels.
+3. **Longer context** (most promising for accuracy): add day-scale features per window (e.g. moisture/conductivity
+   trend over the last 24 h and 7 days; not the time since the start, which would be the schedule again). This
+   needs the history of each sausage, which the replay and the live path both have. A sequence model would be the
+   next step after that, not before.
+4. **Collect sensor data:** DevEUI/AppEUI/AppKey for every sensor; check that the sensors are not still joined to another
    network server (TTN, company LNS).
-3. **UG63 setup** following RUNBOOK §2. Capture one real uplink JSON per sensor type (`data/recordings/raw_*.jsonl`) and
+5. **UG63 setup** following RUNBOOK §2. Capture one real uplink JSON per sensor type (`data/recordings/raw_*.jsonl`) and
    compare the decoded values with the device app/manual. Add a test with the captured payloads.
-4. **Dry run** on the demo laptop: startup time, latency, battery, offline behaviour, both views; set the room's air
+6. **Dry run** on the demo laptop: startup time, latency, battery, offline behaviour, both views; set the room's air
    temperature.
-5. Case assembly and packing list (A5). Document exact sensor and power-supply models.
-6. Optional: longer windows (e.g. 6–12 h) are likely more meaningful for a multi-day process than 10 uplinks, and would
-   allow augmenting the pace of ripening. Small change (`WINDOW_SIZE` in notebooks 02–04), but the search has to be
-   re-run. Worth one experiment for the evaluation chapter.
-7. Optional: widen the Logistic Regression grid beyond C = 100 (or raise `max_iter`) if it stays the best model.
+7. Case assembly and packing list (A5). Document exact sensor and power-supply models.
+8. Optional: widen the Logistic Regression grid beyond C = 100 (or raise `max_iter`) if it stays relevant.
 
-Done since the last plan: uplink-timing shortcut (the default feature set no longer contains `timestamp_*`; it only
+Done since the last plan: calibration/robust augmentation, faster replay (up to 1 week/s) and whole-run view, readable
+recording names, persistent case recordings, model-count-independent UI, uplink-timing shortcut (the default feature set no longer contains `timestamp_*`; it only
 matters for `original`), slope bug re-search, parallel training, presentation view, unattended notebook runs.
 
 ## Known risks

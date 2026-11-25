@@ -69,3 +69,56 @@ function featLabel(name) {
   }
   return name;
 }
+
+// ── readable names for recordings and slots ────────────────────────────────
+let REC_META = {};  // group -> {start, end} from /api/recordings (set by the pages)
+function setRecordings(list) { REC_META = Object.fromEntries((list || []).map((r) => [r.group, r])); }
+// "sausage_1" -> "Wurst 1" / "sausage 1"; "environment" -> "Umgebung"
+function slotName(slot) {
+  const m = /^sausage_(\d+)$/.exec(slot || "");
+  if (m) return t("slot.sausage", {n: m[1]});
+  return slot === "environment" ? t("slot.environment") : (slot || "–");
+}
+// "Mär–Aug 2023" (one year) or "Jul 2023 – Apr 2024"
+function monthSpan(start, end) {
+  if (!start || !end) return "";
+  const a = new Date(start), b = new Date(end);
+  const mo = (d) => d.toLocaleDateString(LOCALE(), {month: "short"});
+  if (a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth()) return `${mo(b)} ${b.getFullYear()}`;
+  return a.getFullYear() === b.getFullYear() ? `${mo(a)}–${mo(b)} ${b.getFullYear()}`
+    : `${mo(a)} ${a.getFullYear()} – ${mo(b)} ${b.getFullYear()}`;
+}
+// series_1_sausage_3 -> "Durchgang 1 · Wurst 3 (Mär–Aug 2023)"; live_20261125_sausage_1 -> "Koffer-Aufnahme 25.11.2026 · Wurst 1"
+function recName(group, withSpan = true) {
+  if (!group) return "";
+  const meta = REC_META[group] || {};
+  let m = /^series_(\d+)_sausage_(\d+)$/.exec(group);
+  if (m) {
+    const span = withSpan ? monthSpan(meta.start, meta.end) : "";
+    return t("rec.series", {run: m[1], n: m[2]}) + (span ? ` (${span})` : "");
+  }
+  m = /^live_(\d{4})(\d{2})(\d{2})_(.+)$/.exec(group);
+  if (m) return t("rec.live_name", {date: fmtDate(`${m[1]}-${m[2]}-${m[3]}T12:00:00`), slot: slotName(m[4])});
+  return group.replace(/_/g, " ");
+}
+// Picker groups: annotated runs, unannotated runs, case recordings, others.
+function recCategory(r) {
+  if (r.kind === "live recording") return "live";
+  if (/^series_1_/.test(r.group)) return "annotated";
+  if (/^series_\d+_/.test(r.group)) return "unannotated";
+  return "other";
+}
+// <option>s grouped by category; disabled for Git LFS pointers.
+function recOptions(list, only) {
+  const order = ["annotated", "unannotated", "live", "other"];
+  return order.filter((c) => !only || only.includes(c)).map((c) => {
+    const items = list.filter((r) => recCategory(r) === c);
+    if (!items.length) return "";
+    return `<optgroup label="${esc(t("rec.group_" + c))}">${items.map((r) =>
+      `<option value="${esc(r.group)}" ${r.lfs_pointer ? "disabled" : ""}>${esc(recName(r.group))}${r.lfs_pointer ? esc(t("rec.lfs")) : ""}</option>`).join("")}</optgroup>`;
+  }).join("");
+}
+// Agreement sentence for a prediction (uses the number of models and the size of the largest group).
+function agreeText(pred) {
+  return t("agree." + pred.agreement, {k: pred.agreement_count, n: Object.keys(pred.models).length});
+}

@@ -27,7 +27,9 @@ RANDOM_STATE = 42
 #   differently: LSE01 moisture shifted by up to ± moisture_offset percentage points, conductivity multiplied by a
 #   factor in conductivity_scale (log-uniform). Targets the differences between sausages (per-sausage scores range
 #   0.58–0.81, sausage 1 ≈ 0.60 for every model). Moisture differs by only a few points between the phases in
-#   series 1, so too strong a shift removes the signal itself: three strengths to compare.
+#   series 1, so too strong a shift removes the signal itself: several strengths to compare. Run of 25 Nov 2026:
+#   the random forest gains with strength (0.71 → 0.76 / 0.78 / 0.79 balanced accuracy for small / medium / large),
+#   logistic regression and MLP stay within ± 0.01; hence "xl" to find where it stops helping.
 # robust: what live operation looks like: measurement noise (Gaussian, σ per signal; conductivity relative) and lost
 #   uplinks (each row dropped with probability dropout, which also changes the timing features). Aims at robustness in
 #   the case rather than at better scores; the held-out score can only show whether it costs accuracy.
@@ -40,6 +42,8 @@ AUGMENTATIONS = {
                     "moisture_offset": 1.0, "conductivity_scale": [0.8, 1.25]},
     "calibration_large": {"kind": "rows", "copies": 2, "segment": "1D",
                           "moisture_offset": 2.0, "conductivity_scale": [0.67, 1.5]},
+    "calibration_xl": {"kind": "rows", "copies": 2, "segment": "1D",
+                       "moisture_offset": 3.0, "conductivity_scale": [0.5, 2.0]},
     "robust": {"kind": "rows", "copies": 2, "dropout": 0.15,
                "noise": {"lse01_moisture": 0.1, "lse01_conductivity": 0.02, "temperature": 0.1}},
     "temperature": {"kind": "features", "copies": 2, "offset": 10.0, "scale": [0.5, 2.0], "mirror": True},

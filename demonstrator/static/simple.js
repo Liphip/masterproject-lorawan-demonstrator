@@ -42,7 +42,7 @@ function renderPrediction(pred, truth, when) {
       <span class="s-mlabel"><span class="dot" style="background:${phaseColor(m.label)}"></span>${esc(phaseName(m.label))}</span>
       <span class="track"><span class="fill" style="display:block;width:${(m.confidence * 100).toFixed(0)}%;background:${phaseColor(m.label)}"></span></span>
       <span class="num">${fmtNum(m.confidence * 100)} %</span></div>`;
-  }).join("") + `<div class="s-agree">${t("agree." + pred.agreement)}</div>`;
+  }).join("") + `<div class="s-agree">${agreeText(pred)}</div>`;
   const v = pred.values || {};
   $("#s-values").innerHTML = VALUES.filter(([k]) => v[k] != null).map(([k, label, unit, d]) =>
     `<div class="s-tile"><span>${t(label)}</span><b>${fmtNum(v[k], d)}</b><small>${unit}</small></div>`).join("");
@@ -62,12 +62,13 @@ function render() {
   $("#s-status").innerHTML = `<span class="dot" style="background:${fresh ? "var(--live)" : "var(--none)"}"></span>${lu ? t("s.gateway", {ago: ago(lu)}) : t("chip.gateway_none")}`;
   if (mode === "replay") {
     const s = ST.replay.status;
-    $("#s-play").textContent = s.running && !s.paused ? "❚❚" : "▶";
+    $("#s-play").textContent = s.running && !s.paused && !s.complete ? "❚❚" : "▶";
     $("#s-play").disabled = !ST.models.ok;
+    $("#s-complete").disabled = !ST.models.ok || (s.running && s.complete);
     $("#s-bar").style.width = `${Math.min(100, (s.progress || 0) * 100).toFixed(1)}%`;
     if (s.group && $("#s-rec").value !== s.group && document.activeElement !== $("#s-rec")) $("#s-rec").value = s.group;
     const day = s.data_time && s.start ? (new Date(s.data_time) - new Date(s.start)) / 864e5 : null;
-    const when = s.group ? `<span class="s-badge replay">${t("s.recorded")}</span> ${t("sim.day_v", {n: fmtNum(day ?? 0, 0)})} · ${fmtDate(s.data_time || s.start)}` : "";
+    const when = s.group ? `<span class="s-badge replay">${t("s.recorded")}</span> ${esc(recName(s.group, false))} · ${t("sim.day_v", {n: fmtNum(day ?? 0, 0)})} · ${fmtDate(s.data_time || s.start)}${s.complete && s.running ? " · " + t("replay.computing") : ""}` : "";
     const latest = s.group ? ST.replay.latest : null;
     renderPrediction(latest, latest && latest.truth, when);
   } else if (mode === "live") {
@@ -82,11 +83,14 @@ function render() {
 $("#s-play").addEventListener("click", async () => {
   const s = ST && ST.replay.status;
   try {
-    if (s && s.running) await post("/api/replay/pause", {paused: !s.paused});
+    if (s && s.running && !s.complete) await post("/api/replay/pause", {paused: !s.paused});
     else await post("/api/replay/start", {group: $("#s-rec").value, speed: Number($("#s-speed").value), start_fraction: 0});
   } catch (e) { alert(e.message); }
 });
-$("#s-rec").addEventListener("change", () => post("/api/replay/stop"));
+$("#s-rec").addEventListener("change", () => { if (mode === "replay") post("/api/replay/stop"); else runSim(); });
+$("#s-complete").addEventListener("click", async () => {
+  try { await post("/api/replay/start", {group: $("#s-rec").value, complete: true}); } catch (e) { alert(e.message); }
+});
 
 // ── virtual sausage ──
 // Slider labels without waiting for the server.
@@ -142,8 +146,10 @@ document.querySelectorAll("[data-lang]").forEach((b) => b.addEventListener("clic
 
 // Fill the recording picker (training runs only, no LFS pointers).
 async function loadRecordings() {
-  recs = (await api("/api/recordings")).filter((r) => !r.lfs_pointer && r.group.startsWith("series_"));
-  $("#s-rec").innerHTML = recs.map((r) => `<option value="${esc(r.group)}">${esc(r.group.replace(/_/g, " "))}</option>`).join("");
+  const all = await api("/api/recordings");
+  setRecordings(all);
+  recs = all.filter((r) => !r.lfs_pointer);
+  $("#s-rec").innerHTML = recOptions(recs);
   const s = ST && ST.replay.status;
   if (s && s.group) $("#s-rec").value = s.group;
   if (mode === "sim") runSim();
@@ -152,6 +158,8 @@ async function loadRecordings() {
 async function tick() {
   try {
     ST = await api("/api/state");
+    const n = (ST.models.models || []).length;
+    if (n && n !== N_MODELS) { N_MODELS = n; applyStaticI18n(); }
     if (!recs) await loadRecordings();
     render();
   } catch (e) {

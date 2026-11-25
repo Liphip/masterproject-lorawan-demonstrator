@@ -3,17 +3,25 @@
 // missing keys fall back to English. Placeholders: {name}. Keys ending in _html may contain markup.
 const I18N = {
   en: {
+    "rec.series": "Run {run} · sausage {n}", "rec.live_name": "Case recording {date} · {slot}",
+    "rec.group_annotated": "Run with the butcher's annotation", "rec.group_unannotated": "Run without annotation",
+    "rec.group_live": "Recordings from the case", "rec.group_other": "Other recordings",
+    "slot.sausage": "sausage {n}", "slot.environment": "environment",
+    "replay.complete": "⏭ Whole run", "replay.complete_title": "Predict the whole run at once and show the finished timeline",
+    "replay.computing": "Predicting the whole run …", "s.complete": "⏭",
+    "ex.hgb_text": "{t} small trees are built one after another; each corrects the mistakes of those before. The lines show how the probability of each phase settles as trees are added.",
+    "ex.hgb_axis": "trees added →",
     "s.details": "Details →", "s.mode.replay": "Recorded sausage", "s.mode.sim": "Virtual sausage", "s.mode.live": "Live sensors",
     "s.butcher": "butcher", "s.core": "core temperature", "s.drier": "Drier ↔ moister", "s.reset": "Reset",
     "s.air": "Room temperature", "s.gateway": "gateway: last uplink {ago}", "s.waiting": "Collecting uplinks …",
     "s.press_play": "Press ▶ to replay a recorded sausage.", "s.no_live": "Waiting for the sensors in the case …",
     "s.recorded": "RECORDED", "s.simulated": "SIMULATED",
-    "s.path": "Sensors → LoRa radio → gateway → Wi-Fi → laptop → 3 AI models (CPU, offline)",
+    "s.path": "Sensors → LoRa radio → gateway → Wi-Fi → laptop → {n_models} AI models (CPU, offline)",
     "header.presentation": "← Presentation view",
-    "header.sub": "LoRaWAN sensors → gateway → network → laptop → three CPU models, side by side",
+    "header.sub": "LoRaWAN sensors → gateway → network → laptop → {nm} CPU models, side by side",
     "path.sensors": "LoRaWAN sensors", "path.radio": "LoRa radio", "path.gateway": "gateway + network server",
     "path.router": "Router / Wi-Fi", "path.router_sub": "stands in for \"the Internet\"",
-    "path.laptop_sub": "decode → windows → features → 3 models",
+    "path.laptop_sub": "decode → windows → features → {n_models} models",
 
     "live.title": "1 · Which sensor sent what?", "live.th_sensor": "Sensor", "live.th_slot": "Slot",
     "live.th_values": "Last values", "live.th_radio": "Radio", "live.th_seen": "Last seen", "live.th_uplinks": "Uplinks",
@@ -32,13 +40,13 @@ const I18N = {
     "replay.recording": "Recording", "replay.speed": "Speed", "replay.start_at": "Start at",
     "replay.start": "▶ Start replay", "replay.pause": "❚❚ Pause", "replay.resume": "▶ Resume", "replay.stop": "■ Stop",
     "replay.chart_head": "Phase over time · top lanes: annotation and each model, bottom: measured signal",
-    "speed.600": "10 min / s", "speed.1800": "30 min / s", "speed.3600": "1 h / s", "speed.10800": "3 h / s", "speed.43200": "12 h / s",
+    "speed.600": "10 min / s", "speed.1800": "30 min / s", "speed.3600": "1 h / s", "speed.10800": "3 h / s", "speed.43200": "12 h / s", "speed.86400": "1 day / s", "speed.259200": "3 days / s", "speed.604800": "1 week / s",
     "signal.lse01_moisture": "LSE01 moisture", "signal.lse01_conductivity": "LSE01 conductivity",
     "signal.lse01_temperature": "LSE01 temperature", "signal.ltcfs_temperature": "LTC-FS temperature",
     "signal.ltcfs_temperature_diff": "LTC-FS temperature − air",
     "replay.banner_html": "<span class=\"badge replay\">REPLAY</span> Recorded data, not live: <b>{group}</b> ({kind}, recorded {from} – {to}). Replay time <b>{now}</b> {state}",
-    "replay.state_paused_html": "· <b>PAUSED</b>", "replay.state_running": "at {min} min of data per second",
-    "replay.state_finished": "· finished", "replay.state_stopped": "· stopped",
+    "replay.state_paused_html": "· <b>PAUSED</b>", "replay.state_running": "at {speed} (data per second of real time)",
+    "replay.state_complete": "· whole run predicted at once", "replay.state_finished": "· finished", "replay.state_stopped": "· stopped",
     "replay.empty": "Select a recording and start the replay.", "replay.train_first": "Train the models first (see README).",
     "replay.timeline_empty": "Start a replay to see the run unfold.", "replay.day": "day {n}",
     "rec.unlabeled": " (unlabeled, independent run)", "rec.live": " (live recording)", "rec.lfs": " (LFS pointer – git lfs pull)",
@@ -49,14 +57,14 @@ const I18N = {
     "card.annotation": "Annotation", "card.annotation_note": "human label from the recording",
     "card.annotation_unmod": "label of the UNMODIFIED recording at this day", "card.none_unlabeled": "none (unlabeled run)",
     "card.score_note": "agreement with annotation so far ({n} windows)",
-    "agree.all": "All three models agree.", "agree.partial": "The models disagree: two against one.", "agree.none": "All three models disagree.",
+    "agree.all": "All {nm} models agree.", "agree.partial": "The models disagree: {k} of {n} predict the same phase.", "agree.none": "All {nm} models disagree.",
     "warn.ood": "{pct} % of the input features are outside the training range. Treat these predictions as unreliable.",
     "warn.seen": "These models were trained on this recording. They are reproducing training data, not predicting.",
     "btn.explain": "🔍 How was this decided?",
 
-    "model.logreg": "Logistic Regression", "model.rf": "Random Forest", "model.mlp": "MLP (neural net)",
-    "short.logreg": "Log. Regr.", "short.rf": "Rand. Forest", "short.mlp": "MLP",
-    "kind.logreg": "linear · interpretable baseline", "kind.rf": "tree ensemble · nonlinear", "kind.mlp": "small neural network",
+    "model.logreg": "Logistic Regression", "model.rf": "Random Forest", "model.mlp": "MLP (neural net)", "model.hgb": "Gradient Boosting",
+    "short.logreg": "Log. Regr.", "short.rf": "Rand. Forest", "short.mlp": "MLP", "short.hgb": "Boosting",
+    "kind.logreg": "linear · interpretable baseline", "kind.rf": "tree ensemble · nonlinear", "kind.mlp": "small neural network", "kind.hgb": "boosted trees · each corrects the previous",
     "phase.0": "Curing (Umrötung)", "phase.1": "Ripening phase 1", "phase.2": "Ripening phase 2",
 
     "val.conductivity": "conductivity", "val.moisture": "moisture", "val.temp": "temp", "val.light": "light", "val.motion": "motion",
@@ -97,7 +105,7 @@ const I18N = {
     "limits.1_html": "All labeled data comes from <b>one curing run</b> (five sausages). Held-out scores separate sausages, not runs, so they are probably optimistic for a new run.",
     "limits.2": "Each prediction uses a short window of the latest uplinks. It reflects the current sensor levels, not the full history of the run.",
     "limits.3": "The labels are human phase annotations, not a measured ground truth for food safety or quality. Model outputs are estimates, not decisions.",
-    "limits.4": "\"Confidence\" is the model's own probability, not a calibrated guarantee. The three models have different calibration, so compare their labels, not their confidence values.",
+    "limits.4": "\"Confidence\" is the model's own probability, not a calibrated guarantee. The {nm} models have different calibration, so compare their labels, not their confidence values.",
     "footer": "Server up {min} min · config: {cfg} · gateway URL: http://<laptop-ip>:<port>{path}",
     "footer.none": "none",
 
@@ -115,11 +123,11 @@ const I18N = {
     "ex.s2_title": "The {n} numbers the models see",
     "ex.s2_text": "For every sensor signal the window is summarised into a few statistics: level (min, mean, max), spread, trend and the timing of the uplinks. The bar shows where each number sits within the training data. A red marker means it lies outside anything seen in training.",
     "ex.range": "training range {lo} … {hi}",
-    "ex.s3_title": "Which signals mattered? (same test for all three models)",
+    "ex.s3_title": "Which signals mattered? (same test for all {nm} models)",
     "ex.s3_text_html": "We hide one sensor signal at a time, replacing its numbers with a typical training value, and watch how sure each model stays of its answer. A long bar means the model relied on that signal. Grey bars: hiding the signal made the model <i>more</i> sure. Signals that move together, such as two temperature probes, can stand in for each other, so this is a guide, not a proof.",
     "ex.th_hidden": "Hidden signal", "ex.would_switch": "would switch to {phase}",
-    "ex.s4_title": "Inside each model: three different principles",
-    "ex.s4_text": "The same numbers go into three very different kinds of model. Each column shows what that model actually computed for this snapshot.",
+    "ex.s4_title": "Inside each model: {nm} different principles",
+    "ex.s4_text": "The same numbers go into {nm} very different kinds of model. Each column shows what that model actually computed for this snapshot.",
     "ex.seen": "This model was trained on this recording.",
     "ex.lr_text": "Each input is multiplied by a learned weight and the products are summed. A higher sum means more evidence for the class.",
     "ex.lr_head": "weight × input = evidence for \"{phase}\"",
@@ -140,17 +148,25 @@ const I18N = {
   },
 
   de: {
+    "rec.series": "Durchgang {run} · Wurst {n}", "rec.live_name": "Koffer-Aufnahme {date} · {slot}",
+    "rec.group_annotated": "Durchgang mit Metzger-Annotation", "rec.group_unannotated": "Durchgang ohne Annotation",
+    "rec.group_live": "Aufnahmen aus dem Koffer", "rec.group_other": "Weitere Aufnahmen",
+    "slot.sausage": "Wurst {n}", "slot.environment": "Umgebung",
+    "replay.complete": "⏭ Ganzer Lauf", "replay.complete_title": "Den ganzen Lauf auf einmal vorhersagen und die fertige Zeitleiste zeigen",
+    "replay.computing": "Sage den ganzen Lauf vorher …", "s.complete": "⏭",
+    "ex.hgb_text": "{t} kleine Bäume werden nacheinander gebaut; jeder korrigiert die Fehler der vorigen. Die Linien zeigen, wie sich die Wahrscheinlichkeit jeder Phase einpendelt, während Bäume hinzukommen.",
+    "ex.hgb_axis": "Bäume hinzugefügt →",
     "s.details": "Details →", "s.mode.replay": "Aufgezeichnete Wurst", "s.mode.sim": "Virtuelle Wurst", "s.mode.live": "Live-Sensoren",
     "s.butcher": "Metzger", "s.core": "Kerntemperatur", "s.drier": "Trockener ↔ feuchter", "s.reset": "Zurücksetzen",
     "s.air": "Raumtemperatur", "s.gateway": "Gateway: letzter Uplink {ago}", "s.waiting": "Sammle Uplinks …",
     "s.press_play": "▶ drücken, um eine aufgezeichnete Wurst abzuspielen.", "s.no_live": "Warte auf die Sensoren im Koffer …",
     "s.recorded": "AUFZEICHNUNG", "s.simulated": "SIMULIERT",
-    "s.path": "Sensoren → LoRa-Funk → Gateway → WLAN → Laptop → 3 KI-Modelle (CPU, offline)",
+    "s.path": "Sensoren → LoRa-Funk → Gateway → WLAN → Laptop → {n_models} KI-Modelle (CPU, offline)",
     "header.presentation": "← Präsentationsansicht",
-    "header.sub": "LoRaWAN-Sensoren → Gateway → Netzwerk → Laptop → drei KI-Modelle auf der CPU im direkten Vergleich",
+    "header.sub": "LoRaWAN-Sensoren → Gateway → Netzwerk → Laptop → {nm} KI-Modelle auf der CPU im direkten Vergleich",
     "path.sensors": "LoRaWAN-Sensoren", "path.radio": "LoRa-Funk", "path.gateway": "Gateway + Netzwerkserver",
     "path.router": "Router / WLAN", "path.router_sub": "steht für „das Internet“",
-    "path.laptop_sub": "dekodieren → Fenster → Merkmale → 3 Modelle",
+    "path.laptop_sub": "dekodieren → Fenster → Merkmale → {n_models} Modelle",
 
     "live.title": "1 · Welcher Sensor hat was gesendet?", "live.th_sensor": "Sensor", "live.th_slot": "Zuordnung",
     "live.th_values": "Letzte Werte", "live.th_radio": "Funk", "live.th_seen": "Zuletzt", "live.th_uplinks": "Uplinks",
@@ -169,13 +185,13 @@ const I18N = {
     "replay.recording": "Aufzeichnung", "replay.speed": "Tempo", "replay.start_at": "Start bei",
     "replay.start": "▶ Wiedergabe starten", "replay.pause": "❚❚ Pause", "replay.resume": "▶ Weiter", "replay.stop": "■ Stopp",
     "replay.chart_head": "Phase im Zeitverlauf · oben: Annotation und jedes Modell, unten: Messwert",
-    "speed.600": "10 min / s", "speed.1800": "30 min / s", "speed.3600": "1 h / s", "speed.10800": "3 h / s", "speed.43200": "12 h / s",
+    "speed.600": "10 min / s", "speed.1800": "30 min / s", "speed.3600": "1 h / s", "speed.10800": "3 h / s", "speed.43200": "12 h / s", "speed.86400": "1 Tag / s", "speed.259200": "3 Tage / s", "speed.604800": "1 Woche / s",
     "signal.lse01_moisture": "LSE01 Feuchte", "signal.lse01_conductivity": "LSE01 Leitfähigkeit",
     "signal.lse01_temperature": "LSE01 Temperatur", "signal.ltcfs_temperature": "LTC-FS Temperatur",
     "signal.ltcfs_temperature_diff": "LTC-FS Temperatur − Luft",
     "replay.banner_html": "<span class=\"badge replay\">WIEDERGABE</span> Aufgezeichnete Daten, nicht live: <b>{group}</b> ({kind}, aufgezeichnet {from} – {to}). Wiedergabezeit <b>{now}</b> {state}",
-    "replay.state_paused_html": "· <b>PAUSIERT</b>", "replay.state_running": "mit {min} min Daten pro Sekunde",
-    "replay.state_finished": "· beendet", "replay.state_stopped": "· gestoppt",
+    "replay.state_paused_html": "· <b>PAUSIERT</b>", "replay.state_running": "mit {speed} (Daten pro Sekunde Echtzeit)",
+    "replay.state_complete": "· ganzer Lauf auf einmal vorhergesagt", "replay.state_finished": "· beendet", "replay.state_stopped": "· gestoppt",
     "replay.empty": "Aufzeichnung wählen und Wiedergabe starten.", "replay.train_first": "Zuerst die Modelle trainieren (siehe README).",
     "replay.timeline_empty": "Wiedergabe starten, um den Reifeverlauf zu sehen.", "replay.day": "Tag {n}",
     "rec.unlabeled": " (ohne Annotation, unabhängiger Lauf)", "rec.live": " (Live-Aufzeichnung)", "rec.lfs": " (LFS-Platzhalter – git lfs pull)",
@@ -186,14 +202,14 @@ const I18N = {
     "card.annotation": "Annotation", "card.annotation_note": "menschliche Einordnung aus der Aufzeichnung",
     "card.annotation_unmod": "Einordnung der UNVERÄNDERTEN Aufzeichnung an diesem Tag", "card.none_unlabeled": "keine (Lauf ohne Annotation)",
     "card.score_note": "Übereinstimmung mit der Annotation bisher ({n} Fenster)",
-    "agree.all": "Alle drei Modelle sind sich einig.", "agree.partial": "Die Modelle sind uneinig: zwei gegen eins.", "agree.none": "Alle drei Modelle sagen etwas anderes.",
+    "agree.all": "Alle {nm} Modelle sind sich einig.", "agree.partial": "Die Modelle sind uneinig: {k} von {n} sagen dieselbe Phase.", "agree.none": "Alle {nm} Modelle sagen etwas anderes.",
     "warn.ood": "{pct} % der Eingangsmerkmale liegen außerhalb des Trainingsbereichs. Diese Vorhersagen sind unzuverlässig.",
     "warn.seen": "Diese Modelle wurden mit dieser Aufzeichnung trainiert. Sie geben Trainingsdaten wieder, statt vorherzusagen.",
     "btn.explain": "🔍 Wie kam die Entscheidung zustande?",
 
-    "model.logreg": "Logistische Regression", "model.rf": "Random Forest", "model.mlp": "MLP (neuronales Netz)",
-    "short.logreg": "Log. Regr.", "short.rf": "Rand. Forest", "short.mlp": "MLP",
-    "kind.logreg": "linear · gut nachvollziehbar", "kind.rf": "Ensemble aus Entscheidungsbäumen · nichtlinear", "kind.mlp": "kleines neuronales Netz",
+    "model.logreg": "Logistische Regression", "model.rf": "Random Forest", "model.mlp": "MLP (neuronales Netz)", "model.hgb": "Gradient Boosting",
+    "short.logreg": "Log. Regr.", "short.rf": "Rand. Forest", "short.mlp": "MLP", "short.hgb": "Boosting",
+    "kind.logreg": "linear · gut nachvollziehbar", "kind.rf": "Ensemble aus Entscheidungsbäumen · nichtlinear", "kind.mlp": "kleines neuronales Netz", "kind.hgb": "Bäume nacheinander · jeder korrigiert den vorigen",
     "phase.0": "Umrötung", "phase.1": "Reifung Phase 1", "phase.2": "Reifung Phase 2",
 
     "val.conductivity": "Leitfähigkeit", "val.moisture": "Feuchte", "val.temp": "Temp.", "val.light": "Licht", "val.motion": "Bewegung",
@@ -234,7 +250,7 @@ const I18N = {
     "limits.1_html": "Alle annotierten Daten stammen aus <b>einem Reifedurchlauf</b> (fünf Würste). Die Bewertung trennt Würste, nicht Durchläufe, und ist für einen neuen Durchlauf daher vermutlich zu optimistisch.",
     "limits.2": "Jede Vorhersage nutzt ein kurzes Fenster der letzten Uplinks. Sie spiegelt das aktuelle Messniveau wider, nicht den gesamten Verlauf.",
     "limits.3": "Die Labels sind menschliche Phaseneinordnungen, keine gemessene Wahrheit über Lebensmittelsicherheit oder Qualität. Modellausgaben sind Schätzungen, keine Entscheidungen.",
-    "limits.4": "„Konfidenz“ ist die eigene Wahrscheinlichkeit des Modells, keine kalibrierte Garantie. Die drei Modelle sind unterschiedlich kalibriert, daher besser die Phasen vergleichen als die Prozentwerte.",
+    "limits.4": "„Konfidenz“ ist die eigene Wahrscheinlichkeit des Modells, keine kalibrierte Garantie. Die {nm} Modelle sind unterschiedlich kalibriert, daher besser die Phasen vergleichen als die Prozentwerte.",
     "footer": "Server läuft seit {min} min · Konfiguration: {cfg} · Gateway-URL: http://<laptop-ip>:<port>{path}",
     "footer.none": "keine",
 
@@ -252,11 +268,11 @@ const I18N = {
     "ex.s2_title": "Die {n} Zahlen, die die Modelle sehen",
     "ex.s2_text": "Für jedes Sensorsignal wird das Fenster zu wenigen Kennzahlen verdichtet: Niveau (Min., Mittel, Max.), Streuung, Trend und das Timing der Uplinks. Der Balken zeigt, wo jede Zahl innerhalb der Trainingsdaten liegt. Eine rote Markierung bedeutet: außerhalb von allem, was im Training vorkam.",
     "ex.range": "Trainingsbereich {lo} … {hi}",
-    "ex.s3_title": "Welche Signale zählten? (gleicher Test für alle drei Modelle)",
+    "ex.s3_title": "Welche Signale zählten? (gleicher Test für alle {nm} Modelle)",
     "ex.s3_text_html": "Wir blenden jeweils ein Sensorsignal aus, indem wir seine Zahlen durch einen typischen Trainingswert ersetzen, und beobachten, wie sicher sich jedes Modell noch ist. Ein langer Balken heißt: Das Modell hat sich auf dieses Signal gestützt. Graue Balken: Ohne das Signal war das Modell sich <i>sicherer</i>. Signale, die sich gemeinsam bewegen (etwa zwei Temperaturfühler), können sich gegenseitig ersetzen. Das ist also ein Hinweis, kein Beweis.",
     "ex.th_hidden": "Ausgeblendetes Signal", "ex.would_switch": "würde wechseln zu {phase}",
-    "ex.s4_title": "Im Inneren der Modelle: drei verschiedene Prinzipien",
-    "ex.s4_text": "Dieselben Zahlen gehen in drei sehr unterschiedliche Modellarten. Jede Spalte zeigt, was das Modell für diese Momentaufnahme tatsächlich berechnet hat.",
+    "ex.s4_title": "Im Inneren der Modelle: {nm} verschiedene Prinzipien",
+    "ex.s4_text": "Dieselben Zahlen gehen in {nm} sehr unterschiedliche Modellarten. Jede Spalte zeigt, was das Modell für diese Momentaufnahme tatsächlich berechnet hat.",
     "ex.seen": "Dieses Modell wurde mit dieser Aufzeichnung trainiert.",
     "ex.lr_text": "Jeder Eingangswert wird mit einem gelernten Gewicht multipliziert, die Produkte werden addiert. Eine höhere Summe bedeutet mehr Evidenz für die Phase.",
     "ex.lr_head": "Gewicht × Eingang = Evidenz für „{phase}“",
@@ -284,11 +300,17 @@ let LANG = (() => {
   return (navigator.language || "en").toLowerCase().startsWith("de") ? "de" : "en";
 })();
 
+// Number of exported models; set by the pages from /api/state. Texts use {n_models} (digits) and {nm} (word).
+let N_MODELS = 3;
+const NUMBER_WORDS = {en: ["no", "one", "two", "three", "four", "five", "six"],
+                      de: ["kein", "ein", "zwei", "drei", "vier", "fünf", "sechs"]};
+
 // Translate a key in the current language (fallback English, then the key) and fill {placeholders}.
 function t(key, params) {
   let s = (I18N[LANG] && I18N[LANG][key]) ?? I18N.en[key] ?? key;
-  if (params) s = s.replace(/\{(\w+)\}/g, (m, k) => (params[k] ?? m));
-  return s;
+  const nm = (NUMBER_WORDS[LANG] || NUMBER_WORDS.en)[N_MODELS] ?? String(N_MODELS);
+  const all = {n_models: N_MODELS, nm, ...params};
+  return s.replace(/\{(\w+)\}/g, (m, k) => (all[k] ?? m));
 }
 const LOCALE = () => (LANG === "de" ? "de-DE" : "en-GB");
 const fmtNum = (v, d = 0) => Number(v).toLocaleString(LOCALE(), {minimumFractionDigits: d, maximumFractionDigits: d});
@@ -298,5 +320,6 @@ function applyStaticI18n() {
   document.documentElement.lang = LANG;
   document.querySelectorAll("[data-i18n]").forEach((el) => (el.textContent = t(el.dataset.i18n)));
   document.querySelectorAll("[data-i18n-html]").forEach((el) => (el.innerHTML = t(el.dataset.i18nHtml + "_html")));
+  document.querySelectorAll("[data-i18n-title]").forEach((el) => (el.title = t(el.dataset.i18nTitle)));
   document.querySelectorAll("[data-lang]").forEach((b) => b.classList.toggle("active", b.dataset.lang === LANG));
 }

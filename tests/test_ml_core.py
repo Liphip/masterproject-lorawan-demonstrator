@@ -11,9 +11,10 @@ import pytest
 
 from ml_core import ModelPipeline, WindowFeatures
 from ml_core.conversion import classify_device, convert_all
-from ml_core.data import ALL_COLUMNS, FEATURE_ORDER, ROOT, add_temperature_difference
+from ml_core.data import ALL_COLUMNS, FEATURE_ORDER, ROOT, add_temperature_difference, load_recording
 from ml_core.training import (FEATURE_SETS, QUICK_GRIDS, augment_temperature, compare_feature_sets, feature_signal,
-                              load_hyperparameters, load_windows, save_hyperparameters, search_hyperparameters)
+                              load_hyperparameters, load_windows, save_hyperparameters, search_hyperparameters,
+                              train_and_evaluate)
 from synthetic_data import make_raw_workbooks
 
 
@@ -274,3 +275,27 @@ def test_augmented_copies_of_the_held_out_sausage_are_never_trained_on(synthetic
     assert held not in set(groups) and list(X.columns) == sel.columns
     n_orig = sum(len(sel.y[g]) for g in sel.recordings if g != held)
     assert len(y) > 2 * n_orig                                              # originals + two copies (minus dropout)
+
+
+# ── gradient boosting as an optional fourth model ───────────────────────────
+def test_gradient_boosting_trains_exports_and_explains(synthetic_dir, tmp_path):
+    from demonstrator.explain import explain
+    from demonstrator.inference import ModelRegistry
+    w = load_windows(str(synthetic_dir / "converted"), n_jobs=1, log=_quiet)
+    out = tmp_path / "models"
+    train_and_evaluate(w, str(out), keys=("logreg", "hgb"), quick=True, n_jobs=1, log=_quiet)
+    reg = ModelRegistry(str(out))
+    assert reg.ok and reg.keys == ["logreg", "hgb"]
+    rows = load_recording(str(synthetic_dir / "converted" / "series_1_sausage_1.csv"))[FEATURE_ORDER].iloc[200:210]
+    ex = explain(reg, rows, None)
+    d = ex["models"]["hgb"]["detail"]
+    assert d["kind"] == "boosting" and d["stages"] and len(d["stages"][-1]["proba"]) == len(d["classes"])
+    assert abs(sum(d["stages"][-1]["proba"]) - 1) < 1e-6
+
+
+def test_hyperparameters_of_other_models_are_kept(tmp_path, synthetic_dir):
+    w = load_windows(str(synthetic_dir / "converted"), n_jobs=1, log=_quiet).select("temperature_difference")
+    save_hyperparameters({"rf": {"params": {"n_estimators": 7}, "score": 0.5}}, w, str(tmp_path))
+    save_hyperparameters({"hgb": {"params": {"max_iter": 9}, "score": 0.6}}, w, str(tmp_path))
+    params, _, fs = load_hyperparameters(str(tmp_path))
+    assert params["rf"] == {"n_estimators": 7} and params["hgb"] == {"max_iter": 9} and fs == "temperature_difference"

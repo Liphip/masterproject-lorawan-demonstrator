@@ -16,7 +16,7 @@ import time
 import numpy as np
 import pandas as pd
 
-from ml_core.data import FEATURE_ORDER, is_lfs_pointer, load_recording, recording_name
+from ml_core.data import FEATURE_ORDER, is_lfs_pointer, load_recording, recording_name, window_labels
 
 from .inference import ModelRegistry
 
@@ -26,12 +26,47 @@ MAX_PREDICTIONS_PER_TICK = 4
 SERIES_POINTS = 1500
 
 
+_SPANS: dict[str, tuple[float, tuple]] = {}  # path -> (mtime, (start, end, labeled))
+
+
+def _span(path: str) -> tuple[str | None, str | None, bool]:
+    """(first timestamp, last timestamp, has a label column) of a converted CSV without reading it all.
+
+    Reads the header, the first data line and the last line only; cached per file modification time.
+    Used for readable names in the UI ("Run 1 · sausage 3 · Mar–Aug 2023").
+    """
+    mtime = os.path.getmtime(path)
+    if path in _SPANS and _SPANS[path][0] == mtime:
+        return _SPANS[path][1]
+    start = end = None
+    labeled = False
+    try:
+        with open(path, "rb") as fh:
+            header = fh.readline().decode("utf-8", "replace").strip().split(",")
+            first = fh.readline().decode("utf-8", "replace").strip().split(",")
+            fh.seek(0, os.SEEK_END)
+            fh.seek(max(fh.tell() - 4096, 0))
+            last = fh.read().decode("utf-8", "replace").strip().splitlines()[-1].split(",")
+        i = header.index("timestamp")
+        start, end = (first[i] or None), (last[i] or None)
+        labeled = "label" in header
+    except (OSError, ValueError, IndexError):
+        pass
+    _SPANS[path] = (mtime, (start, end, labeled))
+    return start, end, labeled
+
+
 def list_recordings(dirs: list[str]) -> list[dict]:
-    """All CSV recordings in `dirs` (converted training data and live recordings), with a Git LFS check."""
+    """All CSV recordings in `dirs` (converted training data and live recordings), with a Git LFS check.
+
+    Each entry: group (file name without .csv), path, lfs_pointer, kind, start, end (ISO timestamps or None).
+    """
     out = []
     for d in dirs:
         for p in sorted(glob.glob(os.path.join(d, "*.csv"))):
-            out.append({"group": recording_name(p), "path": p, "lfs_pointer": is_lfs_pointer(p),
+            lfs = is_lfs_pointer(p)
+            start, end, _ = (None, None, False) if lfs else _span(p)
+            out.append({"group": recording_name(p), "path": p, "lfs_pointer": lfs, "start": start, "end": end,
                         "kind": "live recording" if os.path.basename(p).startswith("live_") else "training data"})
     return out
 
@@ -81,7 +116,7 @@ class ReplayEngine:
         """Clear status, plotted series, prediction history and running score."""
         self.status = {"running": False, "group": None, "speed": None, "progress": 0.0,
                        "data_time": None, "start": None, "end": None, "labeled": False,
-                       "rows": 0, "error": None, "finished": False, "paused": False}
+                       "rows": 0, "error": None, "finished": False, "paused": False, "complete": False}
         self.series = Decimated(SERIES_POINTS * 3)  # rows of all sensors interleaved
         self.history = Decimated(SERIES_POINTS)
         self.latest: dict | None = None
@@ -92,8 +127,12 @@ class ReplayEngine:
         """Recordings available for replay."""
         return list_recordings(self.dirs)
 
-    def start(self, group: str, speed: float = 1800.0, start_fraction: float = 0.0):
-        """Stop any running replay and start `group` at `speed`, from `start_fraction` (0..1) of the run."""
+    def start(self, group: str, speed: float = 1800.0, start_fraction: float = 0.0, complete: bool = False):
+        """Stop any running replay and start `group` at `speed`, from `start_fraction` (0..1) of the run.
+
+        complete=True skips the animation: the whole run is predicted at once (batch, a few seconds) and shown as
+        finished, with the full timeline.
+        """
         rec = next((r for r in self.recordings() if r["group"] == group), None)
         if rec is None:
             raise ValueError(f"unknown recording {group}")
@@ -106,11 +145,12 @@ class ReplayEngine:
             self.reset()
             self.status.update(running=True, group=group, speed=float(speed), labeled=bool(labeled),
                                start=df["timestamp"].iloc[0].isoformat(),
-                               end=df["timestamp"].iloc[-1].isoformat(), kind=rec["kind"])
+                               end=df["timestamp"].iloc[-1].isoformat(), kind=rec["kind"], complete=bool(complete))
         self._stop.clear()
         self._paused.clear()
-        self._thread = threading.Thread(target=self._run, args=(df, group, float(speed), float(start_fraction)),
-                                        daemon=True, name="replay")
+        target = self._complete if complete else self._run
+        args = (df, group) if complete else (df, group, float(speed), float(start_fraction))
+        self._thread = threading.Thread(target=target, args=args, daemon=True, name="replay")
         self._thread.start()
 
     def stop(self):
@@ -139,6 +179,50 @@ class ReplayEngine:
             self._loop(df, group, speed, start_fraction)
         except Exception as e:  # noqa: BLE001
             log.exception("replay failed")
+            with self.lock:
+                self.status.update(running=False, error=repr(e))
+
+    def _complete(self, df: pd.DataFrame, group: str):
+        """Whole run at once: batch prediction of every window, then the same state as a finished replay."""
+        try:
+            ws, st = self.models.window_size, self.models.stride
+            feats = df[FEATURE_ORDER]
+            n_win = (len(df) - ws) // st + 1 if len(df) >= ws else 0
+            if n_win <= 0:
+                raise ValueError(f"{group} has fewer than {ws} uplinks")
+            ends = np.arange(n_win) * st + ws - 1                     # last row of each window
+            times = df["timestamp"].iloc[ends].reset_index(drop=True)
+            truth = (window_labels(df["label"], ws, st) if "label" in df.columns and df["label"].notna().any()
+                     else np.full(n_win, None, dtype=object))
+            preds = {}
+            for key in self.models.keys:
+                pipe, _ = self.models.model_for(key, group)
+                proba = pipe.predict_proba(feats)                      # one row per window, same windows as replay
+                preds[key] = np.asarray(pipe.classes_, dtype=object)[proba.argmax(axis=1)]
+            with self.lock:
+                for k in range(len(df)):
+                    r = df.iloc[k] if k % 4 == 0 else None             # thinning: every 4th row is plenty here
+                    if r is None or r["sensor"] == "ws202":
+                        continue
+                    self.series.append({"t": r["timestamp"].isoformat(), "sensor": r["sensor"],
+                                        **{c: float(r[c]) for c in FEATURE_ORDER[2:] if pd.notna(r[c])}})
+                for w in range(n_win):
+                    t = truth[w] if isinstance(truth[w], str) else None
+                    self.history.append({"t": times[w].isoformat(), "truth": t,
+                                         **{key: preds[key][w] for key in preds}})
+                scored = [w for w in range(n_win) if isinstance(truth[w], str)]
+                if scored:
+                    self.running_score = {key: float(np.mean([preds[key][w] == truth[w] for w in scored]))
+                                          for key in preds} | {"n": len(scored)}
+            last = feats.iloc[ends[-1] + 1 - ws:ends[-1] + 1]
+            res = self.models.predict(last, group=group)
+            res.update(time=times.iloc[-1].isoformat(), truth=truth[-1] if isinstance(truth[-1], str) else None)
+            with self.lock:
+                self.latest, self.latest_window = res, last.copy()
+                self.status.update(running=False, finished=True, progress=1.0, rows=len(df), complete=True,
+                                   data_time=df["timestamp"].iloc[-1].isoformat())
+        except Exception as e:  # noqa: BLE001
+            log.exception("complete replay failed")
             with self.lock:
                 self.status.update(running=False, error=repr(e))
 

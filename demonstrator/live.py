@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import csv
 import datetime as dt
+import glob
 import json
 import logging
 import os
@@ -18,6 +19,8 @@ from .decoders import DecodeError, decode_values, extract_envelope
 from .inference import ModelRegistry
 
 log = logging.getLogger(__name__)
+# After a restart, rows younger than this are loaded back from the recordings, so predictions continue at once.
+RESTORE_MAX_AGE = dt.timedelta(hours=6)
 
 
 def utcnow() -> dt.datetime:
@@ -44,10 +47,12 @@ class LiveState:
         self.uplinks = 0
         self.errors = deque(maxlen=20)
         self.last_uplink_at: str | None = None
+        self._file_lock = threading.Lock()  # uplinks arrive in parallel threads; one writer per file at a time
         for d in cfg.devices:
             self.devices[normalize_eui(d.dev_eui)] = self._device_entry(d.dev_eui, d.name, d.type, d.slot, True)
         for s in cfg.slots:
             self.slot_rows[s] = deque(maxlen=500)
+        self._restore()
 
     @staticmethod
     def _device_entry(eui, name, typ, slot, configured):
@@ -64,6 +69,8 @@ class LiveState:
         sent back to the gateway / test script.
         """
         now = utcnow()
+        if self.cfg.record_live and source == "live":
+            self._record_raw(now, msg)  # every uplink, before anything can fail (unknown devices, decode errors)
         env = extract_envelope(msg)
         eui = normalize_eui(env["dev_eui"])
         if not eui:
@@ -110,7 +117,7 @@ class LiveState:
                 self.slot_rows.setdefault(dev_cfg.slot, deque(maxlen=500)).append(row)
                 affected = [dev_cfg.slot]
         if self.cfg.record_live and source == "live":
-            self._record(row, affected, msg)
+            self._record(row, affected)
         for slot in affected:
             self._predict(slot)
         return {"accepted": True, "mapped": True, "values": values}
@@ -121,25 +128,70 @@ class LiveState:
             self.errors.appendleft({"time": utcnow().isoformat(), "error": text})
 
     # ── recording (same schema as data/converted → replayable) ──────────────
-    def _record(self, row: dict, slots: list[str], raw: dict):
+    def _record_raw(self, now: dt.datetime, msg: dict):
+        """Append the uplink exactly as received to data/recordings/raw_<day>.jsonl (all devices, also unknown ones
+        and those that fail to decode). The source of truth: CSVs can be rebuilt from it if a decoder was wrong."""
+        try:
+            os.makedirs(self.cfg.recordings_dir, exist_ok=True)
+            path = os.path.join(self.cfg.recordings_dir, f"raw_{now:%Y%m%d}.jsonl")
+            line = json.dumps({"received": now.isoformat(), "uplink": msg}, ensure_ascii=False) + "\n"
+            with self._file_lock:
+                _append(path, line)
+        except (OSError, TypeError, ValueError) as e:
+            self._error(f"recording failed: {e}")
+
+    def _record(self, row: dict, slots: list[str]):
         """Append a decoded uplink to data/recordings/live_<day>_<slot>.csv (training-data schema, so it can be
-        replayed) and the raw uplink to raw_<day>.jsonl (to check decoders later).
-        """
+        replayed). WS202 rows go to every slot's file, as in the training data."""
         try:
             os.makedirs(self.cfg.recordings_dir, exist_ok=True)
             day = row["timestamp"].strftime("%Y%m%d")
             for slot in slots:
                 p = os.path.join(self.cfg.recordings_dir, f"live_{day}_{slot}.csv")
-                new = not os.path.exists(p)
-                with open(p, "a", newline="") as fh:
-                    w = csv.DictWriter(fh, fieldnames=ALL_COLUMNS, extrasaction="ignore")
-                    if new:
-                        w.writeheader()
-                    w.writerow({**row, "timestamp": row["timestamp"].isoformat()})
-            with open(os.path.join(self.cfg.recordings_dir, f"raw_{day}.jsonl"), "a") as fh:
-                fh.write(json.dumps({"received": row["timestamp"].isoformat(), "uplink": raw}) + "\n")
+                with self._file_lock:
+                    new = not os.path.exists(p) or os.path.getsize(p) == 0
+                    with open(p, "a", newline="", encoding="utf-8") as fh:
+                        w = csv.DictWriter(fh, fieldnames=ALL_COLUMNS, extrasaction="ignore")
+                        if new:
+                            w.writeheader()
+                        w.writerow({**row, "timestamp": row["timestamp"].isoformat()})
+                        fh.flush()
+                        os.fsync(fh.fileno())
         except OSError as e:
             self._error(f"recording failed: {e}")
+
+    def _restore(self):
+        """Load the latest recorded rows of every slot (younger than RESTORE_MAX_AGE) after a restart.
+
+        Rows are taken from the newest live_<day>_<slot>.csv; the WS202 rows in it refill the shared environment rows.
+        Devices themselves reappear with their next uplink.
+        """
+        cutoff = pd.Timestamp(utcnow() - RESTORE_MAX_AGE)
+        env = {}
+        for slot in list(self.slot_rows):
+            files = sorted(glob.glob(os.path.join(self.cfg.recordings_dir, f"live_*_{slot}.csv")))
+            if not files:
+                continue
+            try:
+                df = pd.read_csv(files[-1], parse_dates=["timestamp"])
+            except (OSError, ValueError, pd.errors.ParserError) as e:
+                self._error(f"could not restore {os.path.basename(files[-1])}: {e}")
+                continue
+            df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
+            df = df[df["timestamp"] >= cutoff]
+            for r in df.to_dict("records"):
+                r = {k: v for k, v in r.items() if not (isinstance(v, float) and pd.isna(v))}
+                if r.get("sensor") == "ws202":
+                    env[r["timestamp"]] = r
+                else:
+                    self.slot_rows[slot].append(r)
+        for t in sorted(env):
+            self.env_rows.append(env[t])
+        restored = sum(len(v) for v in self.slot_rows.values())
+        if restored:
+            log.info("restored %d recorded rows from %s", restored, self.cfg.recordings_dir)
+            for slot in list(self.slot_rows):
+                self._predict(slot)
 
     # ── inference ───────────────────────────────────────────────────────────
     def window_rows(self, slot: str) -> pd.DataFrame:
@@ -189,3 +241,11 @@ class LiveState:
                 "uplinks": self.uplinks, "last_uplink_at": self.last_uplink_at,
                 "errors": list(self.errors)[:10],
             }
+
+
+def _append(path: str, text: str):
+    """Append text and force it to disk (an uplink arrives about once a minute, so fsync costs nothing)."""
+    with open(path, "a", encoding="utf-8") as fh:
+        fh.write(text)
+        fh.flush()
+        os.fsync(fh.fileno())

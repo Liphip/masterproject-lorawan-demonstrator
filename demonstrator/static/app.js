@@ -34,7 +34,7 @@ function renderDevices(live) {
     return `<tr class="${fresh ? "fresh" : ""} ${d.configured ? "" : "unconfigured"}">
       <td>${esc(d.name)}<br><span class="eui">${esc(d.type)} · ${esc(d.dev_eui)}</span>
         ${d.configured ? "" : `<br><span class="err-text">${t("live.not_in_config")}</span>`}</td>
-      <td>${esc(d.slot)}</td>
+      <td>${esc(slotName(d.slot))}</td>
       <td>${vals || `<span class="muted">${t("live.waiting")}</span>`}
         ${d.last_error ? `<br><span class="err-text">${esc(d.last_error)}</span>` : ""}
         ${d.decode_method ? `<br><span class="muted">${t(d.decode_method === "codec" ? "live.decoded_codec" : "live.decoded_builtin")}</span>` : ""}</td>
@@ -82,7 +82,7 @@ function modelCards(pred, models, opts = {}) {
   if (pred.compatible === false) warn += `<div class="banner warn">${t("warn.ood", {pct: fmtNum(pred.ood_fraction * 100)})}</div>`;
   if (pred.any_model_saw_data && !opts.simulated) warn += `<div class="banner warn">${t("warn.seen")}</div>`;
   const btn = opts.explain ? `<div class="explain-row"><button class="explain-btn" data-src="${opts.explain}">${t("btn.explain")}</button></div>` : "";
-  return `<div class="agree">${t("agree." + pred.agreement)}</div>${warn}<div class="models">${cards.join("")}</div>${btn}`;
+  return `<div class="agree">${agreeText(pred)}</div>${warn}<div class="models">${cards.join("")}</div>${btn}`;
 }
 
 // ── timeline ───────────────────────────────────────────────────────────────
@@ -143,15 +143,18 @@ function renderReplay(st) {
   if (s.running && s.group && $("#rec").value !== s.group && document.activeElement !== $("#rec")) $("#rec").value = s.group;
   if (s.group) {
     banner.hidden = false;
-    const state = s.paused ? t("replay.state_paused_html") : s.running ? t("replay.state_running", {min: Math.round(s.speed / 60)})
+    const speed = t("speed." + Math.round(s.speed || 0));
+    const state = s.complete ? (s.running ? t("replay.computing") : t("replay.state_complete"))
+      : s.paused ? t("replay.state_paused_html") : s.running ? t("replay.state_running", {speed: speed.startsWith("speed.") ? `${fmtNum(s.speed / 3600, 1)} h / s` : speed})
       : s.finished ? t("replay.state_finished") : t("replay.state_stopped");
-    banner.innerHTML = t("replay.banner_html", {group: esc(s.group), kind: esc(t("kind." + (s.kind || ""))),
+    banner.innerHTML = t("replay.banner_html", {group: esc(recName(s.group)), kind: esc(t("kind." + (s.kind || ""))),
       from: fmtDate(s.start), to: fmtDate(s.end), now: s.data_time ? fmtDateTime(s.data_time) : "–", state})
       + (s.error ? `<br><span class="err-text">${esc(s.error)}</span>` : "");
   } else banner.hidden = true;
   $("#progress-bar").style.width = `${Math.min(100, (s.progress || 0) * 100).toFixed(1)}%`;
   $("#btn-start").disabled = !st.models.ok;
-  $("#btn-pause").disabled = !s.running;
+  $("#btn-pause").disabled = !s.running || s.complete;
+  $("#btn-complete").disabled = !st.models.ok || (s.running && s.complete);
   $("#btn-pause").textContent = t(s.paused ? "replay.resume" : "replay.pause");
   $("#replay-models").innerHTML = modelCards(rep.latest, models, {
     truth: rep.latest ? rep.latest.truth : null, showTruth: !!rep.latest, score: rep.running_score, explain: "replay",
@@ -168,7 +171,7 @@ function renderLive(st) {
   $("#ambient-note").hidden = !(signals && signals.some((s) => s.endsWith("_diff")));
   const sel = $("#slot");
   const slots = st.live.slots;
-  if (sel.options.length !== slots.length) sel.innerHTML = slots.map((s) => `<option>${esc(s)}</option>`).join("");
+  if (sel.options.length !== slots.length) sel.innerHTML = slots.map((s) => `<option value="${esc(s)}">${esc(slotName(s))}</option>`).join("");
   $("#live-models").innerHTML = modelCards(st.live.predictions[sel.value], st.models.models || [],
     {empty: t("livetab.empty"), explain: "live"});
 }
@@ -236,12 +239,13 @@ ${hasOrder ? `<td class="num">${order(r)}</td>` : ""}</tr>`;
 // Fetch the recordings for the replay and simulation pickers.
 async function loadRecordings() {
   RECORDINGS = await api("/api/recordings");
+  setRecordings(RECORDINGS);
   renderRecordings(true);
 }
 // Fill the recording pickers; initial=true also selects a sensible default.
 function renderRecordings(initial) {
   if (!RECORDINGS) return;
-  const opts = RECORDINGS.map((r) => `<option value="${esc(r.group)}" ${r.lfs_pointer ? "disabled" : ""}>${esc(r.group)}${r.group.startsWith("series_2") ? t("rec.unlabeled") : ""}${r.kind === "live recording" ? t("rec.live") : ""}${r.lfs_pointer ? t("rec.lfs") : ""}</option>`).join("");
+  const opts = recOptions(RECORDINGS);
   for (const id of ["#rec", "#sim-rec"]) {
     const prev = $(id).value;
     $(id).innerHTML = opts;
@@ -268,6 +272,9 @@ $("#btn-start").addEventListener("click", async () => {
     await post("/api/replay/start", {group: $("#rec").value, speed: Number($("#speed").value), start_fraction: Number($("#startpos").value) / 100});
   } catch (e) { alert(e.message); }
 });
+$("#btn-complete").addEventListener("click", async () => {
+  try { await post("/api/replay/start", {group: $("#rec").value, complete: true}); } catch (e) { alert(e.message); }
+});
 $("#btn-pause").addEventListener("click", () => post("/api/replay/pause", {paused: !(STATE && STATE.replay.status.paused)}));
 $("#btn-stop").addEventListener("click", () => post("/api/replay/stop"));
 $("#signal").addEventListener("change", () => STATE && renderTimeline(STATE.replay, STATE.models.models || []));
@@ -279,6 +286,8 @@ $("#ambient").addEventListener("change", async (e) => {
 // Render everything from one /api/state snapshot.
 function render(st) {
   STATE = st;
+  const n = (st.models.models || []).length;
+  if (n && n !== N_MODELS) { N_MODELS = n; applyStaticI18n(); }
   renderChips(st);
   renderDevices(st.live);
   if ($("#explain").hidden) {
@@ -373,7 +382,7 @@ function renderExplain(ex) {
     ? ` · ${t(ex.source === "simulate" ? "ex.annotation_unmod" : "ex.annotation")}: <b>${esc(phaseName(ex.truth))}</b>` : "";
   const adj = ex.adjust ? ` · ${t("ex.changes", {dm: signed(ex.adjust.moisture_delta), cf: fmtNum(ex.adjust.conductivity_factor, 2),
                                                   dt: signed(ex.adjust.temperature_delta)})}` : "";
-  $("#ex-meta").innerHTML = `${badge} ${esc(ex.group || "")} · ${t("ex.snapshot", {time: ex.time ? fmtDateTime(ex.time) : "–"})}${truthTxt}${adj}`;
+  $("#ex-meta").innerHTML = `${badge} ${esc(ex.source === "live" ? slotName(ex.group) : recName(ex.group || ""))} · ${t("ex.snapshot", {time: ex.time ? fmtDateTime(ex.time) : "–"})}${truthTxt}${adj}`;
 
   // step 1 · uplinks
   const ups = ex.uplinks.map((u) => `<tr><td>${fmtTime(u.time)}</td><td>${esc(u.sensor)}</td>
@@ -416,6 +425,7 @@ function renderExplain(ex) {
     let body = "", principle = "";
     if (d.kind === "weighted_sum") { body = exLogreg(d, m); principle = t("ex.lr_text"); }
     else if (d.kind === "votes") { body = exForest(d, m); principle = t("ex.rf_text", {n: d.n_trees}); }
+    else if (d.kind === "boosting") { body = exBoost(d, m); principle = t("ex.hgb_text", {t: d.trees}); }
     else if (d.kind === "network") {
       body = exNet(d, m);
       principle = t("ex.mlp_text", {l: d.layers.length - 2, p: d.n_params.toLocaleString(LOCALE())});
@@ -455,6 +465,17 @@ function exForest(d, m) {
     <div class="votes">${grid}</div>
     <div class="muted" style="font-size:.75rem">${t("ex.rf_head", {d: d.max_depth})}</div>
     ${contribRows(d.top, max, (v) => (v >= 0 ? "+" : "−") + fmtNum(Math.abs(v) * 100, 1))}`;
+}
+// Gradient boosting detail: probability of each phase as trees are added (one line per phase).
+function exBoost(d) {
+  const W = 260, H = 110, n = d.stages.length;
+  const x = (i) => (n > 1 ? i / (n - 1) : 0) * (W - 10) + 5, y = (p) => H - 12 - p * (H - 22);
+  const lines = d.classes.map((c, j) => `<polyline fill="none" stroke="${phaseColor(c)}" stroke-width="2"
+    points="${d.stages.map((st, i) => `${x(i).toFixed(1)},${y(st.proba[j]).toFixed(1)}`).join(" ")}"/>`).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" class="boost" role="img" aria-label="${esc(t("ex.hgb_axis"))}">
+    <line x1="5" x2="${W - 5}" y1="${y(0.5)}" y2="${y(0.5)}" stroke="#ccc" stroke-dasharray="3 3"/>${lines}
+    <text x="${W - 5}" y="${H - 1}" text-anchor="end" font-size="9" fill="#888">${esc(t("ex.hgb_axis"))} ${d.n_iter}</text></svg>
+    <div class="legend">${[...d.classes].sort((a, b) => phaseIndex(a) - phaseIndex(b)).map((c) => `<span><span class="dot" style="background:${phaseColor(c)}"></span>${esc(phaseName(c))}</span>`).join("")}</div>`;
 }
 // MLP detail: activations per layer as small squares.
 function exNet(d, m) {

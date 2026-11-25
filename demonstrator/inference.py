@@ -180,8 +180,10 @@ class ModelRegistry:
                                   "proba": {c: float(p) for c, p in zip(classes, proba)},
                                   "ms": ms, "model_saw_this_recording": seen}
             out["any_model_saw_data"] |= seen
-        labels = {m["label"] for m in out["models"].values()}
-        out["agreement"] = "all" if len(labels) == 1 else ("none" if len(labels) == len(out["models"]) else "partial")
+        labels = [m["label"] for m in out["models"].values()]
+        out["agreement_count"] = max(labels.count(x) for x in labels)  # size of the largest group of equal answers
+        out["agreement"] = ("all" if out["agreement_count"] == len(labels)
+                            else "none" if out["agreement_count"] == 1 else "partial")
         out["values"] = latest_values(rows)
         out["ood_fraction"] = self.ood_fraction(rows)
         out["compatible"] = out["ood_fraction"] <= OOD_THRESHOLD

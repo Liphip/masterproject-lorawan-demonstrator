@@ -197,3 +197,71 @@ def test_presentation_and_detail_pages(client):
     v = res["values"]                     # the measurement tiles of the presentation view
     assert {"lse01_moisture", "lse01_conductivity", "ltcfs_temperature", "ambient_temperature"} <= set(v)
     assert 0 < v["lse01_moisture"] < 100 and -30 < v["ambient_temperature"] < 50
+
+
+# ── whole run at once ───────────────────────────────────────────────────────
+def test_replay_whole_run_at_once(client):
+    """complete=true predicts every window in one batch and ends in the same state as a finished replay."""
+    r = client.post("/api/replay/start", json={"group": "series_1_sausage_2", "complete": True})
+    assert r.status_code == 200, r.text
+    for _ in range(100):
+        rep = client.get("/api/state").json()["replay"]
+        if rep["status"]["finished"] or rep["status"]["error"]:
+            break
+        time.sleep(0.1)
+    st = rep["status"]
+    assert st["finished"] and st["complete"] and st["progress"] == 1.0 and not st["error"]
+    assert len(rep["history"]) > 50 and {"logreg", "rf", "mlp", "truth"} <= set(rep["history"][0])
+    assert rep["running_score"]["n"] > 50 and all(0 <= rep["running_score"][k] <= 1 for k in ("logreg", "rf", "mlp"))
+    assert rep["latest"]["ready"] and not rep["latest"]["any_model_saw_data"]   # fold models, as in the replay
+    assert client.get("/api/explain?source=replay").json()["ready"]
+
+
+def test_recordings_have_spans_for_readable_names(client):
+    recs = {r["group"]: r for r in client.get("/api/recordings").json()}
+    r = recs["series_1_sausage_1"]
+    assert r["start"] < r["end"] and r["start"].startswith("20")
+
+
+# ── persistent recording of case uplinks ────────────────────────────────────
+def _uplinks(i):
+    return [{"devEUI": "A840410000000001", "object": {"water_SOIL": 50 - i, "temp_SOIL": 15, "conduct_SOIL": 4000}},
+            {"deviceInfo": {"devEui": "a840410000000002"}, "object": {"TempC1": 15.2}},
+            {"devEUI": "24e1240000000000", "object": {"pir": 0, "daylight": 1}}][i % 3]
+
+
+def test_uplinks_are_stored_and_restored_after_restart(trained, tmp_path):
+    import glob
+    import json
+    rec_dir = tmp_path / "rec"
+    cfg = Config(models_dir=str(trained / "models"), replay_dirs=[str(trained / "converted")],
+                 recordings_dir=str(rec_dir),
+                 devices=[Device("A840410000000001", "W1 LSE01", "lse01", "sausage_1"),
+                          Device("A840410000000002", "W1 LTC", "ltcfs", "sausage_1"),
+                          Device("24E1240000000000", "Env", "ws202", "environment")])
+    with TestClient(create_app(cfg)) as c:
+        for i in range(12):
+            c.post("/ingest/uplink", json=_uplinks(i))
+        c.post("/ingest/uplink", json={"devEUI": "FFFF000000000009", "object": {"x": 1}})        # unknown device
+        c.post("/ingest/uplink?source=test", json=_uplinks(0))                                   # test: not stored
+        before = c.get("/api/state").json()["live"]["predictions"]["sausage_1"]
+    raw = [json.loads(line) for f in glob.glob(str(rec_dir / "raw_*.jsonl")) for line in open(f)]
+    assert len(raw) == 13                                                     # every live uplink, incl. the unknown one
+    assert any(r["uplink"].get("devEUI") == "FFFF000000000009" for r in raw)
+    csvs = glob.glob(str(rec_dir / "live_*_sausage_1.csv"))
+    assert len(csvs) == 1 and len(open(csvs[0]).read().splitlines()) == 1 + 12   # header + 12 decoded rows
+    # restart: the recorded rows come back and the prediction is there without a new uplink
+    with TestClient(create_app(cfg)) as c:
+        after = c.get("/api/state").json()["live"]["predictions"]["sausage_1"]
+    assert after["ready"] and {k: m["label"] for k, m in after["models"].items()} == \
+        {k: m["label"] for k, m in before["models"].items()}
+
+
+def test_agreement_counts_the_largest_group(client):
+    st = None
+    for i in range(12):
+        client.post("/ingest/uplink", json=_uplinks(i))
+    st = client.get("/api/state").json()["live"]["predictions"]["sausage_1"]
+    labels = [m["label"] for m in st["models"].values()]
+    assert st["agreement_count"] == max(labels.count(x) for x in labels)
+    assert st["agreement"] == ("all" if st["agreement_count"] == 3 else "none" if st["agreement_count"] == 1 else "partial")

@@ -35,12 +35,16 @@
 
   <div class="s-controls" id="c-replay">
     <button class="s-play primary" id="s-play">▶</button>
+    <button class="s-play" id="s-complete" data-i18n-title="replay.complete_title">⏭</button>
     <div class="s-progress"><div id="s-bar"></div></div>
     <select id="s-rec" aria-label="Recording"></select>
     <select id="s-speed" aria-label="Speed">
       <option value="3600" data-i18n="speed.3600">1 h / s</option>
       <option value="10800" data-i18n="speed.10800">3 h / s</option>
-      <option value="43200" selected data-i18n="speed.43200">12 h / s</option>
+      <option value="43200" data-i18n="speed.43200">12 h / s</option>
+      <option value="86400" selected data-i18n="speed.86400">1 day / s</option>
+      <option value="259200" data-i18n="speed.259200">3 days / s</option>
+      <option value="604800" data-i18n="speed.604800">1 week / s</option>
     </select>
   </div>
   <div class="s-controls s-sliders" id="c-sim" hidden>

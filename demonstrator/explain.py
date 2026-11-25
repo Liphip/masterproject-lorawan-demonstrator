@@ -8,8 +8,9 @@ Two kinds of explanation, on purpose:
   model, so the bars are comparable side by side.
 * "How this model computes" is model-specific and exact for the model at hand:
   the weighted sum of the logistic regression, the votes and split
-  contributions of the random forest (Saabas method), and the neuron
-  activations of the MLP. These show the three different principles.
+  contributions of the random forest (Saabas method), the neuron
+  activations of the MLP, and (if exported) how gradient boosting builds
+  its answer round by round. These show the different principles.
 
 Occlusion and Saabas contributions are approximations of "importance";
 correlated signals share credit unpredictably. The UI says so.
@@ -123,6 +124,17 @@ def _mlp(clf, xs, k):
             "n_params": n_params, "activation": clf.activation}
 
 
+def _boosting(clf, xs, k):
+    """Gradient boosting: how the probability of each phase develops as the trees are added one after another
+    (staged predictions at about 30 points), plus the size of the ensemble. Shows the principle (each round
+    corrects the previous ones) without claiming per-feature importance."""
+    stages = list(clf.staged_predict_proba(xs))
+    picks = sorted(set(np.linspace(0, len(stages) - 1, min(30, len(stages))).round().astype(int)))
+    return {"kind": "boosting", "classes": [str(c) for c in clf.classes_], "n_iter": int(clf.n_iter_),
+            "trees": int(clf.n_iter_ * clf.n_trees_per_iteration_),
+            "stages": [{"iter": int(i + 1), "proba": [float(p) for p in stages[i][0]]} for i in picks]}
+
+
 def _logit(p: float, eps: float = 1e-6) -> float:
     """log(p / (1 − p)), clipped so that 0 and 1 stay finite."""
     p = min(max(float(p), eps), 1 - eps)
@@ -176,6 +188,8 @@ def explain_model(pipe, key: str, rows: pd.DataFrame) -> dict:
         detail = _forest(clf, xs, names, k)
     elif key == "mlp":
         detail = _mlp(clf, xs, k)
+    elif key == "hgb":
+        detail = _boosting(clf, xs, k)
     else:
         detail = {"kind": "none"}
     return {"label": classes[k], "proba": {c: float(v) for c, v in zip(classes, p)},

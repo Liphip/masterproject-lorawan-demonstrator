@@ -33,8 +33,9 @@
 
 ## 3 · Demonstration
 
-**Short version (presentation view, `http://localhost:8000/`, 2–3 min).** *Aufgezeichnete Wurst* → ▶: the phase
-advances, the three models move with it, the "Metzger" tag shows the butcher's annotation. *Virtuelle Wurst*: drag the
+**Short version (presentation view, `http://localhost:8000/`, 2–3 min).** *Aufgezeichnete Wurst* → ▶ (default
+1 day / s, a whole run in about 2 min; up to 1 week / s) or ⏭ for the finished run at once: the phase advances, the
+models move with it, the "Metzger" tag shows the butcher's annotation. *Virtuelle Wurst*: drag the
 day, then *trockener ↔ feuchter*. *Live-Sensoren*: set the room temperature, hold a probe. **Details →** leads to the
 full dashboard below for questions.
 
@@ -44,20 +45,26 @@ full dashboard below for questions.
 |---|---|---|
 | 0 · Before guests arrive | Power the router, then the gateway, then the laptop. Run `scripts\start_demo.ps1`. Pick the audience's language (DE/EN, top right). Set the air temperature of the room in the *Live sensors* tab (the case has no air sensor). Wait for a green "Gateway: last uplink …" chip. If the sensors send rarely, press the sensor button to force an uplink. | – |
 | 1 · Data path | Point at the strip at the top and at panel 1 (sensor, values, RSSI). | LoRa radio → gateway (network server) → router (stands in for the Internet) → laptop. Nothing leaves the case. |
-| 2 · AI comparison | Panel 2 → *Recorded run*. Pick a `series_1` sausage, 1 h/s, start. Show the three cards, the annotation card and the timeline lanes. | Replay because curing takes days. The models never saw this sausage. Look at where they disagree: at phase transitions. |
-| 2b · Why? | At a phase transition press **❚❚ Pause**, then **🔍 How was this decided?** Walk through the 4 steps: uplinks → 29 numbers → which signals mattered → inside each model. **Close & resume replay** continues. | The same numbers, three principles: a weighted sum, 100 trees voting, a small neural network. Step 3 shows whether they rely on the same signals. |
+| 2 · AI comparison | Panel 2 → *Recorded run*. Pick a sausage of *Durchgang 1* (with annotation), 1 h/s to 1 day/s, start; or **⏭ Whole run** to show the finished timeline at once. Show the three cards, the annotation card and the timeline lanes. | Replay because curing takes days. The models never saw this sausage. Look at where they disagree: at phase transitions. |
+| 2b · Why? | At a phase transition press **❚❚ Pause**, then **🔍 How was this decided?** Walk through the 4 steps: uplinks → 24 numbers → which signals mattered → inside each model. **Close & resume replay** continues. | The same numbers, three principles: a weighted sum, 100 trees voting, a small neural network. Step 3 shows whether they rely on the same signals. |
 | 2c · Virtual sausage | Tab *Virtual sausage (simulate)*. Move **Day of curing**, then try the presets *Dried out* / *Too warm*, or ask the audience what to change. Use **How was this decided?** on any setting. | There is no sausage in the case, so we take a real recorded day and ask "what if". The models react differently, and the out-of-range warning shows when we leave what they know. |
 | 3 · Interpretation | Panel 3: balanced accuracy, latency (ms on CPU), model size. Then panel 4. | Small models are enough here: they run in milliseconds on a laptop with no GPU and no cloud. The scores come from one run, so they are optimistic. |
 | 4 · Live, optional | Panel 2 → *Live sensors*. Hold the LTC-FS probe in your hand. Optionally put the LSE01 probe into a glass of tap water, then salt water (check the probe's IP rating first). | The live chain works end to end: watch conductivity jump within one uplink. The models flag this as outside the training range instead of inventing a curing phase. That is an honest system. |
 
-Replaying the unlabeled `series_2_*` (an independent run, no annotation) shows the models on a run they have never seen.
+Replaying a sausage of *Durchgang 2* (an independent run, no annotation) shows the models on a run they have never seen.
 
 ## 4 · Shutdown and packing
 
 1. Stop the replay. Press `Ctrl+C` in the console window.
 2. Shut down the laptop, unplug the gateway, then the router.
 3. Pack sensors in their foam slots and coil the cables. Check against the packing list (to be written during assembly, A5).
-4. Optional: copy `data\recordings\` to the repository or a USB stick. Live recordings can be replayed later.
+4. Optional: copy `data\recordings\` to a USB stick or the university share. Live recordings can be replayed later.
+
+**What is stored** (`data\recordings\`, kept across restarts, not in Git): `raw_YYYYMMDD.jsonl` holds every uplink
+exactly as received, also from unknown devices and those that failed to decode (the source of truth if a decoder was
+wrong); `live_YYYYMMDD_<slot>.csv` holds the decoded rows in the training-data schema (replayable, listed as
+*Aufnahmen aus dem Koffer*). Every write is flushed to disk. After a restart, rows of the last 6 hours are loaded back,
+so predictions continue without waiting for 10 new uplinks. Test uplinks (`send_test_uplink.py`) are not stored.
 
 ## 5 · Troubleshooting
 

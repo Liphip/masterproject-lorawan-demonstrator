@@ -222,3 +222,6 @@ body.simple { font-size: 18px; min-height: 100vh; display: flex; flex-direction:
   .s-model { grid-template-columns: 1fr 1fr; } .s-model .track { grid-column: 1 / -1; }
   .s-steps li { font-size: 1.05rem; padding: 1rem .4rem; }
 }
+
+/* gradient boosting detail in the explanation overlay */
+svg.boost { width: 100%; max-width: 320px; display: block; }

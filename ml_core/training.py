@@ -37,7 +37,7 @@ import numpy as np
 from joblib import Parallel, delayed, effective_n_jobs, parallel_config
 import pandas as pd
 import sklearn
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score
@@ -67,7 +67,13 @@ N_JOBS = int(os.environ.get("ML_N_JOBS", "-1"))
 # otherwise prints harmless but alarming "KeyError: ...joblib_memmapping_folder..." tracebacks when it cleans up.
 # Costs one copy of the training windows per worker (tens of MB).
 NO_MEMMAP = {"max_nbytes": None}
-MODEL_NAMES = {"logreg": "Logistic Regression", "rf": "Random Forest", "mlp": "MLP (neural net)"}
+MODEL_NAMES = {"logreg": "Logistic Regression", "rf": "Random Forest", "mlp": "MLP (neural net)",
+               "hgb": "Gradient Boosting"}
+# The three families of the demonstrator (assignment: ≥ 3 families). "hgb" (histogram gradient boosting, the usual
+# strongest choice for tabular data) is an extra candidate: compared in notebook 04 and searched in notebook 02 by
+# default, exported only if MODELS in notebook 03 includes it. The dashboards show however many models are exported.
+DEMO_MODELS = ("logreg", "rf", "mlp")
+ALL_MODELS = tuple(MODEL_NAMES)
 HYPERPARAMETERS_FILE = "hyperparameters.json"
 
 # Used when no search result exists: winners of the first search (Nov 2026, before
@@ -78,6 +84,8 @@ DEFAULT_PARAMS = {
            "max_features": "sqrt", "bootstrap": True, "class_weight": "balanced_subsample", "criterion": "gini"},
     "mlp": {"hidden_layer_sizes": [64, 32, 16], "activation": "relu", "alpha": 1e-4, "learning_rate_init": 1e-3,
             "batch_size": 32, "max_iter": 500, "early_stopping": True, "validation_fraction": 0.15},
+    "hgb": {"learning_rate": 0.1, "max_iter": 300, "max_leaf_nodes": 31, "min_samples_leaf": 20,
+            "l2_regularization": 0.0, "class_weight": "balanced", "early_stopping": True, "validation_fraction": 0.1},
 }
 # Search space. Logistic regression: l1_ratio 0 = L2, 1 = L1, in between = elastic net.
 PARAM_GRIDS = {
@@ -91,6 +99,11 @@ PARAM_GRIDS = {
     "mlp": {"hidden_layer_sizes": [[32], [32, 16], [64, 32], [64, 32, 16]], "activation": ["relu", "tanh"],
             "alpha": [1e-4, 1e-3], "learning_rate_init": [3e-4, 1e-3], "batch_size": [32], "max_iter": [500],
             "early_stopping": [True], "validation_fraction": [0.15]},
+    # Boosting: trees added one after another, each correcting the previous ones. Early stopping on 10 % of the
+    # training data decides how many of the max_iter rounds are used.
+    "hgb": {"learning_rate": [0.05, 0.1], "max_iter": [300], "max_leaf_nodes": [15, 31, 63],
+            "min_samples_leaf": [20, 200], "l2_regularization": [0.0, 1.0], "class_weight": [None, "balanced"],
+            "early_stopping": [True], "validation_fraction": [0.1]},
 }
 # A forest with unlimited depth on ~160k windows grows to hundreds of MB per model.
 # Capped for the demo laptop; pass limit_size=False to export the searched forest as is.
@@ -112,6 +125,10 @@ DEFAULT_FEATURE_SET = "temperature_difference"
 # Statistics WindowFeatures computes per signal (used to select feature columns exactly).
 SIGNAL_STATS = {"min", "max", "mean", "std", "skew", "slope"}
 TIMING_STATS = {"count", "duration", "interval", "min_interval", "max_interval"}
+# Augmentation used by notebook 03 / the command line unless set otherwise. Chosen from notebook 04 (25 Nov 2026):
+# calibration_large lifted the random forest from 0.71 to 0.79 balanced accuracy and series-2 phase order from
+# 0.80 to 0.87, without costing the other models.
+DEFAULT_AUGMENTATION = ["calibration_large"]
 # Smoothing of predicted phases before scoring their progression (one day of windows).
 PROGRESSION_SMOOTHING = "1D"
 # Not scored at the start of a run: in series 2 every model predicts Phase 2 for the first 1–3 days, probably while the
@@ -123,10 +140,11 @@ PROGRESSION_SUSTAINED = "7D"
 # phases. Probably the probes were moved or re-inserted (no log exists). The check only scores the time before this.
 PROGRESSION_UNTIL = "2024-02-01"
 # Tiny settings for smoke tests (notebook QUICK flag, test suite).
-QUICK_PARAMS = {"rf": {"n_estimators": 20}, "mlp": {"max_iter": 30, "batch_size": 128}}
+QUICK_PARAMS = {"rf": {"n_estimators": 20}, "mlp": {"max_iter": 30, "batch_size": 128}, "hgb": {"max_iter": 20}}
 QUICK_GRIDS = {"logreg": {"solver": ["lbfgs"], "l1_ratio": [0], "C": [0.1, 10], "max_iter": [300]},
                "rf": {"n_estimators": [10], "max_depth": [5, None]},
-               "mlp": {"hidden_layer_sizes": [[16]], "alpha": [1e-4, 1e-3], "max_iter": [30]}}
+               "mlp": {"hidden_layer_sizes": [[16]], "alpha": [1e-4, 1e-3], "max_iter": [30]},
+               "hgb": {"max_iter": [20], "max_leaf_nodes": [7, 15]}}
 
 
 
@@ -287,6 +305,8 @@ def make_classifier(key: str, params: dict, n_jobs: int = 1):
         return RandomForestClassifier(random_state=RANDOM_STATE, n_jobs=n_jobs, **p)
     if key == "mlp":
         return MLPClassifier(random_state=RANDOM_STATE, **p)
+    if key == "hgb":
+        return HistGradientBoostingClassifier(random_state=RANDOM_STATE, **p)
     raise KeyError(key)
 
 
@@ -318,7 +338,7 @@ def training_params(key: str, params: dict, limit_size: bool, quick: bool) -> di
 
 
 # ── hyperparameter search ───────────────────────────────────────────────────
-def search_hyperparameters(windows: Windows, keys=("logreg", "rf", "mlp"), grids=None, scoring="balanced_accuracy",
+def search_hyperparameters(windows: Windows, keys=ALL_MODELS, grids=None, scoring="balanced_accuracy",
                            n_jobs=-1, verbose=1, log=print) -> dict:
     """Successive-halving grid search with leave-one-sausage-out CV on pre-computed windows.
 
@@ -352,13 +372,25 @@ def search_hyperparameters(windows: Windows, keys=("logreg", "rf", "mlp"), grids
 
 
 def save_hyperparameters(result: dict, windows: Windows, out_dir: str = MODELS_DIR, scoring="balanced_accuracy") -> str:
-    """Write the search result (best parameters per model, the feature set and window settings) for training."""
+    """Write the search result (best parameters per model, the feature set and window settings) for training.
+
+    Models searched earlier with the same feature set and windows are kept, so a single model can be searched again
+    (e.g. MODELS = ["hgb"] in notebook 02) without repeating the others.
+    """
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, HYPERPARAMETERS_FILE)
+    models = {}
+    if os.path.exists(path):
+        with open(path) as fh:
+            old = json.load(fh)
+        if (old.get("feature_set"), old.get("window_size"), old.get("stride")) == \
+                (windows.feature_set, windows.window_size, windows.stride):
+            models = old.get("models", {})
+    models.update({k: {"params": v["params"], "score": v["score"]} for k, v in result.items()})
     with open(path, "w") as fh:
         json.dump({"created_at": dt.datetime.now(dt.timezone.utc).isoformat(), "scoring": scoring,
                    "feature_set": windows.feature_set, "window_size": windows.window_size, "stride": windows.stride,
-                   "models": {k: {"params": v["params"], "score": v["score"]} for k, v in result.items()}}, fh, indent=2)
+                   "models": models}, fh, indent=2)
     return path
 
 
@@ -522,7 +554,7 @@ def split_variant(variant: str) -> tuple[str, list[str]]:
     return fs, aug.parse(["temperature" if n == "augmentation" else n for n in names])
 
 
-def compare_feature_sets(windows: Windows, unannotated: Windows | None, variants=None, keys=("logreg", "rf", "mlp"),
+def compare_feature_sets(windows: Windows, unannotated: Windows | None, variants=None, keys=ALL_MODELS,
                          params: dict | None = None, limit_size: bool = True, quick: bool = False,
                          n_jobs: int = N_JOBS, log=print):
     """Held-out score on the annotated run vs. phase progression on the unannotated run, per variant.
@@ -599,7 +631,7 @@ def _latency_ms(pipe: ModelPipeline, raw: pd.DataFrame, ws: int, repeats: int = 
 
 def train_and_evaluate(windows: Windows, out_dir: str = MODELS_DIR, feature_set: str = DEFAULT_FEATURE_SET,
                        unannotated: Windows | None = None, params: dict | None = None, augmentation=None,
-                       keys=("logreg", "rf", "mlp"), limit_size: bool = True, fold_models: bool = True,
+                       keys=DEMO_MODELS, limit_size: bool = True, fold_models: bool = True,
                        quick: bool = False, n_jobs: int = N_JOBS, log=print) -> dict:
     """Evaluate, export fold and final models, write manifest.json and metrics.json. Returns the metrics.
 
@@ -727,8 +759,10 @@ def main(argv=None):
     ap.add_argument("--data-dir", default=CONVERTED_DIR)
     ap.add_argument("--out", default=MODELS_DIR)
     ap.add_argument("--feature-set", default=DEFAULT_FEATURE_SET, choices=list(FEATURE_SETS))
-    ap.add_argument("--augment", nargs="*", default=[], metavar="NAME", choices=list(AUGMENTATIONS),
-                    help="training-only augmentations, e.g. --augment calibration robust")
+    ap.add_argument("--augment", nargs="*", default=DEFAULT_AUGMENTATION, metavar="NAME", choices=list(AUGMENTATIONS),
+                    help=f"training-only augmentations (default {DEFAULT_AUGMENTATION}; --augment alone = none)")
+    ap.add_argument("--models", nargs="*", default=list(DEMO_MODELS), choices=list(MODEL_NAMES),
+                    help=f"model families to train (default {list(DEMO_MODELS)})")
     ap.add_argument("--window-size", type=int, default=10)
     ap.add_argument("--stride", type=int, default=2)
     ap.add_argument("--no-size-limit", action="store_true", help="export the searched Random Forest without caps")
@@ -740,7 +774,7 @@ def main(argv=None):
     unannotated = load_windows(args.data_dir, "series_2_*.csv", args.window_size, args.stride,
                                annotated=False, classes=windows.classes, n_jobs=args.jobs)
     train_and_evaluate(windows, args.out, args.feature_set, unannotated,
-                       augmentation=args.augment, limit_size=not args.no_size_limit,
+                       augmentation=args.augment, keys=args.models, limit_size=not args.no_size_limit,
                        fold_models=not args.no_fold_models, quick=args.quick, n_jobs=args.jobs)
 
 
