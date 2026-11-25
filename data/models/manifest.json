@@ -1,12 +1,12 @@
 {
-  "created_at": "2026-11-25T20:23:53.183982+00:00",
+  "created_at": "2026-11-25T22:13:16.989575+00:00",
   "window_size": 10,
   "stride": 2,
   "context": [
     "24h",
     "7d"
   ],
-  "feature_set": "temperature_difference",
+  "feature_set": "temperature_difference_now",
   "signals": [
     "lse01_conductivity",
     "lse01_moisture",
@@ -60,24 +60,12 @@
     "lse01_moisture_skew",
     "lse01_moisture_slope",
     "lse01_moisture_std",
-    "lse01_temperature_diff_ctxmean_24h",
-    "lse01_temperature_diff_ctxmean_7d",
-    "lse01_temperature_diff_ctxstd_24h",
-    "lse01_temperature_diff_ctxstd_7d",
-    "lse01_temperature_diff_ctxtrend_24h",
-    "lse01_temperature_diff_ctxtrend_7d",
     "lse01_temperature_diff_max",
     "lse01_temperature_diff_mean",
     "lse01_temperature_diff_min",
     "lse01_temperature_diff_skew",
     "lse01_temperature_diff_slope",
     "lse01_temperature_diff_std",
-    "ltcfs_temperature_diff_ctxmean_24h",
-    "ltcfs_temperature_diff_ctxmean_7d",
-    "ltcfs_temperature_diff_ctxstd_24h",
-    "ltcfs_temperature_diff_ctxstd_7d",
-    "ltcfs_temperature_diff_ctxtrend_24h",
-    "ltcfs_temperature_diff_ctxtrend_7d",
     "ltcfs_temperature_diff_max",
     "ltcfs_temperature_diff_mean",
     "ltcfs_temperature_diff_min",
@@ -316,30 +304,6 @@
       0.0,
       0.12177575543522898
     ],
-    "lse01_temperature_diff_ctxmean_24h": [
-      -0.7377315068493151,
-      0.384246575342466
-    ],
-    "lse01_temperature_diff_ctxmean_7d": [
-      -0.6513717693836978,
-      0.25839682539682557
-    ],
-    "lse01_temperature_diff_ctxstd_24h": [
-      0.0419161480854293,
-      2.1136284778706393
-    ],
-    "lse01_temperature_diff_ctxstd_7d": [
-      0.05449966008945753,
-      0.8470973648087776
-    ],
-    "lse01_temperature_diff_ctxtrend_24h": [
-      -0.7222885757936321,
-      0.8909523581367936
-    ],
-    "lse01_temperature_diff_ctxtrend_7d": [
-      -0.05060937243389506,
-      0.0810100323374724
-    ],
     "lse01_temperature_diff_max": [
       -0.8999999761581421,
       0.49000000953674316
@@ -363,30 +327,6 @@
     "lse01_temperature_diff_std": [
       0.0,
       0.16263455152511597
-    ],
-    "ltcfs_temperature_diff_ctxmean_24h": [
-      -0.9160027777777778,
-      0.21263888888888893
-    ],
-    "ltcfs_temperature_diff_ctxmean_7d": [
-      -0.8618452380952379,
-      0.04374636976845109
-    ],
-    "ltcfs_temperature_diff_ctxstd_24h": [
-      0.0416408370644025,
-      0.3332648622157213
-    ],
-    "ltcfs_temperature_diff_ctxstd_7d": [
-      0.05314316600732005,
-      0.3031972079458975
-    ],
-    "ltcfs_temperature_diff_ctxtrend_24h": [
-      -0.6238819216668848,
-      0.7501079674682296
-    ],
-    "ltcfs_temperature_diff_ctxtrend_7d": [
-      -0.045074850975619085,
-      0.07610022553638185
     ],
     "ltcfs_temperature_diff_max": [
       -1.0700000524520874,

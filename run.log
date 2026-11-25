@@ -1,54 +1,54 @@
 Running: 01_convert_raw_data.ipynb, 02_search_hyperparameters.ipynb, 03_train_and_evaluate.ipynb, 04_check_seasonal_confound.ipynb, 05_compare_windows.ipynb
 
-[21:12:01] 01_convert_raw_data.ipynb
-  01_convert_raw_data.ipynb: cell 1/4 done in 0:00:04 (total 0:00:04)
-  01_convert_raw_data.ipynb: cell 2/4 done in 0:00:00 (total 0:00:04)
-  01_convert_raw_data.ipynb: cell 3/4 done in 0:00:46 (total 0:00:50)
-  01_convert_raw_data.ipynb: cell 4/4 done in 0:00:01 (total 0:00:51)
-  finished in 0:00:52
+[22:46:26] 01_convert_raw_data.ipynb
+  01_convert_raw_data.ipynb: cell 1/4 done in 0:00:08 (total 0:00:08)
+  01_convert_raw_data.ipynb: cell 2/4 done in 0:00:00 (total 0:00:08)
+  01_convert_raw_data.ipynb: cell 3/4 done in 0:01:18 (total 0:01:26)
+  01_convert_raw_data.ipynb: cell 4/4 done in 0:00:02 (total 0:01:28)
+  finished in 0:01:29
   (console: 1 harmless joblib clean-up messages hidden)
 
-[21:12:53] 02_search_hyperparameters.ipynb
-  02_search_hyperparameters.ipynb: cell 1/7 done in 0:00:01 (total 0:00:01)
-  02_search_hyperparameters.ipynb: cell 2/7 done in 0:00:02 (total 0:00:04)
-  02_search_hyperparameters.ipynb: cell 3/7 done in 0:00:00 (total 0:00:04)
-  02_search_hyperparameters.ipynb: cell 4/7 done in 0:00:06 (total 0:00:10)
+[22:47:55] 02_search_hyperparameters.ipynb
+  02_search_hyperparameters.ipynb: cell 1/7 done in 0:00:02 (total 0:00:02)
+  02_search_hyperparameters.ipynb: cell 2/7 done in 0:00:04 (total 0:00:05)
+  02_search_hyperparameters.ipynb: cell 3/7 done in 0:00:00 (total 0:00:05)
+  02_search_hyperparameters.ipynb: cell 4/7 done in 0:00:11 (total 0:00:16)
 F:\_Data\Uni\MA_Project\masterproject-lorawan-demonstrator\.venv\Lib\site-packages\sklearn\linear_model\_sag.py:348: ConvergenceWarning: The max_iter was reached which means the coef_ did not converge
-  02_search_hyperparameters.ipynb: cell 5/7 done in 0:07:36 (total 0:07:47)
-  02_search_hyperparameters.ipynb: cell 6/7 done in 0:00:00 (total 0:07:47)
-  02_search_hyperparameters.ipynb: cell 7/7 done in 0:00:00 (total 0:07:47)
-  finished in 0:07:47
-  (console: 106x ConvergenceWarning: The max_iter was reached which means the coef_ did not converge; 10 harmless joblib clean-up messages hidden)
+  02_search_hyperparameters.ipynb: cell 5/7 done in 0:13:03 (total 0:13:19)
+  02_search_hyperparameters.ipynb: cell 6/7 done in 0:00:00 (total 0:13:19)
+  02_search_hyperparameters.ipynb: cell 7/7 done in 0:00:00 (total 0:13:19)
+  finished in 0:13:21
+  (console: 168x ConvergenceWarning: The max_iter was reached which means the coef_ did not converge; 10 harmless joblib clean-up messages hidden)
 
-[21:20:40] 03_train_and_evaluate.ipynb
-  03_train_and_evaluate.ipynb: cell 1/9 done in 0:00:04 (total 0:00:04)
-  03_train_and_evaluate.ipynb: cell 2/9 done in 0:00:00 (total 0:00:04)
-  03_train_and_evaluate.ipynb: cell 3/9 done in 0:00:07 (total 0:00:11)
-  03_train_and_evaluate.ipynb: cell 4/9 done in 0:03:02 (total 0:03:13)
-  03_train_and_evaluate.ipynb: cell 5/9 done in 0:00:00 (total 0:03:13)
-  03_train_and_evaluate.ipynb: cell 6/9 done in 0:00:00 (total 0:03:13)
-  03_train_and_evaluate.ipynb: cell 7/9 done in 0:00:00 (total 0:03:13)
-  03_train_and_evaluate.ipynb: cell 8/9 done in 0:00:00 (total 0:03:13)
-  03_train_and_evaluate.ipynb: cell 9/9 done in 0:00:05 (total 0:03:18)
-  finished in 0:03:19
+[23:01:16] 03_train_and_evaluate.ipynb
+  03_train_and_evaluate.ipynb: cell 1/9 done in 0:00:06 (total 0:00:06)
+  03_train_and_evaluate.ipynb: cell 2/9 done in 0:00:00 (total 0:00:06)
+  03_train_and_evaluate.ipynb: cell 3/9 done in 0:00:12 (total 0:00:18)
+  03_train_and_evaluate.ipynb: cell 4/9 done in 0:11:42 (total 0:12:01)
+  03_train_and_evaluate.ipynb: cell 5/9 done in 0:00:00 (total 0:12:01)
+  03_train_and_evaluate.ipynb: cell 6/9 done in 0:00:00 (total 0:12:01)
+  03_train_and_evaluate.ipynb: cell 7/9 done in 0:00:00 (total 0:12:01)
+  03_train_and_evaluate.ipynb: cell 8/9 done in 0:00:00 (total 0:12:01)
+  03_train_and_evaluate.ipynb: cell 9/9 done in 0:00:08 (total 0:12:09)
+  finished in 0:12:10
   (console: 14 harmless joblib clean-up messages hidden)
 
-[21:23:59] 04_check_seasonal_confound.ipynb
-  04_check_seasonal_confound.ipynb: cell 1/6 done in 0:00:04 (total 0:00:04)
-  04_check_seasonal_confound.ipynb: cell 2/6 done in 0:00:00 (total 0:00:04)
-  04_check_seasonal_confound.ipynb: cell 3/6 done in 0:00:07 (total 0:00:11)
-  04_check_seasonal_confound.ipynb: cell 4/6 done in 0:00:02 (total 0:00:13)
-  04_check_seasonal_confound.ipynb: cell 5/6 done in 0:14:13 (total 0:14:26)
-  04_check_seasonal_confound.ipynb: cell 6/6 done in 0:00:38 (total 0:15:04)
-  finished in 0:15:06
+[23:13:26] 04_check_seasonal_confound.ipynb
+  04_check_seasonal_confound.ipynb: cell 1/6 done in 0:00:06 (total 0:00:06)
+  04_check_seasonal_confound.ipynb: cell 2/6 done in 0:00:00 (total 0:00:06)
+  04_check_seasonal_confound.ipynb: cell 3/6 done in 0:00:13 (total 0:00:18)
+  04_check_seasonal_confound.ipynb: cell 4/6 done in 0:00:03 (total 0:00:21)
+  04_check_seasonal_confound.ipynb: cell 5/6 done in 0:22:50 (total 0:23:11)
+  04_check_seasonal_confound.ipynb: cell 6/6 done in 0:00:51 (total 0:24:02)
+  finished in 0:24:04
   (console: 10 harmless joblib clean-up messages hidden)
 
-[21:39:05] 05_compare_windows.ipynb
-  05_compare_windows.ipynb: cell 1/4 done in 0:00:04 (total 0:00:04)
-  05_compare_windows.ipynb: cell 2/4 done in 0:00:00 (total 0:00:04)
-  05_compare_windows.ipynb: cell 3/4 done in 0:13:34 (total 0:13:38)
-  05_compare_windows.ipynb: cell 4/4 done in 0:00:21 (total 0:13:59)
-  finished in 0:14:01
+[23:37:31] 05_compare_windows.ipynb
+  05_compare_windows.ipynb: cell 1/4 done in 0:00:06 (total 0:00:06)
+  05_compare_windows.ipynb: cell 2/4 done in 0:00:00 (total 0:00:06)
+  05_compare_windows.ipynb: cell 3/4 done in 0:34:32 (total 0:34:39)
+  05_compare_windows.ipynb: cell 4/4 done in 0:00:31 (total 0:35:10)
+  finished in 0:35:13
   (console: 32 harmless joblib clean-up messages hidden)
 
-Total 0:41:05. All notebooks ran.
+Total 1:26:17. All notebooks ran.
