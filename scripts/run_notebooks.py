@@ -32,6 +32,7 @@ OVERRIDE_TAG = "injected-parameters"
 
 
 def select(names: list[str], start: str | None) -> list[str]:
+    """Notebook paths in order, filtered by name prefixes and/or a start notebook."""
     paths = sorted(glob.glob(os.path.join(NOTEBOOKS, "[0-9][0-9]_*.ipynb")))
     if names:
         paths = [p for p in paths if any(os.path.basename(p).startswith(n) for n in names)]
@@ -54,10 +55,12 @@ def inject(nb, overrides: list[str]) -> None:
 
 
 def fmt(seconds: float) -> str:
+    """Seconds as H:MM:SS."""
     return str(dt.timedelta(seconds=round(seconds)))
 
 
 def run(path: str, overrides: list[str], timeout: int | None, kernel: str, out_dir: str | None = None) -> bool:
+    """Execute one notebook; True if all cells ran. Saves after every cell and on failure."""
     name = os.path.basename(path)
     target = os.path.join(out_dir, name) if out_dir else path
     nb = nbformat.read(path, as_version=4)
@@ -67,6 +70,7 @@ def run(path: str, overrides: list[str], timeout: int | None, kernel: str, out_d
     last = [t0]
 
     def on_cell_executed(cell, cell_index, **_):
+        """Progress line and save after each cell."""
         now = time.perf_counter()
         n = code.index(cell_index) + 1 if cell_index in code else "?"
         print(f"  {name}: cell {n}/{len(code)} done in {fmt(now - last[0])} (total {fmt(now - t0)})", flush=True)
@@ -88,6 +92,7 @@ def run(path: str, overrides: list[str], timeout: int | None, kernel: str, out_d
 
 
 def main(argv=None) -> int:
+    """Command line (see the module docstring). Returns the exit code."""
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("notebooks", nargs="*", help="name prefixes, e.g. 02 03 (default: all)")
     ap.add_argument("--from", dest="start", help="start at this notebook, e.g. 02")

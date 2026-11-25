@@ -284,6 +284,7 @@ let LANG = (() => {
   return (navigator.language || "en").toLowerCase().startsWith("de") ? "de" : "en";
 })();
 
+// Translate a key in the current language (fallback English, then the key) and fill {placeholders}.
 function t(key, params) {
   let s = (I18N[LANG] && I18N[LANG][key]) ?? I18N.en[key] ?? key;
   if (params) s = s.replace(/\{(\w+)\}/g, (m, k) => (params[k] ?? m));
@@ -292,6 +293,7 @@ function t(key, params) {
 const LOCALE = () => (LANG === "de" ? "de-DE" : "en-GB");
 const fmtNum = (v, d = 0) => Number(v).toLocaleString(LOCALE(), {minimumFractionDigits: d, maximumFractionDigits: d});
 
+// Translate all elements with data-i18n / data-i18n-title / data-i18n-html.
 function applyStaticI18n() {
   document.documentElement.lang = LANG;
   document.querySelectorAll("[data-i18n]").forEach((el) => (el.textContent = t(el.dataset.i18n)));

@@ -12,6 +12,7 @@ SENSOR_TYPES = ("lse01", "ltcfs", "ws202")
 
 @dataclass
 class Device:
+    """One sensor in config/demo.toml."""
     dev_eui: str
     name: str
     type: str            # lse01 | ltcfs | ws202
@@ -21,6 +22,7 @@ class Device:
 
 @dataclass
 class Config:
+    """Settings from config/demo.toml (defaults work without a file; then no devices are mapped)."""
     host: str = "0.0.0.0"
     port: int = 8000
     ingest_token: str = ""
@@ -34,6 +36,7 @@ class Config:
     path: str = ""
 
     def device(self, dev_eui: str) -> Device | None:
+        """The configured device with this DevEUI (any spelling: with or without separators, any case), or None."""
         key = normalize_eui(dev_eui)
         for d in self.devices:
             if normalize_eui(d.dev_eui) == key:
@@ -42,18 +45,22 @@ class Config:
 
     @property
     def slots(self) -> list[str]:
+        """Sausage slots that have sensors (the WS202 environment sensor is shared, not a slot)."""
         return sorted({d.slot for d in self.devices if d.type != "ws202"})
 
 
 def normalize_eui(eui: str | None) -> str:
+    """DevEUI in one canonical form: lower case, no separators."""
     return (eui or "").replace("-", "").replace(":", "").strip().lower()
 
 
 def _abs(p: str, base: str) -> str:
+    """Resolve a path from the config relative to `base` (the repository root)."""
     return p if os.path.isabs(p) else os.path.normpath(os.path.join(base, p))
 
 
 def load_config(path: str | None) -> Config:
+    """Read a TOML config file (see config/demo.example.toml). None/empty path → defaults."""
     cfg = Config()
     if not path:
         return cfg

@@ -22,7 +22,7 @@ LSE01 / LTC-FS / WS202 ──LoRa──▶ UG63 (embedded network server) ──
 | Path | Content |
 |---|---|
 | `notebooks/` | `01_convert_raw_data` → `02_search_hyperparameters` → `03_train_and_evaluate`, plus `04_check_seasonal_confound`. Outputs stay in the notebooks |
-| `ml_core/` | Shared library used by the notebooks and the demonstrator: `data` (paths, columns), `windowing` (window features), `pipeline` (`ModelPipeline`), `conversion`, `training` |
+| `ml_core/` | Shared library used by the notebooks and the demonstrator: `data` (paths, columns), `windowing` (window features), `pipeline` (`ModelPipeline`), `conversion`, `training`, `augmentation` |
 | `demonstrator/` | Laptop app: gateway ingest, live state, replay, simulation, explanations, dashboard (`static/`) |
 | `data/raw/` | Excel exports `series_1.xlsx` (annotated), `series_2.xlsx` (not annotated), via Git LFS |
 | `data/converted/` | One CSV per sausage, written by notebook 01, via Git LFS |
@@ -60,10 +60,11 @@ Both need trained models in `data/models/` (see below). The UG63 HTTP integratio
 3. **03_train_and_evaluate**: evaluates, trains and exports the models the demonstrator loads, and checks them on the
    unannotated series 2 (phases must advance in time there too). Without a search result it uses
    the defaults in `ml_core/training.py`. Headless alternative: `python -m ml_core.training`.
-4. **04_check_seasonal_confound**: compares the feature sets. Series 1 (the only annotated run) goes from spring to
-   summer, so the absolute temperature rises with the phase, and models that use it can learn the season. The default
-   feature set therefore uses the probe temperatures *relative to the air* (plus moisture and conductivity); optional
-   augmentation randomises temperature level and swings in the training data (`ml_core/training.py`).
+4. **04_check_seasonal_confound**: compares feature sets and augmentations. Series 1 (the only annotated run) goes
+   from spring to summer, so the absolute temperature rises with the phase, and models that use it can learn the
+   season. The default feature set therefore uses the probe temperatures *relative to the air* (plus moisture and
+   conductivity). Optional training-only augmentation (`ml_core/augmentation.py`): probe calibration, noise and lost
+   uplinks, temperature level and swings; switched on with `AUGMENT` in notebook 03 or `--augment` on the command line.
 
 Unattended (e.g. overnight), all notebooks one after another, outputs saved in the notebooks as in Jupyter:
 

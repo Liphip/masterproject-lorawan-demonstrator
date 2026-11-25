@@ -17,6 +17,7 @@ function consensus(pred) {
   return {i, p: sum[i]};
 }
 
+// Phase steps, model lines and measurement tiles for one prediction (or a waiting message).
 function renderPrediction(pred, truth, when) {
   $("#s-when").innerHTML = when || "";
   const steps = document.querySelectorAll("#s-steps li");
@@ -47,11 +48,13 @@ function renderPrediction(pred, truth, when) {
     `<div class="s-tile"><span>${t(label)}</span><b>${fmtNum(v[k], d)}</b><small>${unit}</small></div>`).join("");
 }
 
+// What to show when there is no prediction yet, depending on the mode.
 function emptyText() {
   if (ST && !ST.models.ok) return t("replay.train_first");
   return {replay: t("s.press_play"), sim: "", live: t("s.no_live")}[mode];
 }
 
+// Render the current mode from the latest /api/state snapshot.
 function render() {
   if (!ST) return;
   const lu = ST.live.last_uplink_at;
@@ -86,12 +89,14 @@ $("#s-play").addEventListener("click", async () => {
 $("#s-rec").addEventListener("change", () => post("/api/replay/stop"));
 
 // ── virtual sausage ──
+// Slider labels without waiting for the server.
 function simLabels() {
   const days = SIM && SIM.run_days;
   const pos = Number($("#s-pos").value) / 1000;
   $("#s-pos-v").textContent = days != null ? t("sim.day_v", {n: fmtNum(pos * days, 0)}) : `${Math.round(pos * 100)} %`;
   $("#s-dm-v").textContent = `${signed(Number($("#s-dm").value), 0)} ${t("sim.pt")}`;
 }
+// Predict on the adjusted recorded window (virtual sausage); drops outdated answers.
 async function runSim() {
   const group = $("#s-rec").value;
   if (!group || !ST || !ST.models.ok) { renderPrediction(null, null, ""); return; }
@@ -117,6 +122,7 @@ $("#s-ambient").addEventListener("change", async (e) => {
 });
 
 // ── modes, language, polling ──
+// Switch between recorded / virtual / live; the mode is kept in the URL (?mode=…).
 function setMode(m) {
   mode = m;
   document.querySelectorAll("[data-mode]").forEach((b) => b.classList.toggle("active", b.dataset.mode === m));
@@ -134,6 +140,7 @@ document.querySelectorAll("[data-lang]").forEach((b) => b.addEventListener("clic
   if (mode === "sim") runSim(); else render();
 }));
 
+// Fill the recording picker (training runs only, no LFS pointers).
 async function loadRecordings() {
   recs = (await api("/api/recordings")).filter((r) => !r.lfs_pointer && r.group.startsWith("series_"));
   $("#s-rec").innerHTML = recs.map((r) => `<option value="${esc(r.group)}">${esc(r.group.replace(/_/g, " "))}</option>`).join("");
@@ -141,6 +148,7 @@ async function loadRecordings() {
   if (s && s.group) $("#s-rec").value = s.group;
   if (mode === "sim") runSim();
 }
+// Poll /api/state every POLL_MS.
 async function tick() {
   try {
     ST = await api("/api/state");

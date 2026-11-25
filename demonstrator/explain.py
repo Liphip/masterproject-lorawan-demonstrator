@@ -39,15 +39,22 @@ def describe_feature(name: str) -> tuple[str, str]:
 
 
 def _steps(pipe):
+    """The four steps of a ModelPipeline: window features, imputer, scaler, classifier."""
     s = dict(pipe.steps)
     return s["windows"], s["imputer"], s["scaler"], pipe.steps[-1][1]
 
 
 def _proba(clf, x):
+    """Class probabilities for a single (already scaled) feature row."""
     return clf.predict_proba(x)[0]
 
 
 def _logreg(clf, xs, names, k):
+    """Logistic regression: exact decomposition of the score of class k into weight × scaled value per feature.
+
+    One-vs-rest: each class has its own binary model; the predicted class's score is
+    intercept + Σ contributions. Returns the 8 largest contributions and the sum of the rest.
+    """
     est = clf.estimators_[k] if hasattr(clf, "estimators_") else clf
     coef = est.coef_[0] if est.coef_.shape[0] == 1 else est.coef_[k]
     intercept = float(np.ravel(est.intercept_)[0 if est.coef_.shape[0] == 1 else k])
@@ -62,6 +69,11 @@ def _logreg(clf, xs, names, k):
 
 
 def _forest(clf, xs, names, k):
+    """Random forest: votes per class, and per-feature contributions to class k (Saabas method).
+
+    Saabas: along each tree's decision path, the change in the class-k share at a split is credited to the feature
+    split on; averaged over the trees. An approximation, see the module docstring.
+    """
     n_classes = len(clf.classes_)
     votes = np.zeros(n_classes, dtype=int)
     contrib = np.zeros(xs.shape[1])
@@ -87,6 +99,9 @@ def _forest(clf, xs, names, k):
 
 
 def _mlp(clf, xs, k):
+    """MLP: activations layer by layer for this input (normalised for display), output probabilities, and the
+    neurons of the last hidden layer that push most towards class k.
+    """
     a = xs[0]
     layers = [{"name": "input", "size": int(a.size), "act": _norm(np.abs(a))}]
     acts = [a]
@@ -109,17 +124,25 @@ def _mlp(clf, xs, k):
 
 
 def _logit(p: float, eps: float = 1e-6) -> float:
+    """log(p / (1 − p)), clipped so that 0 and 1 stay finite."""
     p = min(max(float(p), eps), 1 - eps)
     return float(np.log(p / (1 - p)))
 
 
 def _norm(v) -> list[float]:
+    """Scale values to −1..1 by the largest absolute value (for drawing activations)."""
     v = np.asarray(v, dtype=float)
     m = float(np.max(np.abs(v))) if v.size else 0.0
     return [round(float(x) / m, 3) if m > 0 else 0.0 for x in v]
 
 
 def explain_model(pipe, key: str, rows: pd.DataFrame) -> dict:
+    """Explain one model's prediction for the last window of `rows`.
+
+    Returns the probabilities, the occlusion test per sensor signal (same method for every model; the change in
+    log-odds of the predicted class when the signal's features are set to their typical training value) and the
+    model-specific detail (_logreg / _forest / _mlp).
+    """
     wm, imputer, scaler, clf = _steps(pipe)
     feats = wm.transform(rows[FEATURE_ORDER]).tail(1)
     names = list(imputer.get_feature_names_out())
@@ -160,6 +183,10 @@ def explain_model(pipe, key: str, rows: pd.DataFrame) -> dict:
 
 
 def explain(registry, rows: pd.DataFrame, group: str | None) -> dict:
+    """Full explanation of the prediction for the last window of `rows`, for the overlay:
+    the uplinks in the window, the features with their training range, and explain_model for every model.
+    `group` selects the fold model that never saw that recording (as in the replay).
+    """
     ws = registry.window_size
     rows = rows[FEATURE_ORDER].tail(ws).reset_index(drop=True)
     if len(rows) < ws:

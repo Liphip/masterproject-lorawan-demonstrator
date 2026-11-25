@@ -58,6 +58,7 @@ STATE_MAP = {
 
 
 def series_number(path: str) -> int:
+    """series_1.xlsx → 1 (the raw exports must be named series_<n>.xlsx)."""
     m = re.search(r"series_(\d+)", os.path.basename(path), re.I)
     if not m:
         raise ValueError(f"{path}: raw files must be named series_<n>.xlsx")
@@ -74,6 +75,7 @@ def classify_device(name: str) -> tuple[str | None, int | None]:
 
 
 def read_sheet(path: str) -> pd.DataFrame:
+    """Read the one data sheet of an export (named like 'Alle …' or '… Annotation')."""
     sheets = pd.ExcelFile(path, engine="openpyxl").sheet_names
     target = [s for s in sheets if SHEET_PATTERN.search(s)]
     if len(target) != 1:

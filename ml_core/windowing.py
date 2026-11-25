@@ -24,6 +24,7 @@ class WindowFeatures(BaseEstimator, TransformerMixin):
     """
 
     def __init__(self, window_size: int = 10, stride: int = 2, output_columns: list[str] | None = None):
+        """window_size: uplinks per window; stride: step between window starts; output_columns: see below."""
         self.window_size = window_size
         self.stride = stride
         # Fixed output schema. If set, the result is reindexed to these columns so that
@@ -31,16 +32,19 @@ class WindowFeatures(BaseEstimator, TransformerMixin):
         self.output_columns = output_columns
 
     def fit(self, X: pd.DataFrame, y=None):
+        """Nothing to learn (stateless); returns self."""
         return self
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         # A window in which a sensor did not report yields NaN statistics by design;
         # silence numpy's "empty slice" warnings for exactly this computation.
+        """One feature row per window of the raw rows X (see the class docstring)."""
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
             return self._transform(X)
 
     def _transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        """Vectorised computation over all windows at once (index array of shape windows × window_size)."""
         for col in ("timestamp", "sensor"):
             if col not in X.columns:
                 raise ValueError(f"Input must contain a '{col}' column.")

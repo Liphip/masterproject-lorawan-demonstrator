@@ -29,13 +29,16 @@ LIMITS = {  # slider ranges, enforced server-side too
 
 
 class Simulator:
+    """Virtual sausage: predictions on a recorded window with shifted levels (see the module docstring)."""
     def __init__(self, models: ModelRegistry, dirs: list[str]):
+        """`dirs` are searched for recordings; the last simulation is kept for /api/explain."""
         self.models, self.dirs = models, dirs
         self._cache: dict[str, pd.DataFrame] = {}
         self.lock = threading.Lock()
         self.last: tuple | None = None   # (window, group, result) for /api/explain
 
     def _load(self, group: str) -> pd.DataFrame:
+        """Load a recording (cached; at most ~8 kept in memory)."""
         with self.lock:
             if group not in self._cache:
                 rec = next((r for r in list_recordings(self.dirs) if r["group"] == group), None)
@@ -50,10 +53,16 @@ class Simulator:
 
     @staticmethod
     def _clip(name, v):
+        """Clamp a slider value to its range in LIMITS."""
         lo, hi = LIMITS[name]
         return float(min(max(float(v), lo), hi))
 
     def run(self, group: str, position: float, adjust: dict | None = None) -> dict:
+        """Predict on the window at `position` (0..1 of the run) of `group`, with the adjustments applied:
+        moisture_delta (points), conductivity_factor, temperature_delta (°C on both probes; the recorded air
+        temperature stays, so the difference to the air changes). Returns the prediction marked simulated=True, the
+        recorded and simulated mean values, and the annotation of the unmodified window (if labeled).
+        """
         adjust = adjust or {}
         dm = self._clip("moisture_delta", adjust.get("moisture_delta", 0))
         cf = self._clip("conductivity_factor", adjust.get("conductivity_factor", 1))

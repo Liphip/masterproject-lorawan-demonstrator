@@ -13,6 +13,7 @@ from .config import ROOT, load_config
 
 
 def local_ips() -> list[str]:
+    """IPv4 addresses of this laptop (without loopback), to print the URL the gateway must post to."""
     ips = set()
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
@@ -28,6 +29,7 @@ def local_ips() -> list[str]:
 
 
 def main():
+    """Parse the command line, load the config, print the URLs and run the web server."""
     ap = argparse.ArgumentParser(description="LoRaWAN AI demonstrator")
     default_cfg = os.path.join(ROOT, "config", "demo.toml")
     ap.add_argument("--config", default=default_cfg if os.path.exists(default_cfg) else None)

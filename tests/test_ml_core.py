@@ -120,11 +120,14 @@ def test_progression_check_catches_the_season(synthetic_dir):
     # exact selection: lse01_temperature must not pick up lse01_temperature_diff
     assert not any("diff" in c for c in w.select("original").columns)
     assert {feature_signal(c) for c in w.select("temperature_difference").columns} == set(FEATURE_SETS["temperature_difference"])
-    variants = ["original", "temperature_difference", "temperature_difference+augmentation"]
+    variants = ["original", "temperature_difference", "temperature_difference+temperature",
+                "temperature_difference+calibration+robust"]
     table, prog = compare_feature_sets(w, u, variants, keys=("logreg",), quick=True, log=_quiet)
     rho = table["series 2: phase order ρ"]
     assert rho[("original", "Logistic Regression")] < 0.8 < rho[("temperature_difference", "Logistic Regression")]
-    assert rho[("temperature_difference+augmentation", "Logistic Regression")] > 0.8
+    assert rho[("temperature_difference+temperature", "Logistic Regression")] > 0.8
+    assert rho[("temperature_difference+calibration+robust", "Logistic Regression")] > 0.8
+    assert (table["worst sausage"] <= table["series 1: balanced acc"]).all()
     assert set(prog[("original", "logreg")]) == set(u.recordings)
 
 
@@ -222,3 +225,52 @@ def test_run_notebooks_script(tmp_path):
     assert run_notebooks.main(["03", "04", "--set", "FEATURE_SET = 'nope'"] + args) == 1
     nb = json.load(open(out / "03_train_and_evaluate.ipynb"))
     assert any(o.get("output_type") == "error" for c in nb["cells"] for o in c.get("outputs", []))
+
+
+
+# ── row-level augmentation ──────────────────────────────────────────────────
+def _recording(n_days=3, per_day=96):
+    t = pd.date_range("2023-04-01", periods=n_days * per_day, freq=pd.Timedelta(days=1) / per_day, tz="UTC")
+    n = len(t)
+    df = pd.DataFrame({"timestamp": t, "sensor": "lse01", "lse01_conductivity": 200.0, "lse01_moisture": 5.0,
+                       "lse01_temperature": 15.0, "ltcfs_temperature": 15.5, "ambient_temperature": 16.0})
+    add_temperature_difference(df)
+    return df[FEATURE_ORDER].assign(label=np.repeat(["Umroetung", "Reifung Phase 1", "Reifung Phase 2"], n // 3))
+
+
+def test_calibration_is_constant_per_segment_and_keeps_labels():
+    from ml_core.augmentation import augment_rows, copy_rng
+    df = _recording()
+    out = augment_rows(df, ["calibration_large"], copy_rng(0, 0))
+    day = pd.to_datetime(out["timestamp"]).dt.floor("1D")
+    assert out.groupby(day)["lse01_moisture"].nunique().eq(1).all()        # one offset per day
+    assert out.groupby(day)["lse01_conductivity"].nunique().eq(1).all()
+    assert out["lse01_moisture"].sub(5.0).abs().le(2.0 + 1e-9).all() and (out["lse01_moisture"] >= 0).all()
+    ratio = out["lse01_conductivity"] / 200.0
+    assert ratio.between(0.67 - 1e-9, 1.5 + 1e-9).all() and ratio.nunique() > 1
+    assert (out["label"] == df["label"]).all()                              # rows stay aligned with their labels
+    assert out["ltcfs_temperature"].eq(15.5).all()                          # calibration leaves temperatures alone
+
+
+def test_robust_drops_uplinks_and_moves_probe_and_difference_together():
+    from ml_core.augmentation import augment_rows, copy_rng
+    df = _recording(n_days=10)
+    out = augment_rows(df, ["robust"], copy_rng(1, 0))
+    assert 0.75 < len(out) / len(df) < 0.95                                 # ~15 % of the uplinks lost
+    air = out["ltcfs_temperature"] - out["ltcfs_temperature_diff"]           # noise on the probe, not on the air
+    np.testing.assert_allclose(air, 16.0, atol=1e-9)
+    assert out["lse01_moisture"].std() > 0 and (out["lse01_moisture"] >= 0).all()
+    # same seed, same copy: reproducible regardless of worker order
+    pd.testing.assert_frame_equal(out, augment_rows(df, ["robust"], copy_rng(1, 0)))
+
+
+def test_augmented_copies_of_the_held_out_sausage_are_never_trained_on(synthetic_dir):
+    w = load_windows(str(synthetic_dir / "converted"), n_jobs=1, log=_quiet)
+    wa = w.with_augmentation(["calibration", "robust", "temperature"], n_jobs=1, log=_quiet)
+    assert wa.augmentation == ("calibration", "robust") and all(len(c) == 2 for c in wa.augmented.values())
+    sel = wa.select("temperature_difference").without_raw()
+    held = sel.recordings[0]
+    X, y, groups = sel.stack(exclude=held, augmented=True)
+    assert held not in set(groups) and list(X.columns) == sel.columns
+    n_orig = sum(len(sel.y[g]) for g in sel.recordings if g != held)
+    assert len(y) > 2 * n_orig                                              # originals + two copies (minus dropout)

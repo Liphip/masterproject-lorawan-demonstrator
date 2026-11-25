@@ -27,6 +27,7 @@ SERIES_POINTS = 1500
 
 
 def list_recordings(dirs: list[str]) -> list[dict]:
+    """All CSV recordings in `dirs` (converted training data and live recordings), with a Git LFS check."""
     out = []
     for d in dirs:
         for p in sorted(glob.glob(os.path.join(d, "*.csv"))):
@@ -39,9 +40,11 @@ class Decimated:
     """Keeps a bounded, evenly thinned record of an entire run."""
 
     def __init__(self, cap: int):
+        """Keep at most `cap` items; when full, keep every second one and halve the sampling rate."""
         self.cap, self.every, self.n, self.items = cap, 1, 0, []
 
     def append(self, item):
+        """Add an item if it falls on the current sampling step."""
         if self.n % self.every == 0:
             self.items.append(item)
             if len(self.items) > self.cap:
@@ -50,14 +53,23 @@ class Decimated:
         self.n += 1
 
     def __iter__(self):
+        """Iterate over the kept items."""
         return iter(self.items)
 
     def __len__(self):
+        """Number of kept items."""
         return len(self.items)
 
 
 class ReplayEngine:
+    """Plays one recording back in a background thread at `speed` data seconds per real second.
+
+    Every TICK_S it advances the data clock, adds the new rows to the plotted series and predicts at the stride
+    boundaries that were passed (at most MAX_PREDICTIONS_PER_TICK, to bound CPU load at high speed). Labeled
+    recordings get a running accuracy against the butcher's annotation.
+    """
     def __init__(self, models: ModelRegistry, dirs: list[str]):
+        """No replay running yet; `dirs` are searched for recordings."""
         self.models, self.dirs = models, dirs
         self.lock = threading.Lock()
         self._thread: threading.Thread | None = None
@@ -66,6 +78,7 @@ class ReplayEngine:
         self.reset()
 
     def reset(self):
+        """Clear status, plotted series, prediction history and running score."""
         self.status = {"running": False, "group": None, "speed": None, "progress": 0.0,
                        "data_time": None, "start": None, "end": None, "labeled": False,
                        "rows": 0, "error": None, "finished": False, "paused": False}
@@ -76,9 +89,11 @@ class ReplayEngine:
         self.running_score = {}
 
     def recordings(self):
+        """Recordings available for replay."""
         return list_recordings(self.dirs)
 
     def start(self, group: str, speed: float = 1800.0, start_fraction: float = 0.0):
+        """Stop any running replay and start `group` at `speed`, from `start_fraction` (0..1) of the run."""
         rec = next((r for r in self.recordings() if r["group"] == group), None)
         if rec is None:
             raise ValueError(f"unknown recording {group}")
@@ -99,6 +114,7 @@ class ReplayEngine:
         self._thread.start()
 
     def stop(self):
+        """Stop the replay thread (waits up to 3 s)."""
         self._stop.set()
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=3)
@@ -106,16 +122,19 @@ class ReplayEngine:
             self.status["running"] = False
 
     def set_paused(self, paused: bool):
+        """Pause or resume; the data clock does not advance while paused."""
         (self._paused.set if paused else self._paused.clear)()
         with self.lock:
             self.status["paused"] = bool(paused) and self.status["running"]
 
     def current_window(self):
+        """(rows, group, latest prediction) of the window on screen, for /api/explain."""
         with self.lock:
             return (None if self.latest_window is None else self.latest_window.copy(),
                     self.status["group"], self.latest)
 
     def _run(self, df: pd.DataFrame, group: str, speed: float, start_fraction: float):
+        """Thread entry point: run the loop, report errors in the status instead of crashing silently."""
         try:
             self._loop(df, group, speed, start_fraction)
         except Exception as e:  # noqa: BLE001
@@ -124,6 +143,7 @@ class ReplayEngine:
                 self.status.update(running=False, error=repr(e))
 
     def _loop(self, df, group, speed, start_fraction):
+        """The replay loop (see the class docstring)."""
         ws, st = self.models.window_size, self.models.stride
         ts = df["timestamp"]
         t_start, t_end = ts.iloc[0], ts.iloc[-1]
@@ -183,6 +203,7 @@ class ReplayEngine:
             self.status.update(running=False, paused=False, finished=i >= n, progress=min(self.status["progress"], 1.0))
 
     def snapshot(self, series_points: int = 600) -> dict:
+        """Status, latest prediction, thinned series and history for /api/state."""
         with self.lock:
             s = list(self.series)
             h = list(self.history)

@@ -21,11 +21,18 @@ log = logging.getLogger(__name__)
 
 
 def utcnow() -> dt.datetime:
+    """Current time, timezone-aware UTC."""
     return dt.datetime.now(dt.timezone.utc)
 
 
 class LiveState:
+    """State of the live LoRaWAN path: devices seen, recent uplinks, rows per sausage slot, predictions.
+
+    Thread-safe (one lock): uplinks arrive in worker threads, the dashboard reads snapshots. The WS202 rows are shared
+    by all slots, as in the training data (one environment sensor for all sausages).
+    """
     def __init__(self, cfg: Config, models: ModelRegistry):
+        """Pre-register the configured devices and slots, so they show up before their first uplink."""
         self.cfg, self.models = cfg, models
         self.lock = threading.Lock()
         self.devices: dict[str, dict] = {}
@@ -44,12 +51,18 @@ class LiveState:
 
     @staticmethod
     def _device_entry(eui, name, typ, slot, configured):
+        """Initial dashboard entry for a device."""
         return {"dev_eui": eui, "name": name, "type": typ, "slot": slot, "configured": configured,
                 "last_seen": None, "uplinks": 0, "rssi": None, "snr": None, "values": {},
                 "decode_method": None, "last_error": None}
 
     # ── ingest ──────────────────────────────────────────────────────────────
     def handle_uplink(self, msg: dict, source: str = "live") -> dict:
+        """Process one uplink from the gateway: identify the device, decode, record, predict.
+
+        Unknown devices are shown (so a missing config entry is visible) but not used. Returns a short status that is
+        sent back to the gateway / test script.
+        """
         now = utcnow()
         env = extract_envelope(msg)
         eui = normalize_eui(env["dev_eui"])
@@ -103,11 +116,15 @@ class LiveState:
         return {"accepted": True, "mapped": True, "values": values}
 
     def _error(self, text):
+        """Remember an error for the dashboard's error list."""
         with self.lock:
             self.errors.appendleft({"time": utcnow().isoformat(), "error": text})
 
     # ── recording (same schema as data/converted → replayable) ──────────────
     def _record(self, row: dict, slots: list[str], raw: dict):
+        """Append a decoded uplink to data/recordings/live_<day>_<slot>.csv (training-data schema, so it can be
+        replayed) and the raw uplink to raw_<day>.jsonl (to check decoders later).
+        """
         try:
             os.makedirs(self.cfg.recordings_dir, exist_ok=True)
             day = row["timestamp"].strftime("%Y%m%d")
@@ -126,6 +143,9 @@ class LiveState:
 
     # ── inference ───────────────────────────────────────────────────────────
     def window_rows(self, slot: str) -> pd.DataFrame:
+        """The latest rows of a slot plus the environment rows, in time order, with the temperature difference to
+        the configured air temperature (the case has no air sensor).
+        """
         with self.lock:
             rows = list(self.slot_rows.get(slot, [])) + list(self.env_rows)
         if not rows:
@@ -143,6 +163,7 @@ class LiveState:
             self._predict(slot)
 
     def _predict(self, slot: str):
+        """Predict the phase for a slot from its latest window; errors go to the dashboard, not to the gateway."""
         if not self.models.ok:
             return
         try:
@@ -157,6 +178,7 @@ class LiveState:
 
     # ── snapshot for the dashboard ──────────────────────────────────────────
     def snapshot(self) -> dict:
+        """Copy of the live state for /api/state."""
         with self.lock:
             return {
                 "ambient_temperature": self.ambient,

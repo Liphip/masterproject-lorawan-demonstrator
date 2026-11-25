@@ -23,6 +23,7 @@ from ml_core.data import ROOT  # noqa: E402
 
 
 def payload(dev, i):
+    """A plausible decoded uplink for device `dev` in round i (slowly drifting values plus noise)."""
     if dev.type == "lse01":
         obj = {"water_SOIL": round(45 - 0.2 * i + random.uniform(-.5, .5), 2),
                "temp_SOIL": round(14 + random.uniform(-.3, .3), 2),
@@ -37,6 +38,7 @@ def payload(dev, i):
 
 
 def main():
+    """Send `rounds` rounds of test uplinks, one per configured device, to the running demonstrator."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default=os.path.join(ROOT, "config", "demo.toml"))
     ap.add_argument("--url", default="http://127.0.0.1:8000/ingest/uplink")

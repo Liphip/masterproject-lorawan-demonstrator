@@ -30,6 +30,7 @@ _STATE_WORDS = {"light": 1, "dark": 0, "trigger": 1, "triggered": 1, "normal": 0
 
 
 class DecodeError(ValueError):
+    """An uplink could not be turned into measurement values (shown in the uplink log, not raised further)."""
     pass
 
 
@@ -72,6 +73,7 @@ BINARY_DECODERS = {"ws202": decode_ws202, "lse01": decode_lse01}
 
 # ── generic JSON handling ───────────────────────────────────────────────────
 def _get(d: Any, *path):
+    """Nested lookup that tolerates missing keys and lists (takes the first element): _get(msg, 'rxInfo', 'rssi')."""
     for p in path:
         if isinstance(d, list):
             d = d[0] if d else None
@@ -106,6 +108,7 @@ def extract_envelope(msg: dict) -> dict:
 
 
 def _num(v):
+    """Number from a decoded value: bools, numbers, numeric strings and state words (e.g. 'open') → float; else None."""
     if isinstance(v, bool):
         return float(v)
     if isinstance(v, (int, float)):

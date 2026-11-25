@@ -5,6 +5,7 @@ let STATE = null, METRICS = null, RECORDINGS = null, LAST_EX = null, LAST_SIM = 
 let activeTab = "replay";
 
 // ── header + data path ─────────────────────────────────────────────────────
+// Header chips (gateway, models, version warning) and the data path strip.
 function renderChips(st) {
   const chips = [];
   const lu = st.live.last_uplink_at;
@@ -22,6 +23,7 @@ function renderChips(st) {
 }
 
 // ── 1 · live sensors ───────────────────────────────────────────────────────
+// Panel 1: one card per sensor with its latest values, signal quality and age.
 function renderDevices(live) {
   const rows = live.devices.map((d) => {
     const fresh = d.last_seen && (Date.now() - new Date(d.last_seen)) / 1000 < 30;
@@ -51,6 +53,7 @@ function renderDevices(live) {
 }
 
 // ── 2 · model cards ────────────────────────────────────────────────────────
+// Panel 2: one card per model (phase, confidence bar, probabilities); opts adds replay/simulation hints.
 function modelCards(pred, models, opts = {}) {
   if (!pred) return `<p class="muted">${esc(opts.empty || t("card.no_prediction"))}</p>`;
   if (!pred.ready) return `<p class="muted">${t("card.waiting", {reason: esc(pred.reason)})}</p>`;
@@ -83,6 +86,7 @@ function modelCards(pred, models, opts = {}) {
 }
 
 // ── timeline ───────────────────────────────────────────────────────────────
+// Phase timeline of the replay: one lane per model plus the butcher's annotation.
 function renderTimeline(rep, models) {
   const svg = $("#timeline");
   const W = 1000, H = 260, L = 92, R = 12;
@@ -132,6 +136,7 @@ function renderTimeline(rep, models) {
     `<span><span class="dot" style="background:${phaseColor(c)}"></span>${esc(phaseName(c))}</span>`).join("");
 }
 
+// Recorded-run tab: status line, model cards, annotation card, timeline, running score.
 function renderReplay(st) {
   const rep = st.replay, s = rep.status, models = st.models.models || [];
   const banner = $("#replay-banner");
@@ -155,6 +160,7 @@ function renderReplay(st) {
   renderTimeline(rep, models);
 }
 
+// Live tab: predictions for the first sausage slot and the air temperature setting.
 function renderLive(st) {
   const amb = $("#ambient");
   if (document.activeElement !== amb) amb.value = st.live.ambient_temperature;
@@ -168,12 +174,14 @@ function renderLive(st) {
 }
 
 // ── 3 · evaluation ─────────────────────────────────────────────────────────
+// Fetch metrics.json once (it only changes when the models are retrained).
 async function loadEval() {
   try { METRICS = await api("/api/metrics"); } catch (e) {
     $("#eval-body").innerHTML = `<p class="muted">${esc(e.message)}</p>`; return;
   }
   renderEval();
 }
+// Panel 3: evaluation table (balanced accuracy, series-2 phase order, latency, size) per model.
 function renderEval() {
   const m = METRICS;
   if (!m) return;
@@ -225,10 +233,12 @@ ${hasOrder ? `<td class="num">${order(r)}</td>` : ""}</tr>`;
 }
 
 // ── controls / loop ────────────────────────────────────────────────────────
+// Fetch the recordings for the replay and simulation pickers.
 async function loadRecordings() {
   RECORDINGS = await api("/api/recordings");
   renderRecordings(true);
 }
+// Fill the recording pickers; initial=true also selects a sensible default.
 function renderRecordings(initial) {
   if (!RECORDINGS) return;
   const opts = RECORDINGS.map((r) => `<option value="${esc(r.group)}" ${r.lfs_pointer ? "disabled" : ""}>${esc(r.group)}${r.group.startsWith("series_2") ? t("rec.unlabeled") : ""}${r.kind === "live recording" ? t("rec.live") : ""}${r.lfs_pointer ? t("rec.lfs") : ""}</option>`).join("");
@@ -266,6 +276,7 @@ $("#ambient").addEventListener("change", async (e) => {
   try { await post("/api/ambient", {value: Number(e.target.value)}); } catch (err) { alert(err.message); }
 });
 
+// Render everything from one /api/state snapshot.
 function render(st) {
   STATE = st;
   renderChips(st);
@@ -278,6 +289,7 @@ function render(st) {
     path: st.ingest.http_path + (st.ingest.token_required ? "?token=…" : "")});
 }
 
+// Poll /api/state every POLL_MS; shows a banner if the server is unreachable.
 async function tick() {
   try {
     render(await api("/api/state"));
@@ -289,6 +301,7 @@ async function tick() {
 }
 
 // ── language switch ────────────────────────────────────────────────────────
+// Switch language, remember it, re-render static and dynamic texts.
 function setLang(lang) {
   if (!I18N[lang]) return;
   LANG = lang;
@@ -305,6 +318,7 @@ document.querySelectorAll("[data-lang]").forEach((b) => b.addEventListener("clic
 
 // ── explanation overlay ────────────────────────────────────────────────────
 let pausedByExplain = false;
+// A feature value with its unit, or the statistic's own unit (e.g. skew has none).
 function fmtFeat(f) {
   if (f.value == null) return "–";
   if (f.signal === "timestamp") {
@@ -335,6 +349,7 @@ document.addEventListener("click", async (e) => {
     renderExplain(LAST_EX);
   } catch (err) { $("#ex-body").innerHTML = `<p class="err-text">${esc(err.message)}</p>`; }
 });
+// Close the explanation overlay; resume=true also resumes a paused replay.
 function closeExplain(resume) {
   $("#explain").hidden = true;
   if (resume) post("/api/replay/pause", {paused: false});
@@ -347,6 +362,7 @@ document.querySelectorAll(".stepper a").forEach((a) => a.addEventListener("click
   e.preventDefault(); document.querySelector(a.getAttribute("href")).scrollIntoView({behavior: "smooth"});
 }));
 
+// Explanation overlay: uplinks → features → occlusion per signal → model internals.
 function renderExplain(ex) {
   if (!ex.ready) { $("#ex-body").innerHTML = `<p class="muted">${esc(ex.reason)}</p>`; return; }
   const keys = Object.keys(ex.models);
@@ -413,6 +429,7 @@ function renderExplain(ex) {
   $("#ex-body").innerHTML = s1 + s2 + s3 + s4;
 }
 
+// Bar rows for signed contributions (largest |value| = full width).
 function contribRows(items, max, fmt) {
   return items.map((it) => {
     const w = Math.abs(it.contribution) / max * 50;
@@ -420,6 +437,7 @@ function contribRows(items, max, fmt) {
     return `<div class="contrib"><span>${esc(featLabel(it.feature))}</span><span class="axis"><span class="${pos ? "pos" : "neg"}" style="${pos ? "left:50%" : `left:${50 - w}%`};width:${w}%"></span></span><span class="num">${fmt(it.contribution)}</span></div>`;
   }).join("");
 }
+// Logistic regression detail: weighted sum of the scaled features.
 function exLogreg(d, m) {
   const max = Math.max(1e-9, ...d.top.map((x) => Math.abs(x.contribution)));
   const f = (v) => (v >= 0 ? "+" : "−") + fmtNum(Math.abs(v), 2);
@@ -427,6 +445,7 @@ function exLogreg(d, m) {
     ${contribRows(d.top, max, f)}
     <div class="sum-line">${t("ex.lr_sum_html", {n: d.n_features - d.top.length, rest: f(d.rest), bias: f(d.intercept), score: f(d.score), p: pct(m.proba[m.label])})}</div>`;
 }
+// Random forest detail: votes per phase and split contributions.
 function exForest(d, m) {
   const k = d.classes.indexOf(m.label);
   const grid = d.tree_votes.map((v) => `<i style="background:${phaseColor(d.classes[v])}" title="${esc(phaseName(d.classes[v]))}"></i>`).join("");
@@ -437,6 +456,7 @@ function exForest(d, m) {
     <div class="muted" style="font-size:.75rem">${t("ex.rf_head", {d: d.max_depth})}</div>
     ${contribRows(d.top, max, (v) => (v >= 0 ? "+" : "−") + fmtNum(Math.abs(v) * 100, 1))}`;
 }
+// MLP detail: activations per layer as small squares.
 function exNet(d, m) {
   const W = 420, H = 300, layers = d.layers;
   const xs = layers.map((_, i) => 30 + i * ((W - 60) / (layers.length - 1)));
@@ -468,6 +488,7 @@ const PRESETS = {
   warm: {dt: 6},
   reset: {dm: 0, cf: 100, dt: 0},
 };
+// Slider labels of the simulator (day, deltas) without waiting for the server.
 function simLabels() {
   const pos = Number($("#sim-pos").value) / 1000;
   $("#sim-pos-v").textContent = simRunDays != null ? t("sim.day_v", {n: fmtNum(pos * simRunDays, 1)}) : `${(pos * 100).toFixed(0)} %`;
@@ -475,7 +496,9 @@ function simLabels() {
   $("#sim-cf-v").textContent = `× ${fmtNum(Number($("#sim-cf").value) / 100, 2)}`;
   $("#sim-dt-v").textContent = `${signed(Number($("#sim-dt").value))} °C`;
 }
+// Debounce slider input: simulate 120 ms after the last change.
 function scheduleSim() { simLabels(); clearTimeout(simTimer); simTimer = setTimeout(runSim, 120); }
+// Ask the server for a prediction on the adjusted recorded window; drops outdated answers.
 async function runSim() {
   if (!$("#sim-rec").value) return;
   simLabels();
@@ -490,6 +513,7 @@ async function runSim() {
   LAST_SIM = res;
   renderSim(res);
 }
+// Enable only the sliders of signals the models use, with a note when temperature is relative to the air.
 function updateSimInputs() {
   const signals = STATE && STATE.models.signals;
   const usesTemp = !signals || signals.some((s) => s.includes("temperature"));
@@ -500,6 +524,7 @@ function updateSimInputs() {
   if (!usesTemp && Number($("#sim-dt").value) !== 0) $("#sim-dt").value = 0;
 }
 
+// Simulator result: model cards, recorded vs simulated values, annotation of the unmodified window.
 function renderSim(res) {
   updateSimInputs();
   simRunDays = res.run_days;

@@ -46,6 +46,7 @@ class ModelRegistry:
     """Loads final and per-fold pipelines lazily from data/models/manifest.json."""
 
     def __init__(self, models_dir: str):
+        """Load manifest.json, metrics.json and the final models from `models_dir`."""
         self.models_dir = models_dir
         self.manifest: dict | None = None
         self.metrics: dict | None = None
@@ -55,6 +56,7 @@ class ModelRegistry:
         self.reload()
 
     def reload(self):
+        """(Re)load the manifest, metrics and final models. Errors are kept in self.error (shown in the UI)."""
         self._cache.clear()
         self.manifest, self.error = None, None
         mpath = os.path.join(self.models_dir, "manifest.json")
@@ -81,21 +83,26 @@ class ModelRegistry:
 
     @property
     def ok(self) -> bool:
+        """True if models are loaded and usable."""
         return self.manifest is not None and self.error is None
 
     @property
     def window_size(self) -> int:
+        """Uplinks per window the models were trained with."""
         return self.manifest["window_size"] if self.manifest else 10
 
     @property
     def stride(self) -> int:
+        """Step between windows used in training (the replay predicts at the same step)."""
         return self.manifest["stride"] if self.manifest else 2
 
     @property
     def keys(self) -> list[str]:
+        """Model keys in manifest order (logreg, rf, mlp)."""
         return [m["key"] for m in self.manifest["models"]] if self.manifest else []
 
     def info(self) -> dict:
+        """Model summary for /api/state, with a warning if scikit-learn differs from training."""
         if not self.manifest:
             return {"ok": False, "error": self.error, "models": []}
         trained_with = self.manifest.get("versions", {}).get("scikit-learn")
@@ -113,12 +120,14 @@ class ModelRegistry:
                 "created_at": self.manifest.get("created_at"), "quick": self.manifest.get("quick")}
 
     def _entry(self, key):
+        """The manifest entry of one model."""
         for m in self.manifest["models"]:
             if m["key"] == key:
                 return m
         raise KeyError(key)
 
     def _load(self, key: str, held_out: str | None) -> ModelPipeline:
+        """Load (and cache) the final model (held_out=None) or the fold model without `held_out`."""
         ck = (key, held_out)
         with self._lock:
             if ck not in self._cache:
@@ -138,6 +147,9 @@ class ModelRegistry:
         return self._load(key, None), seen
 
     def ood_fraction(self, rows: pd.DataFrame) -> float:
+        """Share of window features outside the training range (0.5–99.5 percentile ± 5 %).
+        Above OOD_THRESHOLD the dashboard warns that the input is unlike the training data.
+        """
         feats = self._wf.transform(rows).iloc[-1]
         ranges = self.manifest.get("feature_ranges", {})
         checked = outside = 0

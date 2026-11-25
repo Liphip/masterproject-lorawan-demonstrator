@@ -22,6 +22,19 @@ STATIC = os.path.join(os.path.dirname(__file__), "static")
 
 
 def create_app(cfg: Config) -> FastAPI:
+    """Build the FastAPI app around one set of shared state objects.
+
+    Routes:
+        POST /ingest/uplink      uplinks from the UG63 HTTP integration (or scripts/send_test_uplink.py)
+        GET  /api/state          everything the dashboards poll: models, live devices, replay
+        GET  /api/metrics        metrics.json of the trained models
+        GET  /api/recordings     recorded runs available for replay / simulation
+        POST /api/replay/...     start, stop, pause a replay
+        GET  /api/explain        explanation of the prediction on screen
+        POST /api/simulate       virtual sausage (what-if on a recorded window)
+        POST /api/ambient        air temperature around the case
+        GET  /  and  /details    presentation view and full dashboard
+    """
     models = ModelRegistry(cfg.models_dir)
     live = LiveState(cfg, models)
     replay = ReplayEngine(models, cfg.replay_dirs)
@@ -30,6 +43,7 @@ def create_app(cfg: Config) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_app):
+        """Stop the replay thread when the server shuts down."""
         yield
         replay.stop()
 
@@ -40,6 +54,9 @@ def create_app(cfg: Config) -> FastAPI:
     # ── gateway ingest (UG63 HTTP integration posts here) ───────────────────
     @app.post("/ingest/uplink")
     async def ingest(request: Request, token: str = "", source: str = "live"):
+        """Accept one uplink or a list of uplinks (JSON). ?source=test marks test uplinks (not recorded);
+        ?token=... is required if ingest_token is set in the config.
+        """
         if cfg.ingest_token and token != cfg.ingest_token:
             raise HTTPException(401, "bad token")
         try:
@@ -52,12 +69,14 @@ def create_app(cfg: Config) -> FastAPI:
         return {"results": results}
 
     async def _run_sync(fn, *args):
+        """Run blocking work (decoding, model inference) in a thread so the event loop stays responsive."""
         from starlette.concurrency import run_in_threadpool
         return await run_in_threadpool(fn, *args)
 
     # ── API ─────────────────────────────────────────────────────────────────
     @app.get("/api/state")
     def state():
+        """Snapshot polled by both dashboards about every 1.5 s."""
         return {"server_time": time.time(), "uptime_s": time.time() - started,
                 "models": models.info(),
                 "ingest": {"http_path": "/ingest/uplink", "token_required": bool(cfg.ingest_token),
@@ -67,16 +86,19 @@ def create_app(cfg: Config) -> FastAPI:
 
     @app.get("/api/metrics")
     def metrics():
+        """metrics.json as written by training (404 if the models have not been trained yet)."""
         if not models.metrics:
             raise HTTPException(404, "metrics.json not found – run notebooks/03_train_and_evaluate.ipynb")
         return models.metrics
 
     @app.get("/api/recordings")
     def recordings():
+        """Recorded runs (converted training data and live recordings) available for replay and simulation."""
         return replay.recordings()
 
     @app.post("/api/replay/start")
     async def replay_start(request: Request):
+        """Start replaying a recording: {group, speed (data seconds per second), start_fraction 0..1}."""
         body = await request.json()
         if not models.ok:
             raise HTTPException(409, models.error or "models not loaded")
@@ -89,11 +111,13 @@ def create_app(cfg: Config) -> FastAPI:
 
     @app.post("/api/replay/stop")
     def replay_stop():
+        """Stop the replay (its history stays visible)."""
         replay.stop()
         return {"ok": True}
 
     @app.post("/api/replay/pause")
     async def replay_pause(request: Request):
+        """Pause or resume the replay: {paused: true|false}."""
         body = await request.json()
         replay.set_paused(bool(body.get("paused", True)))
         return {"ok": True}
@@ -153,6 +177,7 @@ def create_app(cfg: Config) -> FastAPI:
 
     @app.get("/healthz")
     def healthz():
+        """Liveness check for scripts: is the server up, are the models loaded."""
         return JSONResponse({"ok": True, "models_ok": models.ok})
 
     @app.get("/")

@@ -45,6 +45,7 @@ def recording_name(path: str) -> str:
 
 
 def is_lfs_pointer(path: str) -> bool:
+    """True if the file is a Git LFS pointer (data not downloaded: run `git lfs pull`)."""
     with open(path, "rb") as fh:
         return fh.read(40).startswith(b"version https://git-lfs")
 
